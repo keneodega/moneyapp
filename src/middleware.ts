@@ -30,7 +30,27 @@ export async function middleware(request: NextRequest) {
   );
 
   // Refresh session if expired - important for Server Components
-  await supabase.auth.getUser();
+  const { data: { user } } = await supabase.auth.getUser();
+
+  const { pathname } = request.nextUrl;
+
+  // Public routes that don't require authentication
+  const publicRoutes = ['/login', '/auth/callback'];
+  const isPublicRoute = publicRoutes.some(route => pathname.startsWith(route));
+
+  // If user is not logged in and trying to access protected route, redirect to login
+  if (!user && !isPublicRoute) {
+    const url = request.nextUrl.clone();
+    url.pathname = '/login';
+    return NextResponse.redirect(url);
+  }
+
+  // If user is logged in and trying to access login page, redirect to app
+  if (user && pathname === '/login') {
+    const url = request.nextUrl.clone();
+    url.pathname = '/months';
+    return NextResponse.redirect(url);
+  }
 
   return supabaseResponse;
 }
@@ -43,7 +63,8 @@ export const config = {
      * - _next/image (image optimization files)
      * - favicon.ico (favicon file)
      * - public folder
+     * - api routes (for health checks, etc.)
      */
-    '/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)',
+    '/((?!_next/static|_next/image|favicon.ico|api/|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)',
   ],
 };
