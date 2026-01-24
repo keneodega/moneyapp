@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { Card, Button, Input, Select, Textarea } from '@/components/ui';
+import { Card, Button, Input, Select, Textarea, DeleteButton } from '@/components/ui';
 import { createSupabaseBrowserClient } from '@/lib/supabase/client';
 import { FinancialGoalService } from '@/lib/services';
 import { ValidationError, NotFoundError } from '@/lib/services/errors';
@@ -372,6 +372,21 @@ export default function EditSubGoalPage({
             >
               Save Changes
             </Button>
+          </div>
+
+          {/* Delete */}
+          <div className="pt-6 border-t border-[var(--color-border)]">
+            <p className="text-small text-[var(--color-text-muted)] mb-3">Danger Zone</p>
+            <DeleteButton 
+              onDelete={async () => {
+                if (!subGoalId) return;
+                const supabase = createSupabaseBrowserClient();
+                const goalService = new FinancialGoalService(supabase);
+                await goalService.deleteSubGoal(subGoalId);
+              }}
+              itemName="sub-goal"
+              redirectTo={goalId ? `/goals/${goalId}` : '/goals'}
+            />
           </div>
         </form>
       </Card>

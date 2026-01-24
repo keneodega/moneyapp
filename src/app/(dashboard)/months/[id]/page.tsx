@@ -2,6 +2,8 @@ import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { Card, CardHeader, BudgetProgress } from '@/components/ui';
 import { createSupabaseServerClient } from '@/lib/supabase/server';
+import { IncomeList } from './IncomeList';
+import { MonthActions } from './MonthActions';
 
 // Mock data for development
 const MOCK_MONTH = {
@@ -175,6 +177,7 @@ export default async function MonthDetailPage({
             </p>
           </div>
         </div>
+        <MonthActions monthId={id} monthName={month.name} />
       </div>
 
       {/* Dashboard Cards */}
@@ -313,31 +316,7 @@ export default async function MonthDetailPage({
           </div>
           
           <Card variant="outlined" padding="none">
-            {income.length > 0 ? (
-              <div className="divide-y divide-[var(--color-border)]">
-                {income.map((item) => (
-                  <div key={item.id} className="p-4 flex items-center justify-between">
-                    <div>
-                      <p className="text-body font-medium text-[var(--color-text)]">
-                        {item.source}
-                      </p>
-                      <p className="text-small text-[var(--color-text-muted)]">
-                        {item.person} · {formatDate(item.date_paid)}
-                      </p>
-                    </div>
-                    <span className="text-body font-medium text-[var(--color-success)] tabular-nums">
-                      +{formatCurrency(item.amount)}
-                    </span>
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <div className="p-8 text-center">
-                <p className="text-small text-[var(--color-text-muted)]">
-                  No income recorded yet
-                </p>
-              </div>
-            )}
+            <IncomeList income={income} monthId={id} />
           </Card>
 
           {/* Quick Stats */}
