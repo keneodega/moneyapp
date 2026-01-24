@@ -52,26 +52,26 @@ export default async function SubscriptionsPage() {
 
       {/* Stats Cards */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        <Card variant="elevated" padding="md">
+        <Card variant="raised" padding="md">
           <p className="text-small text-[var(--color-text-muted)] mb-1">Active</p>
           <p className="text-display text-[var(--color-text)]">{activeSubscriptions.length}</p>
         </Card>
         
-        <Card variant="elevated" padding="md">
+        <Card variant="raised" padding="md">
           <p className="text-small text-[var(--color-text-muted)] mb-1">Monthly Cost</p>
           <p className="text-display text-[var(--color-text)]">
             <Currency amount={totalMonthly} />
           </p>
         </Card>
         
-        <Card variant="elevated" padding="md">
+        <Card variant="raised" padding="md">
           <p className="text-small text-[var(--color-text-muted)] mb-1">Yearly Cost</p>
           <p className="text-display text-[var(--color-text)]">
             <Currency amount={totalYearly} />
           </p>
         </Card>
         
-        <Card variant="elevated" padding="md">
+        <Card variant="raised" padding="md">
           <p className="text-small text-[var(--color-text-muted)] mb-1">Due This Week</p>
           <p className="text-display text-[var(--color-warning)]">{dueSoon.length}</p>
         </Card>
