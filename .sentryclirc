@@ -1,0 +1,9 @@
+{
+  "defaults": {
+    "org": "your-org-slug",
+    "project": "money-app"
+  },
+  "auth": {
+    "token": ""
+  }
+}

@@ -1,26 +1,256 @@
 @import "tailwindcss";
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
-}
+/* Family Money Tracker - Custom Design System */
+/* A warm, inviting palette inspired by natural earth tones */
 
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+:root {
+  /* Core palette - Warm terracotta meets sage */
+  --color-primary: #c45d3e;
+  --color-primary-light: #e8a08c;
+  --color-primary-dark: #8b3d28;
+  
+  --color-accent: #4a7c59;
+  --color-accent-light: #7eb08b;
+  --color-accent-dark: #2d5438;
+  
+  /* Neutrals - Warm cream to charcoal */
+  --color-surface: #faf8f5;
+  --color-surface-raised: #ffffff;
+  --color-surface-sunken: #f0ede8;
+  
+  --color-text: #2c2420;
+  --color-text-muted: #6b5f56;
+  --color-text-subtle: #9a8f85;
+  
+  --color-border: #e5e0d8;
+  --color-border-strong: #cfc7bc;
+  
+  /* Semantic colors */
+  --color-success: #4a7c59;
+  --color-warning: #d4a03a;
+  --color-danger: #c45d3e;
+  --color-info: #5b7a8c;
+  
+  /* Shadows */
+  --shadow-sm: 0 1px 2px rgba(44, 36, 32, 0.05);
+  --shadow-md: 0 4px 12px rgba(44, 36, 32, 0.08);
+  --shadow-lg: 0 8px 24px rgba(44, 36, 32, 0.12);
+  
+  /* Radius */
+  --radius-sm: 6px;
+  --radius-md: 10px;
+  --radius-lg: 16px;
+  --radius-xl: 24px;
+  
+  /* Spacing rhythm */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 24px;
+  --space-8: 32px;
+  --space-10: 40px;
+  --space-12: 48px;
+  --space-16: 64px;
 }
 
 @media (prefers-color-scheme: dark) {
   :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+    --color-primary: #e8a08c;
+    --color-primary-light: #f5c4b5;
+    --color-primary-dark: #c45d3e;
+    
+    --color-accent: #7eb08b;
+    --color-accent-light: #a8d4b0;
+    --color-accent-dark: #4a7c59;
+    
+    --color-surface: #1a1614;
+    --color-surface-raised: #252120;
+    --color-surface-sunken: #0f0d0c;
+    
+    --color-text: #f5f2ef;
+    --color-text-muted: #b5aca3;
+    --color-text-subtle: #7a706a;
+    
+    --color-border: #3a3330;
+    --color-border-strong: #4a4340;
+    
+    --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.2);
+    --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.3);
+    --shadow-lg: 0 8px 24px rgba(0, 0, 0, 0.4);
   }
 }
 
+/* Base styles */
+* {
+  box-sizing: border-box;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  background: var(--color-surface);
+  color: var(--color-text);
+  font-family: var(--font-geist-sans), system-ui, -apple-system, sans-serif;
+  line-height: 1.6;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Typography scale */
+.text-display {
+  font-size: 2.5rem;
+  font-weight: 700;
+  line-height: 1.1;
+  letter-spacing: -0.02em;
+}
+
+.text-headline {
+  font-size: 1.75rem;
+  font-weight: 600;
+  line-height: 1.2;
+  letter-spacing: -0.01em;
+}
+
+.text-title {
+  font-size: 1.25rem;
+  font-weight: 600;
+  line-height: 1.3;
+}
+
+.text-body {
+  font-size: 1rem;
+  line-height: 1.6;
+}
+
+.text-small {
+  font-size: 0.875rem;
+  line-height: 1.5;
+}
+
+.text-caption {
+  font-size: 0.75rem;
+  line-height: 1.4;
+  letter-spacing: 0.01em;
+}
+
+/* Custom scrollbar */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--color-surface-sunken);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--color-border-strong);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--color-text-subtle);
+}
+
+/* Focus styles */
+:focus-visible {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 2px;
+}
+
+/* Selection */
+::selection {
+  background: var(--color-primary-light);
+  color: var(--color-text);
+}
+
+/* Animation utilities */
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes slideUp {
+  from { 
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to { 
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes slideIn {
+  from { 
+    opacity: 0;
+    transform: translateX(-10px);
+  }
+  to { 
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+.animate-fade-in {
+  animation: fadeIn 0.3s ease-out;
+}
+
+.animate-slide-up {
+  animation: slideUp 0.4s ease-out;
+}
+
+.animate-slide-in {
+  animation: slideIn 0.3s ease-out;
+}
+
+/* Stagger animation delay utilities */
+.stagger-1 { animation-delay: 0.05s; }
+.stagger-2 { animation-delay: 0.1s; }
+.stagger-3 { animation-delay: 0.15s; }
+.stagger-4 { animation-delay: 0.2s; }
+.stagger-5 { animation-delay: 0.25s; }
+.stagger-6 { animation-delay: 0.3s; }
+
+/* Progress bar styles */
+.progress-bar {
+  height: 8px;
+  background: var(--color-surface-sunken);
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.progress-bar-fill {
+  height: 100%;
+  border-radius: 4px;
+  transition: width 0.5s ease-out;
+}
+
+/* Card hover effect */
+.card-hover {
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.card-hover:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-lg);
+}
+
+/* Number formatting */
+.tabular-nums {
+  font-variant-numeric: tabular-nums;
+}
+
+/* Gradient backgrounds */
+.gradient-warm {
+  background: linear-gradient(135deg, var(--color-primary-light) 0%, var(--color-surface) 100%);
+}
+
+.gradient-cool {
+  background: linear-gradient(135deg, var(--color-accent-light) 0%, var(--color-surface) 100%);
 }

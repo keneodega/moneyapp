@@ -1,0 +1,423 @@
+import Link from 'next/link';
+import { notFound } from 'next/navigation';
+import { Card, CardHeader, BudgetProgress } from '@/components/ui';
+import { createSupabaseServerClient } from '@/lib/supabase/server';
+
+// Mock data for development
+const MOCK_MONTH = {
+  id: '1',
+  name: 'January 2026',
+  start_date: '2026-01-01',
+  end_date: '2026-01-31',
+  total_income: 5200,
+  total_budgeted: 4588,
+};
+
+const MOCK_BUDGETS = [
+  { id: '1', name: 'Tithe', budget_amount: 350, amount_spent: 350, amount_left: 0 },
+  { id: '2', name: 'Offering', budget_amount: 175, amount_spent: 175, amount_left: 0 },
+  { id: '3', name: 'Housing', budget_amount: 2228, amount_spent: 2228, amount_left: 0 },
+  { id: '4', name: 'Food', budget_amount: 350, amount_spent: 285, amount_left: 65 },
+  { id: '5', name: 'Transport', budget_amount: 200, amount_spent: 120, amount_left: 80 },
+  { id: '6', name: 'Personal Care', budget_amount: 480, amount_spent: 250, amount_left: 230 },
+  { id: '7', name: 'Household', budget_amount: 130, amount_spent: 45, amount_left: 85 },
+  { id: '8', name: 'Savings', budget_amount: 300, amount_spent: 300, amount_left: 0 },
+  { id: '9', name: 'Investments', budget_amount: 100, amount_spent: 100, amount_left: 0 },
+  { id: '10', name: 'Subscriptions', budget_amount: 75, amount_spent: 75, amount_left: 0 },
+  { id: '11', name: 'Health', budget_amount: 50, amount_spent: 15, amount_left: 35 },
+  { id: '12', name: 'Travel', budget_amount: 50, amount_spent: 0, amount_left: 50 },
+  { id: '13', name: 'Miscellaneous', budget_amount: 100, amount_spent: 32, amount_left: 68 },
+];
+
+const MOCK_INCOME = [
+  { id: '1', source: 'Salary', person: 'Kene', amount: 3200, date_paid: '2026-01-25' },
+  { id: '2', source: 'Salary', person: 'Ify', amount: 2000, date_paid: '2026-01-25' },
+];
+
+interface MonthData {
+  id: string;
+  name: string;
+  start_date: string;
+  end_date: string;
+  total_income?: number;
+  total_budgeted?: number;
+}
+
+interface BudgetData {
+  id: string;
+  name: string;
+  budget_amount: number;
+  amount_spent: number;
+  amount_left: number;
+}
+
+interface IncomeData {
+  id: string;
+  source: string;
+  person?: string;
+  amount: number;
+  date_paid: string;
+}
+
+async function getMonthData(id: string): Promise<{
+  month: MonthData;
+  budgets: BudgetData[];
+  income: IncomeData[];
+} | null> {
+  try {
+    const supabase = await createSupabaseServerClient();
+    const { data: { user } } = await supabase.auth.getUser();
+    
+    if ( !user) {
+      // Return mock data if not authenticated
+      return {
+        month: MOCK_MONTH,
+        budgets: MOCK_BUDGETS,
+        income: MOCK_INCOME,
+      };
+    }
+
+    // Fetch month
+    const { data: month, error: monthError } = await supabase
+      .from('monthly_overviews')
+      .select('*')
+      .eq('id', id)
+      .single();
+
+    if (monthError || !month) {
+      return {
+        month: MOCK_MONTH,
+        budgets: MOCK_BUDGETS,
+        income: MOCK_INCOME,
+      };
+    }
+
+    // Fetch budgets with summary
+    const { data: budgets } = await supabase
+      .from('budget_summary')
+      .select('*')
+      .eq('monthly_overview_id', id)
+      .order('name');
+
+    // Fetch income
+    const { data: income } = await supabase
+      .from('income_sources')
+      .select('*')
+      .eq('monthly_overview_id', id)
+      .order('date_paid', { ascending: false });
+
+    return {
+      month,
+      budgets: budgets || MOCK_BUDGETS,
+      income: income || MOCK_INCOME,
+    };
+  } catch {
+    return {
+      month: MOCK_MONTH,
+      budgets: MOCK_BUDGETS,
+      income: MOCK_INCOME,
+    };
+  }
+}
+
+function formatCurrency(amount: number): string {
+  return new Intl.NumberFormat('en-IE', {
+    style: 'currency',
+    currency: 'EUR',
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 0,
+  }).format(amount);
+}
+
+function formatDate(date: string): string {
+  return new Date(date).toLocaleDateString('en-IE', {
+    month: 'short',
+    day: 'numeric',
+  });
+}
+
+export default async function MonthDetailPage({
+  params,
+}: {
+  params: Promise<{ id: string }>;
+}) {
+  const { id } = await params;
+  const data = await getMonthData(id);
+  
+  if ( !data) {
+    notFound();
+  }
+
+  const { month, budgets, income } = data;
+  
+  // Calculate totals
+  const totalIncome = income.reduce((sum, i) => sum + Number(i.amount), 0);
+  const totalBudgeted = budgets.reduce((sum, b) => sum + Number(b.budget_amount), 0);
+  const totalSpent = budgets.reduce((sum, b) => sum + Number(b.amount_spent), 0);
+  const unallocated = totalIncome - totalBudgeted;
+  const spentPercent = totalBudgeted > 0 ? (totalSpent / totalBudgeted) * 100 : 0;
+
+  return (
+    <div className="space-y-8 animate-fade-in">
+      {/* Header */}
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        <div className="flex items-center gap-4">
+          <Link
+            href="/months"
+            className="w-10 h-10 rounded-[var(--radius-md)] bg-[var(--color-surface-sunken)] flex items-center justify-center hover:bg-[var(--color-border)] transition-colors"
+          >
+            <ChevronLeftIcon className="w-5 h-5 text-[var(--color-text)]" />
+          </Link>
+          <div>
+            <h1 className="text-display text-[var(--color-text)]">{month.name}</h1>
+            <p className="text-body text-[var(--color-text-muted)] mt-1">
+              {formatDate(month.start_date)} - {formatDate(month.end_date)}
+            </p>
+          </div>
+        </div>
+      </div>
+
+      {/* Dashboard Cards */}
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        {/* Total Income */}
+        <Card variant="raised" padding="md" className="animate-slide-up stagger-1">
+          <div className="flex items-start justify-between">
+            <div>
+              <p className="text-small text-[var(--color-text-muted)]">Total Income</p>
+              <p className="text-headline text-[var(--color-success)] mt-1 tabular-nums">
+                {formatCurrency(totalIncome)}
+              </p>
+            </div>
+            <div className="w-10 h-10 rounded-[var(--radius-md)] bg-[var(--color-success)]/10 flex items-center justify-center">
+              <ArrowUpIcon className="w-5 h-5 text-[var(--color-success)]" />
+            </div>
+          </div>
+        </Card>
+
+        {/* Total Budgeted */}
+        <Card variant="raised" padding="md" className="animate-slide-up stagger-2">
+          <div className="flex items-start justify-between">
+            <div>
+              <p className="text-small text-[var(--color-text-muted)]">Total Budgeted</p>
+              <p className="text-headline text-[var(--color-text)] mt-1 tabular-nums">
+                {formatCurrency(totalBudgeted)}
+              </p>
+            </div>
+            <div className="w-10 h-10 rounded-[var(--radius-md)] bg-[var(--color-primary)]/10 flex items-center justify-center">
+              <PieChartIcon className="w-5 h-5 text-[var(--color-primary)]" />
+            </div>
+          </div>
+        </Card>
+
+        {/* Total Spent */}
+        <Card variant="raised" padding="md" className="animate-slide-up stagger-3">
+          <div className="flex items-start justify-between">
+            <div>
+              <p className="text-small text-[var(--color-text-muted)]">Total Spent</p>
+              <p className="text-headline text-[var(--color-text)] mt-1 tabular-nums">
+                {formatCurrency(totalSpent)}
+              </p>
+              <p className="text-caption text-[var(--color-text-subtle)] mt-1">
+                {spentPercent.toFixed(0)}% of budget
+              </p>
+            </div>
+            <div className="w-10 h-10 rounded-[var(--radius-md)] bg-[var(--color-warning)]/10 flex items-center justify-center">
+              <CreditCardIcon className="w-5 h-5 text-[var(--color-warning)]" />
+            </div>
+          </div>
+        </Card>
+
+        {/* Unallocated */}
+        <Card variant="raised" padding="md" className="animate-slide-up stagger-4">
+          <div className="flex items-start justify-between">
+            <div>
+              <p className="text-small text-[var(--color-text-muted)]">Unallocated</p>
+              <p className={`text-headline mt-1 tabular-nums ${
+                unallocated >= 0 ? 'text-[var(--color-accent)]' : 'text-[var(--color-danger)]'
+              }`}>
+                {formatCurrency(unallocated)}
+              </p>
+              <p className="text-caption text-[var(--color-text-subtle)] mt-1">
+                {unallocated >= 0 ? 'Available to budget' : 'Over-budgeted'}
+              </p>
+            </div>
+            <div className={`w-10 h-10 rounded-[var(--radius-md)] flex items-center justify-center ${
+              unallocated >= 0 ? 'bg-[var(--color-accent)]/10' : 'bg-[var(--color-danger)]/10'
+            }`}>
+              <BanknoteIcon className={`w-5 h-5 ${
+                unallocated >= 0 ? 'text-[var(--color-accent)]' : 'text-[var(--color-danger)]'
+              }`} />
+            </div>
+          </div>
+        </Card>
+      </div>
+
+      {/* Main Content Grid */}
+      <div className="grid gap-6 lg:grid-cols-3">
+        {/* Budget Categories */}
+        <div className="lg:col-span-2 space-y-4">
+          <div className="flex items-center justify-between">
+            <h2 className="text-title text-[var(--color-text)]">Budget Categories</h2>
+            <Link
+              href={`/months/${id}/expense/new`}
+              className="inline-flex items-center gap-2 h-9 px-4 rounded-[var(--radius-md)] bg-[var(--color-primary)] text-white text-small font-medium hover:bg-[var(--color-primary-dark)] transition-colors"
+            >
+              <PlusIcon className="w-4 h-4" />
+              Add Expense
+            </Link>
+          </div>
+          
+          <div className="grid gap-3">
+            {budgets.map((budget, index) => {
+              const percent = budget.budget_amount > 0 
+                ? (budget.amount_spent / budget.budget_amount) * 100 
+                : 0;
+              
+              return (
+                <Link 
+                  key={budget.id}
+                  href={`/months/${id}/budgets/${budget.id}`}
+                  className={`animate-slide-up stagger-${Math.min(index + 1, 6)}`}
+                >
+                  <Card variant="outlined" padding="md" hover>
+                    <div className="flex items-center justify-between mb-3">
+                      <h3 className="text-body font-medium text-[var(--color-text)]">
+                        {budget.name}
+                      </h3>
+                      <span className="text-small font-medium text-[var(--color-text)] tabular-nums">
+                        {formatCurrency(budget.budget_amount)}
+                      </span>
+                    </div>
+                    <BudgetProgress 
+                      spent={budget.amount_spent} 
+                      total={budget.budget_amount} 
+                    />
+                  </Card>
+                </Link>
+              );
+            })}
+          </div>
+        </div>
+
+        {/* Income Sidebar */}
+        <div className="space-y-4">
+          <div className="flex items-center justify-between">
+            <h2 className="text-title text-[var(--color-text)]">Income</h2>
+            <Link
+              href={`/months/${id}/income/new`}
+              className="inline-flex items-center gap-2 h-9 px-4 rounded-[var(--radius-md)] bg-[var(--color-accent)] text-white text-small font-medium hover:bg-[var(--color-accent-dark)] transition-colors"
+            >
+              <PlusIcon className="w-4 h-4" />
+              Add Income
+            </Link>
+          </div>
+          
+          <Card variant="outlined" padding="none">
+            {income.length > 0 ? (
+              <div className="divide-y divide-[var(--color-border)]">
+                {income.map((item) => (
+                  <div key={item.id} className="p-4 flex items-center justify-between">
+                    <div>
+                      <p className="text-body font-medium text-[var(--color-text)]">
+                        {item.source}
+                      </p>
+                      <p className="text-small text-[var(--color-text-muted)]">
+                        {item.person} · {formatDate(item.date_paid)}
+                      </p>
+                    </div>
+                    <span className="text-body font-medium text-[var(--color-success)] tabular-nums">
+                      +{formatCurrency(item.amount)}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="p-8 text-center">
+                <p className="text-small text-[var(--color-text-muted)]">
+                  No income recorded yet
+                </p>
+              </div>
+            )}
+          </Card>
+
+          {/* Quick Stats */}
+          <Card variant="default" padding="md" className="bg-gradient-warm">
+            <h3 className="text-small font-medium text-[var(--color-text-muted)] mb-4">
+              Month Summary
+            </h3>
+            <div className="space-y-3">
+              <div className="flex justify-between">
+                <span className="text-small text-[var(--color-text-muted)]">Days remaining</span>
+                <span className="text-small font-medium text-[var(--color-text)]">
+                  {Math.max(0, Math.ceil((new Date(month.end_date).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24)))}
+                </span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-small text-[var(--color-text-muted)]">Budgets on track</span>
+                <span className="text-small font-medium text-[var(--color-success)]">
+                  {budgets.filter(b => b.amount_left >= 0).length} / {budgets.length}
+                </span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-small text-[var(--color-text-muted)]">Avg. daily spend</span>
+                <span className="text-small font-medium text-[var(--color-text)]">
+                  {formatCurrency(totalSpent / Math.max(1, Math.ceil((new Date().getTime() - new Date(month.start_date).getTime()) / (1000 * 60 * 60 * 24))))}
+                </span>
+              </div>
+            </div>
+          </Card>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// Icons
+function ChevronLeftIcon({ className }: { className?: string }) {
+  return (
+    <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+      <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 19.5L8.25 12l7.5-7.5" />
+    </svg>
+  );
+}
+
+function PlusIcon({ className }: { className?: string }) {
+  return (
+    <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+      <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
+    </svg>
+  );
+}
+
+function ArrowUpIcon({ className }: { className?: string }) {
+  return (
+    <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+      <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 10.5L12 3m0 0l7.5 7.5M12 3v18" />
+    </svg>
+  );
+}
+
+function PieChartIcon({ className }: { className?: string }) {
+  return (
+    <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+      <path strokeLinecap="round" strokeLinejoin="round" d="M10.5 6a7.5 7.5 0 107.5 7.5h-7.5V6z" />
+      <path strokeLinecap="round" strokeLinejoin="round" d="M13.5 10.5H21A7.5 7.5 0 0013.5 3v7.5z" />
+    </svg>
+  );
+}
+
+function CreditCardIcon({ className }: { className?: string }) {
+  return (
+    <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+      <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 8.25h19.5M2.25 9h19.5m-16.5 5.25h6m-6 2.25h3m-3.75 3h15a2.25 2.25 0 002.25-2.25V6.75A2.25 2.25 0 0019.5 4.5h-15a2.25 2.25 0 00-2.25 2.25v10.5A2.25 2.25 0 004.5 19.5z" />
+    </svg>
+  );
+}
+
+function BanknoteIcon({ className }: { className?: string }) {
+  return (
+    <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+      <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 18.75a60.07 60.07 0 0115.797 2.101c.727.198 1.453-.342 1.453-1.096V18.75M3.75 4.5v.75A.75.75 0 013 6h-.75m0 0v-.375c0-.621.504-1.125 1.125-1.125H20.25M2.25 6v9m18-10.5v.75c0 .414.336.75.75.75h.75m-1.5-1.5h.375c.621 0 1.125.504 1.125 1.125v9.75c0 .621-.504 1.125-1.125 1.125h-.375m1.5-1.5H21a.75.75 0 00-.75.75v.75m0 0H3.75m0 0h-.375a1.125 1.125 0 01-1.125-1.125V15m1.5 1.5v-.75A.75.75 0 003 15h-.75M15 10.5a3 3 0 11-6 0 3 3 0 016 0zm3 0h.008v.008H18V10.5zm-12 0h.008v.008H6V10.5z" />
+    </svg>
+  );
+}
