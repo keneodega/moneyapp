@@ -31,6 +31,7 @@ export { ExpenseService } from './expense.service';
 export { BudgetService } from './budget.service';
 export { IncomeSourceService } from './income-source.service';
 export { FinancialGoalService } from './financial-goal.service';
+export { SubscriptionService } from './subscription.service';
 
 // Export error types for handling
 export {
@@ -68,6 +69,7 @@ import { ExpenseService } from './expense.service';
 import { BudgetService } from './budget.service';
 import { IncomeSourceService } from './income-source.service';
 import { FinancialGoalService } from './financial-goal.service';
+import { SubscriptionService } from './subscription.service';
 
 export interface Services {
   monthlyOverview: MonthlyOverviewService;
@@ -75,6 +77,7 @@ export interface Services {
   budget: BudgetService;
   incomeSource: IncomeSourceService;
   financialGoal: FinancialGoalService;
+  subscription: SubscriptionService;
 }
 
 export function createServices(supabase: SupabaseClient): Services {
@@ -84,5 +87,6 @@ export function createServices(supabase: SupabaseClient): Services {
     budget: new BudgetService(supabase),
     incomeSource: new IncomeSourceService(supabase),
     financialGoal: new FinancialGoalService(supabase),
+    subscription: new SubscriptionService(supabase),
   };
 }
