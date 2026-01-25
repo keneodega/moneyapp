@@ -7,29 +7,6 @@ import { Card, Button, Input } from '@/components/ui';
 import { createSupabaseBrowserClient } from '@/lib/supabase/client';
 import { BudgetService } from '@/lib/services';
 
-const BUDGET_CATEGORIES = [
-  'Tithe',
-  'Offering',
-  'Charity',
-  'Housing',
-  'Food',
-  'Transport',
-  'Personal Care',
-  'Household',
-  'Savings',
-  'Investments',
-  'Subscriptions',
-  'Health',
-  'Travel',
-  'Entertainment',
-  'Education',
-  'Childcare',
-  'Pet',
-  'Insurance',
-  'Miscellaneous',
-  'Custom',
-];
-
 export default function NewBudgetPage({
   params,
 }: {
@@ -41,12 +18,11 @@ export default function NewBudgetPage({
   const [error, setError] = useState<string | null>(null);
   const [formData, setFormData] = useState({
     name: '',
-    customName: '',
     budget_amount: '',
   });
 
   const handleChange = (
-    e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>
+    e: React.ChangeEvent<HTMLInputElement>
   ) => {
     const { name, value } = e.target;
     setFormData((prev) => ({
@@ -70,18 +46,17 @@ export default function NewBudgetPage({
         return;
       }
 
-      const budgetService = new BudgetService(supabase);
-      const budgetName = formData.name === 'Custom' ? formData.customName : formData.name;
-
-      if (!budgetName.trim()) {
+      if (!formData.name.trim()) {
         setError('Please enter a budget name');
         setIsLoading(false);
         return;
       }
 
+      const budgetService = new BudgetService(supabase);
+
       await budgetService.create({
         monthly_overview_id: monthId,
-        name: budgetName.trim(),
+        name: formData.name.trim(),
         budget_amount: parseFloat(formData.budget_amount) || 0,
       });
 
@@ -122,35 +97,15 @@ export default function NewBudgetPage({
           )}
 
           {/* Category Name */}
-          <div>
-            <label className="block text-small font-medium text-[var(--color-text)] mb-1.5">
-              Category
-            </label>
-            <select
-              name="name"
-              value={formData.name}
-              onChange={handleChange}
-              required
-              className="w-full h-10 px-3 rounded-[var(--radius-md)] bg-[var(--color-surface-raised)] border border-[var(--color-border)] text-[var(--color-text)] text-body transition-colors duration-200 hover:border-[var(--color-border-strong)] focus:outline-none focus:border-[var(--color-primary)] focus:ring-2 focus:ring-[var(--color-primary)]/20 cursor-pointer"
-            >
-              <option value="" disabled>Select a category</option>
-              {BUDGET_CATEGORIES.map((cat) => (
-                <option key={cat} value={cat}>{cat}</option>
-              ))}
-            </select>
-          </div>
-
-          {/* Custom Name (if Custom selected) */}
-          {formData.name === 'Custom' && (
-            <Input
-              label="Custom Category Name"
-              name="customName"
-              placeholder="e.g., Baby Expenses"
-              value={formData.customName}
-              onChange={handleChange}
-              required
-            />
-          )}
+          <Input
+            label="Category Name"
+            name="name"
+            placeholder="e.g., Food, Entertainment, Baby Expenses"
+            value={formData.name}
+            onChange={handleChange}
+            required
+            hint="Enter a name for this budget category"
+          />
 
           {/* Budget Amount */}
           <Input
