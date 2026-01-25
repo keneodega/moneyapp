@@ -6,43 +6,6 @@ import Link from 'next/link';
 import { Card, Button, Input, Select, Textarea } from '@/components/ui';
 import { createSupabaseBrowserClient } from '@/lib/supabase/client';
 
-const SUB_CATEGORIES = [
-  { value: 'Rent', label: 'Rent' },
-  { value: 'Electricity', label: 'Electricity' },
-  { value: 'Gas', label: 'Gas' },
-  { value: 'Water', label: 'Water' },
-  { value: 'Internet', label: 'Internet' },
-  { value: 'Phone', label: 'Phone' },
-  { value: 'Groceries', label: 'Groceries' },
-  { value: 'Dining Out', label: 'Dining Out' },
-  { value: 'Transport', label: 'Transport' },
-  { value: 'Fuel', label: 'Fuel' },
-  { value: 'Parking', label: 'Parking' },
-  { value: 'Toll', label: 'Toll' },
-  { value: 'Insurance', label: 'Insurance' },
-  { value: 'Medical', label: 'Medical' },
-  { value: 'Pharmacy', label: 'Pharmacy' },
-  { value: 'Clothing', label: 'Clothing' },
-  { value: 'Personal Care', label: 'Personal Care' },
-  { value: 'Entertainment', label: 'Entertainment' },
-  { value: 'Subscriptions', label: 'Subscriptions' },
-  { value: 'Gifts', label: 'Gifts' },
-  { value: 'Tithe', label: 'Tithe' },
-  { value: 'Offering', label: 'Offering' },
-  { value: 'Charity', label: 'Charity' },
-  { value: 'Education', label: 'Education' },
-  { value: 'Childcare', label: 'Childcare' },
-  { value: 'Pet', label: 'Pet' },
-  { value: 'Home Maintenance', label: 'Home Maintenance' },
-  { value: 'Furniture', label: 'Furniture' },
-  { value: 'Electronics', label: 'Electronics' },
-  { value: 'Travel', label: 'Travel' },
-  { value: 'Vacation', label: 'Vacation' },
-  { value: 'Investment', label: 'Investment' },
-  { value: 'Savings', label: 'Savings' },
-  { value: 'Other', label: 'Other' },
-];
-
 const BANKS = [
   { value: 'AIB', label: 'AIB' },
   { value: 'Revolut', label: 'Revolut' },
@@ -65,7 +28,6 @@ interface FormData {
   budget_id: string;
   amount: string;
   date: string;
-  sub_category: string;
   bank: string;
   description: string;
   is_recurring: boolean;
@@ -87,7 +49,6 @@ export default function NewExpensePage({
     budget_id: '',
     amount: '',
     date: new Date().toISOString().split('T')[0],
-    sub_category: '',
     bank: 'Revolut',
     description: '',
     is_recurring: false,
@@ -176,7 +137,6 @@ export default function NewExpensePage({
           user_id: user.id,
           amount: expenseAmount,
           date: formData.date,
-          sub_category: formData.sub_category || null,
           bank: formData.bank || null,
           description: formData.description || null,
           is_recurring: formData.is_recurring,
@@ -315,25 +275,15 @@ export default function NewExpensePage({
             hint={selectedBudget ? `Max: €${selectedBudget.amount_left.toFixed(2)}` : undefined}
           />
 
-          {/* Date & Sub-category */}
-          <div className="grid gap-4 sm:grid-cols-2">
-            <Input
-              label="Date"
-              name="date"
-              type="date"
-              value={formData.date}
-              onChange={handleChange}
-              required
-            />
-            <Select
-              label="Sub-category (optional)"
-              name="sub_category"
-              value={formData.sub_category}
-              onChange={handleChange}
-              options={SUB_CATEGORIES}
-              placeholder="Select sub-category"
-            />
-          </div>
+          {/* Date */}
+          <Input
+            label="Date"
+            name="date"
+            type="date"
+            value={formData.date}
+            onChange={handleChange}
+            required
+          />
 
           {/* Bank */}
           <Select

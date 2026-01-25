@@ -140,7 +140,7 @@ export default async function BudgetDetailPage({
                 <div key={expense.id} className="p-4 flex items-center justify-between">
                   <div>
                     <p className="text-body font-medium text-[var(--color-text)]">
-                      {expense.sub_category || expense.description || 'Expense'}
+                      {expense.description || 'Expense'}
                     </p>
                     <p className="text-small text-[var(--color-text-muted)]">
                       {formatDate(expense.date)}

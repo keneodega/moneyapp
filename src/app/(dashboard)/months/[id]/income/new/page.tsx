@@ -147,7 +147,6 @@ export default function NewIncomePage({
             amount: calculations.titheAmount,
             date: formData.date_paid,
             description: `Tithe (10%) from ${formData.source} - ${formData.person}`,
-            sub_category: 'Tithe',
             bank: formData.bank,
           });
         }
@@ -170,7 +169,6 @@ export default function NewIncomePage({
             amount: calculations.offeringAmount,
             date: formData.date_paid,
             description: `Offering (5%) from ${formData.source} - ${formData.person}`,
-            sub_category: 'Offering',
             bank: formData.bank,
           });
         }

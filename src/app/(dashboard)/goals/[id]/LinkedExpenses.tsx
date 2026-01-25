@@ -34,7 +34,6 @@ async function getLinkedExpenses(goalId: string) {
         amount,
         date,
         description,
-        sub_category,
         budget_id,
         budgets(name, monthly_overview_id),
         monthly_overviews(id, name)
@@ -94,7 +93,7 @@ export async function LinkedExpenses({ goalId }: { goalId: string }) {
             <div className="flex items-start justify-between mb-1">
               <div className="flex-1">
                 <p className="text-body font-medium text-[var(--color-text)]">
-                  {expense.description || expense.sub_category || 'Expense'}
+                  {expense.description || 'Expense'}
                 </p>
                 <p className="text-small text-[var(--color-text-muted)]">
                   {(expense.budgets as any)?.name || 'Unknown'} • {formatDate(expense.date)}
