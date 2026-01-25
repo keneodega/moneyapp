@@ -192,16 +192,43 @@ export class SettingsService {
    * Get all settings (for settings page)
    */
   async getAllSettings(): Promise<Record<SettingType, AppSetting[]>> {
-    const userId = await this.getUserId();
+    try {
+      const userId = await this.getUserId();
 
-    const { data, error } = await this.supabase
-      .from('app_settings')
-      .select('*')
-      .eq('user_id', userId)
-      .order('setting_type')
-      .order('sort_order');
+      const { data, error } = await this.supabase
+        .from('app_settings')
+        .select('*')
+        .eq('user_id', userId)
+        .order('setting_type')
+        .order('sort_order');
 
-    if (error || !data) {
+      if (error || !data) {
+        return {
+          payment_method: [],
+          budget_category: [],
+          income_source: [],
+          person: [],
+        };
+      }
+
+      // Group by type, ensuring all keys exist
+      const result: Record<SettingType, AppSetting[]> = {
+        payment_method: [],
+        budget_category: [],
+        income_source: [],
+        person: [],
+      };
+
+      data.forEach((setting) => {
+        const type = setting.setting_type as SettingType;
+        if (result[type]) {
+          result[type].push(setting);
+        }
+      });
+
+      return result;
+    } catch {
+      // Return empty settings on any error
       return {
         payment_method: [],
         budget_category: [],
@@ -209,16 +236,6 @@ export class SettingsService {
         person: [],
       };
     }
-
-    // Group by type
-    return data.reduce((acc, setting) => {
-      const type = setting.setting_type as SettingType;
-      if (!acc[type]) {
-        acc[type] = [];
-      }
-      acc[type].push(setting);
-      return acc;
-    }, {} as Record<SettingType, AppSetting[]>);
   }
 
   /**

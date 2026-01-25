@@ -57,27 +57,45 @@ export default function SettingsPage() {
           return;
         }
 
-        // Check if the table exists first
+        // Check if the table exists first by trying to query it
         const { error: tableError } = await supabase
           .from('app_settings')
           .select('id')
           .limit(1);
 
-        if (tableError && tableError.message.includes('does not exist')) {
-          setTableExists(false);
-          setIsLoading(false);
-          return;
+        // Check for any error that indicates the table doesn't exist
+        if (tableError) {
+          const errorMsg = tableError.message.toLowerCase();
+          const code = tableError.code;
+          
+          // Various ways Supabase reports missing table
+          if (
+            errorMsg.includes('does not exist') ||
+            errorMsg.includes('relation') ||
+            errorMsg.includes('undefined') ||
+            code === '42P01' || // PostgreSQL "undefined_table" error code
+            code === 'PGRST204' // PostgREST "table not found"
+          ) {
+            setTableExists(false);
+            setIsLoading(false);
+            return;
+          }
         }
 
         const settingsService = new SettingsService(supabase);
         const allSettings = await settingsService.getAllSettings();
-        setSettings(allSettings);
+        
+        // Ensure all keys exist
+        setSettings({
+          payment_method: allSettings.payment_method || [],
+          budget_category: allSettings.budget_category || [],
+          income_source: allSettings.income_source || [],
+          person: allSettings.person || [],
+        });
       } catch (error) {
         console.error('Failed to load settings:', error);
-        // Check if it's a table not found error
-        if (error instanceof Error && error.message.includes('does not exist')) {
-          setTableExists(false);
-        }
+        // If ANY error occurs, assume table doesn't exist and show setup
+        setTableExists(false);
       } finally {
         setIsLoading(false);
       }
