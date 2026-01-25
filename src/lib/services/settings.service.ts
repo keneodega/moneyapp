@@ -19,7 +19,7 @@ export interface AppSetting {
   updated_at: string;
 }
 
-export type SettingType = 'payment_method' | 'budget_category' | 'income_source' | 'person';
+export type SettingType = 'payment_method' | 'budget_category' | 'income_source' | 'person' | 'subscription_type';
 
 // Default values as fallback
 const DEFAULT_PAYMENT_METHODS = [
@@ -53,6 +53,15 @@ const DEFAULT_PEOPLE = [
   { value: 'Kene', label: 'Kene' },
   { value: 'Ify', label: 'Ify' },
   { value: 'Joint', label: 'Joint' },
+  { value: 'Other', label: 'Other' },
+];
+
+const DEFAULT_SUBSCRIPTION_TYPES = [
+  { value: 'Streaming', label: 'Streaming' },
+  { value: 'Software', label: 'Software' },
+  { value: 'Membership', label: 'Membership' },
+  { value: 'Insurance', label: 'Insurance' },
+  { value: 'Utility', label: 'Utility' },
   { value: 'Other', label: 'Other' },
 ];
 
@@ -122,6 +131,13 @@ export class SettingsService {
    */
   async getPeople(): Promise<{ value: string; label: string }[]> {
     return this.getByType('person');
+  }
+
+  /**
+   * Get subscription types
+   */
+  async getSubscriptionTypes(): Promise<{ value: string; label: string }[]> {
+    return this.getByType('subscription_type');
   }
 
   /**
@@ -208,6 +224,7 @@ export class SettingsService {
           budget_category: [],
           income_source: [],
           person: [],
+          subscription_type: [],
         };
       }
 
@@ -217,6 +234,7 @@ export class SettingsService {
         budget_category: [],
         income_source: [],
         person: [],
+        subscription_type: [],
       };
 
       data.forEach((setting) => {
@@ -234,6 +252,7 @@ export class SettingsService {
         budget_category: [],
         income_source: [],
         person: [],
+        subscription_type: [],
       };
     }
   }
@@ -251,6 +270,8 @@ export class SettingsService {
         return DEFAULT_INCOME_SOURCES;
       case 'person':
         return DEFAULT_PEOPLE;
+      case 'subscription_type':
+        return DEFAULT_SUBSCRIPTION_TYPES;
       default:
         return [];
     }

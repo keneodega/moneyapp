@@ -7,7 +7,7 @@ import { createSupabaseBrowserClient } from '@/lib/supabase/client';
 import { SettingsService } from '@/lib/services';
 import type { AppSetting } from '@/lib/services/settings.service';
 
-type SettingType = 'payment_method' | 'person';
+type SettingType = 'payment_method' | 'person' | 'subscription_type';
 
 const SETTING_LABELS: Record<SettingType, { title: string; description: string }> = {
   payment_method: {
@@ -18,6 +18,10 @@ const SETTING_LABELS: Record<SettingType, { title: string; description: string }
     title: 'People',
     description: 'Family members for tracking who income/expenses belong to',
   },
+  subscription_type: {
+    title: 'Subscription Types',
+    description: 'Categories for organizing your subscriptions',
+  },
 };
 
 export default function SettingsPage() {
@@ -25,12 +29,14 @@ export default function SettingsPage() {
   const [settings, setSettings] = useState<Record<SettingType, AppSetting[]>>({
     payment_method: [],
     person: [],
+    subscription_type: [],
   });
   const [isLoading, setIsLoading] = useState(true);
   const [tableExists, setTableExists] = useState(true);
   const [newValues, setNewValues] = useState<Record<SettingType, string>>({
     payment_method: '',
     person: '',
+    subscription_type: '',
   });
   const [saving, setSaving] = useState<string | null>(null);
 
@@ -77,6 +83,7 @@ export default function SettingsPage() {
         setSettings({
           payment_method: allSettings.payment_method || [],
           person: allSettings.person || [],
+          subscription_type: allSettings.subscription_type || [],
         });
       } catch (error) {
         console.error('Failed to load settings:', error);

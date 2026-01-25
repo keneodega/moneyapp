@@ -4,22 +4,42 @@ import { useState, useEffect } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import Link from 'next/link';
 import { createSupabaseBrowserClient } from '@/lib/supabase/client';
-import { SubscriptionService } from '@/lib/services';
+import { SubscriptionService, SettingsService } from '@/lib/services';
 import { 
   FrequencyType, 
-  SubscriptionType, 
   SubscriptionStatusType,
-  BankType,
-  PersonType,
   Subscription
 } from '@/lib/supabase/database.types';
 import { Card, Button, Input } from '@/components/ui';
 
 const frequencies: FrequencyType[] = ['Weekly', 'Bi-Weekly', 'Monthly', 'Quarterly', 'Bi-Annually', 'Annually'];
-const subscriptionTypes: SubscriptionType[] = ['Streaming', 'Software', 'Membership', 'Insurance', 'Utility', 'News', 'Gaming', 'Health', 'Other'];
 const statuses: SubscriptionStatusType[] = ['Active', 'Paused', 'Cancelled', 'Ended'];
-const banks: BankType[] = ['AIB', 'Revolut', 'N26', 'Wise', 'Bank of Ireland', 'Ulster Bank', 'Cash', 'Other'];
-const persons: PersonType[] = ['Kene', 'Ify', 'Joint', 'Other'];
+
+// Default fallbacks
+const DEFAULT_SUBSCRIPTION_TYPES = [
+  { value: 'Streaming', label: 'Streaming' },
+  { value: 'Software', label: 'Software' },
+  { value: 'Membership', label: 'Membership' },
+  { value: 'Insurance', label: 'Insurance' },
+  { value: 'Utility', label: 'Utility' },
+  { value: 'Other', label: 'Other' },
+];
+
+const DEFAULT_PAYMENT_METHODS = [
+  { value: 'AIB', label: 'AIB' },
+  { value: 'Revolut', label: 'Revolut' },
+  { value: 'N26', label: 'N26' },
+  { value: 'Wise', label: 'Wise' },
+  { value: 'Cash', label: 'Cash' },
+  { value: 'Other', label: 'Other' },
+];
+
+const DEFAULT_PERSONS = [
+  { value: 'Kene', label: 'Kene' },
+  { value: 'Ify', label: 'Ify' },
+  { value: 'Joint', label: 'Joint' },
+  { value: 'Other', label: 'Other' },
+];
 
 export default function EditSubscriptionPage() {
   const router = useRouter();
@@ -32,14 +52,19 @@ export default function EditSubscriptionPage() {
   const [error, setError] = useState<string | null>(null);
   const [subscription, setSubscription] = useState<Subscription | null>(null);
   
+  // Dynamic options from Settings
+  const [subscriptionTypes, setSubscriptionTypes] = useState(DEFAULT_SUBSCRIPTION_TYPES);
+  const [paymentMethods, setPaymentMethods] = useState(DEFAULT_PAYMENT_METHODS);
+  const [persons, setPersons] = useState(DEFAULT_PERSONS);
+  
   const [formData, setFormData] = useState({
     name: '',
     amount: '',
     frequency: 'Monthly' as FrequencyType,
-    subscription_type: 'Streaming' as SubscriptionType,
+    subscription_type: '',
     status: 'Active' as SubscriptionStatusType,
-    bank: '' as BankType | '',
-    person: '' as PersonType | '',
+    bank: '',
+    person: '',
     collection_day: '',
     start_date: '',
     end_date: '',
@@ -47,8 +72,21 @@ export default function EditSubscriptionPage() {
   });
 
   useEffect(() => {
-    const loadSubscription = async () => {
+    const loadData = async () => {
       try {
+        // Load settings first
+        const settingsService = new SettingsService(supabase);
+        const [types, methods, people] = await Promise.all([
+          settingsService.getSubscriptionTypes(),
+          settingsService.getPaymentMethods(),
+          settingsService.getPeople(),
+        ]);
+        
+        if (types.length > 0) setSubscriptionTypes(types);
+        if (methods.length > 0) setPaymentMethods(methods);
+        if (people.length > 0) setPersons(people);
+
+        // Load subscription data
         const service = new SubscriptionService(supabase);
         const data = await service.getById(id);
         setSubscription(data);
@@ -56,7 +94,7 @@ export default function EditSubscriptionPage() {
           name: data.name,
           amount: data.amount.toString(),
           frequency: data.frequency,
-          subscription_type: data.subscription_type || 'Other',
+          subscription_type: data.subscription_type || '',
           status: data.status,
           bank: data.bank || '',
           person: data.person || '',
@@ -72,7 +110,7 @@ export default function EditSubscriptionPage() {
       }
     };
 
-    loadSubscription();
+    loadData();
   }, [id, supabase]);
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -86,7 +124,7 @@ export default function EditSubscriptionPage() {
         name: formData.name,
         amount: parseFloat(formData.amount),
         frequency: formData.frequency,
-        subscription_type: formData.subscription_type,
+        subscription_type: formData.subscription_type || null,
         status: formData.status,
         bank: formData.bank || null,
         person: formData.person || null,
@@ -94,7 +132,7 @@ export default function EditSubscriptionPage() {
         start_date: formData.start_date || null,
         end_date: formData.end_date || null,
         description: formData.description || null,
-      });
+      } as any);
       router.push('/subscriptions');
       router.refresh();
     } catch (err) {
@@ -167,11 +205,12 @@ export default function EditSubscriptionPage() {
               </label>
               <select
                 value={formData.subscription_type}
-                onChange={(e) => setFormData({ ...formData, subscription_type: e.target.value as SubscriptionType })}
+                onChange={(e) => setFormData({ ...formData, subscription_type: e.target.value })}
                 className="w-full px-4 py-3 rounded-[var(--radius-md)] bg-[var(--color-surface-sunken)] border border-[var(--color-border)] text-[var(--color-text)] focus:outline-none focus:ring-2 focus:ring-[var(--color-primary)]"
               >
+                <option value="">Select...</option>
                 {subscriptionTypes.map((type) => (
-                  <option key={type} value={type}>{type}</option>
+                  <option key={type.value} value={type.value}>{type.label}</option>
                 ))}
               </select>
             </div>
@@ -214,12 +253,12 @@ export default function EditSubscriptionPage() {
               </label>
               <select
                 value={formData.bank}
-                onChange={(e) => setFormData({ ...formData, bank: e.target.value as BankType })}
+                onChange={(e) => setFormData({ ...formData, bank: e.target.value })}
                 className="w-full px-4 py-3 rounded-[var(--radius-md)] bg-[var(--color-surface-sunken)] border border-[var(--color-border)] text-[var(--color-text)] focus:outline-none focus:ring-2 focus:ring-[var(--color-primary)]"
               >
                 <option value="">Select...</option>
-                {banks.map((bank) => (
-                  <option key={bank} value={bank}>{bank}</option>
+                {paymentMethods.map((method) => (
+                  <option key={method.value} value={method.value}>{method.label}</option>
                 ))}
               </select>
             </div>
@@ -243,12 +282,12 @@ export default function EditSubscriptionPage() {
               </label>
               <select
                 value={formData.person}
-                onChange={(e) => setFormData({ ...formData, person: e.target.value as PersonType })}
+                onChange={(e) => setFormData({ ...formData, person: e.target.value })}
                 className="w-full px-4 py-3 rounded-[var(--radius-md)] bg-[var(--color-surface-sunken)] border border-[var(--color-border)] text-[var(--color-text)] focus:outline-none focus:ring-2 focus:ring-[var(--color-primary)]"
               >
                 <option value="">Select...</option>
                 {persons.map((person) => (
-                  <option key={person} value={person}>{person}</option>
+                  <option key={person.value} value={person.value}>{person.label}</option>
                 ))}
               </select>
             </div>
