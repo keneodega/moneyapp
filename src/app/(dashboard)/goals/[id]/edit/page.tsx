@@ -25,15 +25,9 @@ const PRIORITY_OPTIONS = [
 
 const GOAL_TYPE_OPTIONS = [
   { value: '', label: 'Select type...' },
-  { value: 'Emergency Fund', label: 'Emergency Fund' },
-  { value: 'Vacation', label: 'Vacation' },
-  { value: 'Home', label: 'Home' },
-  { value: 'Car', label: 'Car' },
-  { value: 'Education', label: 'Education' },
-  { value: 'Wedding', label: 'Wedding' },
-  { value: 'Retirement', label: 'Retirement' },
-  { value: 'Investment', label: 'Investment' },
-  { value: 'Other', label: 'Other' },
+  { value: 'Short Term', label: 'Short Term' },
+  { value: 'Medium Term', label: 'Medium Term' },
+  { value: 'Long Term', label: 'Long Term' },
 ];
 
 const DEFAULT_PERSON_OPTIONS = [
