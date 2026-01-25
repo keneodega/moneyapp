@@ -217,45 +217,73 @@ export default async function MonthDetailPage({
         <div className="lg:col-span-2 space-y-4">
           <div className="flex items-center justify-between">
             <h2 className="text-title text-[var(--color-text)]">Budget Categories</h2>
-            <Link
-              href={`/months/${id}/expense/new`}
-              className="inline-flex items-center gap-2 h-9 px-4 rounded-[var(--radius-md)] bg-[var(--color-primary)] text-white text-small font-medium hover:bg-[var(--color-primary-dark)] transition-colors"
-            >
-              <PlusIcon className="w-4 h-4" />
-              Add Expense
-            </Link>
+            <div className="flex items-center gap-2">
+              <Link
+                href={`/months/${id}/budgets/new`}
+                className="inline-flex items-center gap-2 h-9 px-4 rounded-[var(--radius-md)] border border-[var(--color-border)] text-[var(--color-text)] text-small font-medium hover:bg-[var(--color-surface-sunken)] transition-colors"
+              >
+                <PlusIcon className="w-4 h-4" />
+                Add Budget
+              </Link>
+              <Link
+                href={`/months/${id}/expense/new`}
+                className="inline-flex items-center gap-2 h-9 px-4 rounded-[var(--radius-md)] bg-[var(--color-primary)] text-white text-small font-medium hover:bg-[var(--color-primary-dark)] transition-colors"
+              >
+                <PlusIcon className="w-4 h-4" />
+                Add Expense
+              </Link>
+            </div>
           </div>
           
-          <div className="grid gap-3">
-            {budgets.map((budget, index) => {
-              const percent = budget.budget_amount > 0 
-                ? (budget.amount_spent / budget.budget_amount) * 100 
-                : 0;
-              
-              return (
-                <Link 
-                  key={budget.id}
-                  href={`/months/${id}/budgets/${budget.id}`}
-                  className={`animate-slide-up stagger-${Math.min(index + 1, 6)}`}
-                >
-                  <Card variant="outlined" padding="md" hover>
-                    <div className="flex items-center justify-between mb-3">
-                      <h3 className="text-body font-medium text-[var(--color-text)]">
-                        {budget.name}
-                      </h3>
-                      <span className="text-small font-medium text-[var(--color-text)] tabular-nums">
-                        {formatCurrency(budget.budget_amount)}
-                      </span>
-                    </div>
-                    <BudgetProgress 
-                      spent={budget.amount_spent} 
-                      total={budget.budget_amount} 
-                    />
-                  </Card>
-                </Link>
-              );
-            })}
-          </div>
+          {budgets.length > 0 ? (
+            <div className="grid gap-3">
+              {budgets.map((budget, index) => {
+                const percent = budget.budget_amount > 0 
+                  ? (budget.amount_spent / budget.budget_amount) * 100 
+                  : 0;
+                
+                return (
+                  <Link 
+                    key={budget.id}
+                    href={`/months/${id}/budgets/${budget.id}`}
+                    className={`animate-slide-up stagger-${Math.min(index + 1, 6)}`}
+                  >
+                    <Card variant="outlined" padding="md" hover>
+                      <div className="flex items-center justify-between mb-3">
+                        <h3 className="text-body font-medium text-[var(--color-text)]">
+                          {budget.name}
+                        </h3>
+                        <span className="text-small font-medium text-[var(--color-text)] tabular-nums">
+                          {formatCurrency(budget.budget_amount)}
+                        </span>
+                      </div>
+                      <BudgetProgress 
+                        spent={budget.amount_spent} 
+                        total={budget.budget_amount} 
+                      />
+                    </Card>
+                  </Link>
+                );
+              })}
+            </div>
+          ) : (
+            <Card variant="outlined" padding="lg" className="text-center">
+              <div className="w-12 h-12 mx-auto mb-4 rounded-full bg-[var(--color-surface-sunken)] flex items-center justify-center">
+                <PieChartIcon className="w-6 h-6 text-[var(--color-text-subtle)]" />
+              </div>
+              <h3 className="text-title text-[var(--color-text)] mb-2">No budgets yet</h3>
+              <p className="text-body text-[var(--color-text-muted)] mb-4">
+                Create budget categories to start tracking your spending.
+              </p>
+              <Link
+                href={`/months/${id}/budgets/new`}
+                className="inline-flex items-center gap-2 h-10 px-4 rounded-[var(--radius-md)] bg-[var(--color-primary)] text-white font-medium hover:bg-[var(--color-primary-dark)] transition-colors"
+              >
+                <PlusIcon className="w-4 h-4" />
+                Add First Budget
+              </Link>
+            </Card>
+          )}
         </div>
 
         {/* Income Sidebar */}
