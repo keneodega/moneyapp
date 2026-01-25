@@ -37,6 +37,7 @@ export default function SettingsPage() {
     person: [],
   });
   const [isLoading, setIsLoading] = useState(true);
+  const [tableExists, setTableExists] = useState(true);
   const [newValues, setNewValues] = useState<Record<SettingType, string>>({
     payment_method: '',
     budget_category: '',
@@ -56,11 +57,27 @@ export default function SettingsPage() {
           return;
         }
 
+        // Check if the table exists first
+        const { error: tableError } = await supabase
+          .from('app_settings')
+          .select('id')
+          .limit(1);
+
+        if (tableError && tableError.message.includes('does not exist')) {
+          setTableExists(false);
+          setIsLoading(false);
+          return;
+        }
+
         const settingsService = new SettingsService(supabase);
         const allSettings = await settingsService.getAllSettings();
         setSettings(allSettings);
       } catch (error) {
         console.error('Failed to load settings:', error);
+        // Check if it's a table not found error
+        if (error instanceof Error && error.message.includes('does not exist')) {
+          setTableExists(false);
+        }
       } finally {
         setIsLoading(false);
       }
@@ -115,6 +132,71 @@ export default function SettingsPage() {
       <div className="max-w-4xl mx-auto">
         <Card variant="outlined" padding="lg" className="text-center">
           <p className="text-body text-[var(--color-text-muted)]">Loading settings...</p>
+        </Card>
+      </div>
+    );
+  }
+
+  // Show setup instructions if table doesn't exist
+  if (!tableExists) {
+    return (
+      <div className="max-w-4xl mx-auto space-y-6 animate-fade-in">
+        <div>
+          <h1 className="text-display text-[var(--color-text)]">Settings</h1>
+          <p className="text-body text-[var(--color-text-muted)] mt-2">
+            Customize your app options
+          </p>
+        </div>
+
+        <Card variant="outlined" padding="lg">
+          <div className="text-center space-y-4">
+            <div className="w-16 h-16 mx-auto rounded-full bg-[var(--color-warning)]/10 flex items-center justify-center">
+              <svg className="w-8 h-8 text-[var(--color-warning)]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m9-.75a9 9 0 11-18 0 9 9 0 0118 0zm-9 3.75h.008v.008H12v-.008z" />
+              </svg>
+            </div>
+            <h2 className="text-title text-[var(--color-text)]">Setup Required</h2>
+            <p className="text-body text-[var(--color-text-muted)] max-w-md mx-auto">
+              The settings table needs to be created in your Supabase database. This only takes a minute!
+            </p>
+          </div>
+
+          <div className="mt-6 p-4 rounded-[var(--radius-md)] bg-[var(--color-surface-sunken)]">
+            <h3 className="text-small font-medium text-[var(--color-text)] mb-3">Quick Setup:</h3>
+            <ol className="space-y-2 text-small text-[var(--color-text-muted)]">
+              <li>1. Go to your <a href="https://supabase.com/dashboard" target="_blank" rel="noopener noreferrer" className="text-[var(--color-primary)] hover:underline">Supabase Dashboard</a></li>
+              <li>2. Open <strong>SQL Editor</strong></li>
+              <li>3. Copy and run the SQL below:</li>
+            </ol>
+          </div>
+
+          <div className="mt-4">
+            <pre className="p-4 rounded-[var(--radius-md)] bg-[var(--color-surface-sunken)] text-small text-[var(--color-text)] overflow-x-auto">
+{`CREATE TABLE IF NOT EXISTS app_settings (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+  setting_type TEXT NOT NULL,
+  value TEXT NOT NULL,
+  label TEXT NOT NULL,
+  sort_order INTEGER DEFAULT 0,
+  is_active BOOLEAN DEFAULT true,
+  created_at TIMESTAMPTZ DEFAULT now(),
+  updated_at TIMESTAMPTZ DEFAULT now(),
+  UNIQUE(user_id, setting_type, value)
+);
+
+ALTER TABLE app_settings ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "Users can manage own settings" ON app_settings
+  FOR ALL USING (user_id = (select auth.uid()));`}
+            </pre>
+          </div>
+
+          <div className="mt-6 text-center">
+            <Button onClick={() => window.location.reload()}>
+              I've run the SQL - Refresh Page
+            </Button>
+          </div>
         </Card>
       </div>
     );
