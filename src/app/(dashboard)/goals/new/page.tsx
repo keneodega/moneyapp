@@ -1,11 +1,11 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { Card, Button, Input, Select, Textarea } from '@/components/ui';
 import { createSupabaseBrowserClient } from '@/lib/supabase/client';
-import { FinancialGoalService } from '@/lib/services';
+import { FinancialGoalService, SettingsService } from '@/lib/services';
 import { ValidationError } from '@/lib/services/errors';
 
 const STATUS_OPTIONS = [
@@ -36,8 +36,7 @@ const GOAL_TYPE_OPTIONS = [
   { value: 'Other', label: 'Other' },
 ];
 
-const PERSON_OPTIONS = [
-  { value: '', label: 'Select person...' },
+const DEFAULT_PERSON_OPTIONS = [
   { value: 'Kene', label: 'Kene' },
   { value: 'Ify', label: 'Ify' },
   { value: 'Joint', label: 'Joint' },
@@ -59,6 +58,10 @@ export default function NewGoalPage() {
   const router = useRouter();
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [personOptions, setPersonOptions] = useState([
+    { value: '', label: 'Select person...' },
+    ...DEFAULT_PERSON_OPTIONS,
+  ]);
   const [formData, setFormData] = useState({
     name: '',
     target_amount: '',
@@ -74,6 +77,27 @@ export default function NewGoalPage() {
     description: '',
     product_link: '',
   });
+
+  // Load people from settings
+  useEffect(() => {
+    async function loadPeople() {
+      try {
+        const supabase = createSupabaseBrowserClient();
+        const settingsService = new SettingsService(supabase);
+        const people = await settingsService.getPeople();
+        
+        if (people.length > 0) {
+          setPersonOptions([
+            { value: '', label: 'Select person...' },
+            ...people,
+          ]);
+        }
+      } catch (err) {
+        console.error('Failed to load people:', err);
+      }
+    }
+    loadPeople();
+  }, []);
 
   const handleChange = (
     e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>
@@ -243,7 +267,7 @@ export default function NewGoalPage() {
             <Select
               label="Person"
               name="person"
-              options={PERSON_OPTIONS}
+              options={personOptions}
               value={formData.person}
               onChange={handleChange}
             />

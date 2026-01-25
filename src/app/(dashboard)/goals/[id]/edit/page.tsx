@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { Card, Button, Input, Select, Textarea } from '@/components/ui';
 import { createSupabaseBrowserClient } from '@/lib/supabase/client';
-import { FinancialGoalService } from '@/lib/services';
+import { FinancialGoalService, SettingsService } from '@/lib/services';
 import { ValidationError, NotFoundError } from '@/lib/services/errors';
 
 const STATUS_OPTIONS = [
@@ -36,8 +36,7 @@ const GOAL_TYPE_OPTIONS = [
   { value: 'Other', label: 'Other' },
 ];
 
-const PERSON_OPTIONS = [
-  { value: '', label: 'Select person...' },
+const DEFAULT_PERSON_OPTIONS = [
   { value: 'Kene', label: 'Kene' },
   { value: 'Ify', label: 'Ify' },
   { value: 'Joint', label: 'Joint' },
@@ -65,6 +64,10 @@ export default function EditGoalPage({
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [personOptions, setPersonOptions] = useState([
+    { value: '', label: 'Select person...' },
+    ...DEFAULT_PERSON_OPTIONS,
+  ]);
   const [formData, setFormData] = useState({
     name: '',
     target_amount: '',
@@ -94,6 +97,16 @@ export default function EditGoalPage({
         if ( !user) {
           router.push('/goals');
           return;
+        }
+
+        // Load people from settings
+        const settingsService = new SettingsService(supabase);
+        const people = await settingsService.getPeople();
+        if (people.length > 0) {
+          setPersonOptions([
+            { value: '', label: 'Select person...' },
+            ...people,
+          ]);
         }
 
         const goalService = new FinancialGoalService(supabase);
@@ -325,7 +338,7 @@ export default function EditGoalPage({
             <Select
               label="Person"
               name="person"
-              options={PERSON_OPTIONS}
+              options={personOptions}
               value={formData.person}
               onChange={handleChange}
             />

@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { Card, Button, Input, Select, Textarea } from '@/components/ui';
 import { createSupabaseBrowserClient } from '@/lib/supabase/client';
-import { FinancialGoalService } from '@/lib/services';
+import { FinancialGoalService, SettingsService } from '@/lib/services';
 import { ValidationError, NotFoundError } from '@/lib/services/errors';
 
 const STATUS_OPTIONS = [
@@ -23,8 +23,7 @@ const PRIORITY_OPTIONS = [
   { value: 'Critical', label: 'Critical' },
 ];
 
-const PERSON_OPTIONS = [
-  { value: '', label: 'Select person...' },
+const DEFAULT_PERSON_OPTIONS = [
   { value: 'Kene', label: 'Kene' },
   { value: 'Ify', label: 'Ify' },
   { value: 'Joint', label: 'Joint' },
@@ -53,6 +52,10 @@ export default function NewSubGoalPage({
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [personOptions, setPersonOptions] = useState([
+    { value: '', label: 'Select person...' },
+    ...DEFAULT_PERSON_OPTIONS,
+  ]);
   const [formData, setFormData] = useState({
     name: '',
     estimated_cost: '',
@@ -77,6 +80,16 @@ export default function NewSubGoalPage({
       try {
         const supabase = createSupabaseBrowserClient();
         const { data: { user } } = await supabase.auth.getUser();
+
+        // Load people from settings
+        const settingsService = new SettingsService(supabase);
+        const people = await settingsService.getPeople();
+        if (people.length > 0) {
+          setPersonOptions([
+            { value: '', label: 'Select person...' },
+            ...people,
+          ]);
+        }
 
         if ( !user) {
           router.push('/goals');
@@ -267,7 +280,7 @@ export default function NewSubGoalPage({
             <Select
               label="Responsible Person"
               name="responsible_person"
-              options={PERSON_OPTIONS}
+              options={personOptions}
               value={formData.responsible_person}
               onChange={handleChange}
             />
