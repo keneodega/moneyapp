@@ -5,37 +5,6 @@ import { createSupabaseServerClient } from '@/lib/supabase/server';
 import { IncomeList } from './IncomeList';
 import { MonthActions } from './MonthActions';
 
-// Mock data for development
-const MOCK_MONTH = {
-  id: '1',
-  name: 'January 2026',
-  start_date: '2026-01-01',
-  end_date: '2026-01-31',
-  total_income: 5200,
-  total_budgeted: 4588,
-};
-
-const MOCK_BUDGETS = [
-  { id: '1', name: 'Tithe', budget_amount: 350, amount_spent: 350, amount_left: 0 },
-  { id: '2', name: 'Offering', budget_amount: 175, amount_spent: 175, amount_left: 0 },
-  { id: '3', name: 'Housing', budget_amount: 2228, amount_spent: 2228, amount_left: 0 },
-  { id: '4', name: 'Food', budget_amount: 350, amount_spent: 285, amount_left: 65 },
-  { id: '5', name: 'Transport', budget_amount: 200, amount_spent: 120, amount_left: 80 },
-  { id: '6', name: 'Personal Care', budget_amount: 480, amount_spent: 250, amount_left: 230 },
-  { id: '7', name: 'Household', budget_amount: 130, amount_spent: 45, amount_left: 85 },
-  { id: '8', name: 'Savings', budget_amount: 300, amount_spent: 300, amount_left: 0 },
-  { id: '9', name: 'Investments', budget_amount: 100, amount_spent: 100, amount_left: 0 },
-  { id: '10', name: 'Subscriptions', budget_amount: 75, amount_spent: 75, amount_left: 0 },
-  { id: '11', name: 'Health', budget_amount: 50, amount_spent: 15, amount_left: 35 },
-  { id: '12', name: 'Travel', budget_amount: 50, amount_spent: 0, amount_left: 50 },
-  { id: '13', name: 'Miscellaneous', budget_amount: 100, amount_spent: 32, amount_left: 68 },
-];
-
-const MOCK_INCOME = [
-  { id: '1', source: 'Salary', person: 'Kene', amount: 3200, date_paid: '2026-01-25' },
-  { id: '2', source: 'Salary', person: 'Ify', amount: 2000, date_paid: '2026-01-25' },
-];
-
 interface MonthData {
   id: string;
   name: string;
@@ -70,13 +39,8 @@ async function getMonthData(id: string): Promise<{
     const supabase = await createSupabaseServerClient();
     const { data: { user } } = await supabase.auth.getUser();
     
-    if ( !user) {
-      // Return mock data if not authenticated
-      return {
-        month: MOCK_MONTH,
-        budgets: MOCK_BUDGETS,
-        income: MOCK_INCOME,
-      };
+    if (!user) {
+      return null;
     }
 
     // Fetch month
@@ -87,11 +51,7 @@ async function getMonthData(id: string): Promise<{
       .single();
 
     if (monthError || !month) {
-      return {
-        month: MOCK_MONTH,
-        budgets: MOCK_BUDGETS,
-        income: MOCK_INCOME,
-      };
+      return null;
     }
 
     // Fetch budgets with summary
@@ -110,15 +70,11 @@ async function getMonthData(id: string): Promise<{
 
     return {
       month,
-      budgets: budgets || MOCK_BUDGETS,
-      income: income || MOCK_INCOME,
+      budgets: budgets || [],
+      income: income || [],
     };
   } catch {
-    return {
-      month: MOCK_MONTH,
-      budgets: MOCK_BUDGETS,
-      income: MOCK_INCOME,
-    };
+    return null;
   }
 }
 

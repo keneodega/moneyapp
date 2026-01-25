@@ -72,23 +72,6 @@ interface FormData {
   financial_goal_id: string;
 }
 
-// Mock budgets for development
-const MOCK_BUDGETS: BudgetOption[] = [
-  { id: '1', name: 'Tithe', budget_amount: 350, amount_left: 0 },
-  { id: '2', name: 'Offering', budget_amount: 175, amount_left: 0 },
-  { id: '3', name: 'Housing', budget_amount: 2228, amount_left: 0 },
-  { id: '4', name: 'Food', budget_amount: 350, amount_left: 65 },
-  { id: '5', name: 'Transport', budget_amount: 200, amount_left: 80 },
-  { id: '6', name: 'Personal Care', budget_amount: 480, amount_left: 230 },
-  { id: '7', name: 'Household', budget_amount: 130, amount_left: 85 },
-  { id: '8', name: 'Savings', budget_amount: 300, amount_left: 0 },
-  { id: '9', name: 'Investments', budget_amount: 100, amount_left: 0 },
-  { id: '10', name: 'Subscriptions', budget_amount: 75, amount_left: 0 },
-  { id: '11', name: 'Health', budget_amount: 50, amount_left: 35 },
-  { id: '12', name: 'Travel', budget_amount: 50, amount_left: 50 },
-  { id: '13', name: 'Miscellaneous', budget_amount: 100, amount_left: 68 },
-];
-
 export default function NewExpensePage({
   params,
 }: {
@@ -98,7 +81,7 @@ export default function NewExpensePage({
   const router = useRouter();
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [budgets, setBudgets] = useState<BudgetOption[]>(MOCK_BUDGETS);
+  const [budgets, setBudgets] = useState<BudgetOption[]>([]);
   const [goals, setGoals] = useState<Array<{ id: string; name: string; target_amount: number; current_amount: number }>>([]);
   const [formData, setFormData] = useState<FormData>({
     budget_id: '',
@@ -118,8 +101,7 @@ export default function NewExpensePage({
         const supabase = createSupabaseBrowserClient();
         const { data: { user } } = await supabase.auth.getUser();
         
-        if ( !user) {
-          setBudgets(MOCK_BUDGETS);
+        if (!user) {
           return;
         }
 
@@ -130,9 +112,7 @@ export default function NewExpensePage({
           .eq('monthly_overview_id', monthId)
           .order('name');
 
-        if (budgetError || !budgetData) {
-          setBudgets(MOCK_BUDGETS);
-        } else {
+        if (!budgetError && budgetData) {
           setBudgets(budgetData);
         }
 
@@ -143,11 +123,11 @@ export default function NewExpensePage({
           .in('status', ['Not Started', 'In Progress', 'On Hold'])
           .order('name');
 
-        if ( !goalError && goalData) {
+        if (!goalError && goalData) {
           setGoals(goalData);
         }
       } catch {
-        setBudgets(MOCK_BUDGETS);
+        // Silent fail - budgets will remain empty
       }
     }
 
@@ -181,9 +161,9 @@ export default function NewExpensePage({
       const supabase = createSupabaseBrowserClient();
       const { data: { user } } = await supabase.auth.getUser();
 
-      if ( !user) {
-        // For demo purposes, just redirect back
-        router.push(`/months/${monthId}`);
+      if (!user) {
+        setError('You must be logged in to add expenses');
+        setIsLoading(false);
         return;
       }
 
@@ -266,24 +246,38 @@ export default function NewExpensePage({
             <label className="block text-small font-medium text-[var(--color-text)] mb-1.5">
               Budget Category
             </label>
-            <select
-              name="budget_id"
-              value={formData.budget_id}
-              onChange={handleChange}
-              required
-              className="w-full h-10 px-3 rounded-[var(--radius-md)] bg-[var(--color-surface-raised)] border border-[var(--color-border)] text-[var(--color-text)] text-body transition-colors duration-200 hover:border-[var(--color-border-strong)] focus:outline-none focus:border-[var(--color-primary)] focus:ring-2 focus:ring-[var(--color-primary)]/20 cursor-pointer"
-            >
-              <option value="" disabled>Select a budget category</option>
-              {budgets.map((budget) => (
-                <option 
-                  key={budget.id} 
-                  value={budget.id}
-                  disabled={budget.amount_left <= 0}
+            {budgets.length === 0 ? (
+              <div className="p-4 rounded-[var(--radius-md)] bg-[var(--color-warning)]/10 border border-[var(--color-warning)]/20">
+                <p className="text-small text-[var(--color-warning)]">
+                  No budget categories found. Please add budgets to this month first.
+                </p>
+                <Link 
+                  href={`/months/${monthId}`}
+                  className="text-small text-[var(--color-primary)] hover:underline mt-2 inline-block"
                 >
-                  {budget.name} (€{budget.amount_left.toFixed(0)} left)
-                </option>
-              ))}
-            </select>
+                  Go back to add budgets
+                </Link>
+              </div>
+            ) : (
+              <select
+                name="budget_id"
+                value={formData.budget_id}
+                onChange={handleChange}
+                required
+                className="w-full h-10 px-3 rounded-[var(--radius-md)] bg-[var(--color-surface-raised)] border border-[var(--color-border)] text-[var(--color-text)] text-body transition-colors duration-200 hover:border-[var(--color-border-strong)] focus:outline-none focus:border-[var(--color-primary)] focus:ring-2 focus:ring-[var(--color-primary)]/20 cursor-pointer"
+              >
+                <option value="" disabled>Select a budget category</option>
+                {budgets.map((budget) => (
+                  <option 
+                    key={budget.id} 
+                    value={budget.id}
+                    disabled={budget.amount_left <= 0}
+                  >
+                    {budget.name} (€{budget.amount_left.toFixed(0)} left)
+                  </option>
+                ))}
+              </select>
+            )}
             {selectedBudget && (
               <div className="mt-2 p-3 rounded-[var(--radius-sm)] bg-[var(--color-surface-sunken)]">
                 <div className="flex justify-between items-center">

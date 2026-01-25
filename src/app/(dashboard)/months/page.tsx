@@ -2,14 +2,6 @@ import Link from 'next/link';
 import { Card } from '@/components/ui';
 import { createSupabaseServerClient } from '@/lib/supabase/server';
 
-// Mock data for development
-const MOCK_MONTHS = [
-  { id: '1', name: 'January 2026', start_date: '2026-01-01', end_date: '2026-01-31', total_income: 5200, total_budgeted: 4413, total_spent: 2150 },
-  { id: '2', name: 'December 2025', start_date: '2025-12-01', end_date: '2025-12-31', total_income: 5200, total_budgeted: 4413, total_spent: 4380 },
-  { id: '3', name: 'November 2025', start_date: '2025-11-01', end_date: '2025-11-30', total_income: 5200, total_budgeted: 4413, total_spent: 4200 },
-  { id: '4', name: 'October 2025', start_date: '2025-10-01', end_date: '2025-10-31', total_income: 5200, total_budgeted: 4413, total_spent: 4100 },
-];
-
 interface MonthData {
   id: string;
   name: string;
@@ -25,9 +17,8 @@ async function getMonths(): Promise<MonthData[]> {
     const supabase = await createSupabaseServerClient();
     const { data: { user } } = await supabase.auth.getUser();
     
-    if ( !user) {
-      // Return mock data if not authenticated
-      return MOCK_MONTHS;
+    if (!user) {
+      return [];
     }
 
     const { data, error } = await supabase
@@ -35,13 +26,13 @@ async function getMonths(): Promise<MonthData[]> {
       .select('*')
       .order('start_date', { ascending: false });
 
-    if (error || !data || data.length === 0) {
-      return MOCK_MONTHS;
+    if (error || !data) {
+      return [];
     }
 
     return data;
   } catch {
-    return MOCK_MONTHS;
+    return [];
   }
 }
 
