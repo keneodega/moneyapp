@@ -7,20 +7,12 @@ import { createSupabaseBrowserClient } from '@/lib/supabase/client';
 import { SettingsService } from '@/lib/services';
 import type { AppSetting } from '@/lib/services/settings.service';
 
-type SettingType = 'payment_method' | 'budget_category' | 'income_source' | 'person';
+type SettingType = 'payment_method' | 'person';
 
 const SETTING_LABELS: Record<SettingType, { title: string; description: string }> = {
   payment_method: {
     title: 'Payment Methods',
     description: 'Banks and payment methods for tracking expenses',
-  },
-  budget_category: {
-    title: 'Budget Categories',
-    description: 'Categories available when creating new budgets',
-  },
-  income_source: {
-    title: 'Income Sources',
-    description: 'Types of income sources',
   },
   person: {
     title: 'People',
@@ -32,16 +24,12 @@ export default function SettingsPage() {
   const router = useRouter();
   const [settings, setSettings] = useState<Record<SettingType, AppSetting[]>>({
     payment_method: [],
-    budget_category: [],
-    income_source: [],
     person: [],
   });
   const [isLoading, setIsLoading] = useState(true);
   const [tableExists, setTableExists] = useState(true);
   const [newValues, setNewValues] = useState<Record<SettingType, string>>({
     payment_method: '',
-    budget_category: '',
-    income_source: '',
     person: '',
   });
   const [saving, setSaving] = useState<string | null>(null);
@@ -88,8 +76,6 @@ export default function SettingsPage() {
         // Ensure all keys exist
         setSettings({
           payment_method: allSettings.payment_method || [],
-          budget_category: allSettings.budget_category || [],
-          income_source: allSettings.income_source || [],
           person: allSettings.person || [],
         });
       } catch (error) {
