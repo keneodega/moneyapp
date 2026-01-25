@@ -5,8 +5,10 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { Card, Button, Input, Select, Textarea } from '@/components/ui';
 import { createSupabaseBrowserClient } from '@/lib/supabase/client';
+import { SettingsService } from '@/lib/services';
 
-const BANKS = [
+// Fallback payment methods if settings not loaded
+const DEFAULT_PAYMENT_METHODS = [
   { value: 'AIB', label: 'AIB' },
   { value: 'Revolut', label: 'Revolut' },
   { value: 'N26', label: 'N26' },
@@ -45,6 +47,7 @@ export default function NewExpensePage({
   const [error, setError] = useState<string | null>(null);
   const [budgets, setBudgets] = useState<BudgetOption[]>([]);
   const [goals, setGoals] = useState<Array<{ id: string; name: string; target_amount: number; current_amount: number }>>([]);
+  const [paymentMethods, setPaymentMethods] = useState<{ value: string; label: string }[]>(DEFAULT_PAYMENT_METHODS);
   const [formData, setFormData] = useState<FormData>({
     budget_id: '',
     amount: '',
@@ -55,7 +58,7 @@ export default function NewExpensePage({
     financial_goal_id: '',
   });
 
-  // Fetch budgets and goals on mount
+  // Fetch budgets, goals, and payment methods on mount
   useEffect(() => {
     async function fetchData() {
       try {
@@ -87,8 +90,15 @@ export default function NewExpensePage({
         if (!goalError && goalData) {
           setGoals(goalData);
         }
+
+        // Fetch payment methods from settings
+        const settingsService = new SettingsService(supabase);
+        const methods = await settingsService.getPaymentMethods();
+        if (methods.length > 0) {
+          setPaymentMethods(methods);
+        }
       } catch {
-        // Silent fail - budgets will remain empty
+        // Silent fail - will use defaults
       }
     }
 
@@ -285,13 +295,13 @@ export default function NewExpensePage({
             required
           />
 
-          {/* Bank */}
+          {/* Payment Method */}
           <Select
             label="Payment Method"
             name="bank"
             value={formData.bank}
             onChange={handleChange}
-            options={BANKS}
+            options={paymentMethods}
           />
 
           {/* Financial Goal (Optional) */}
