@@ -1,10 +1,11 @@
 'use client';
 
-import { useState, useMemo, use } from 'react';
+import { useState, useMemo, use, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { Card, Button, Input, Select, Textarea } from '@/components/ui';
 import { createSupabaseBrowserClient } from '@/lib/supabase/client';
+import { SettingsService } from '@/lib/services';
 
 const INCOME_SOURCES = [
   { value: 'Salary', label: 'Salary' },
@@ -16,14 +17,15 @@ const INCOME_SOURCES = [
   { value: 'Other', label: 'Other' },
 ];
 
-const PERSONS = [
+// Default fallbacks
+const DEFAULT_PERSONS = [
   { value: 'Kene', label: 'Kene' },
   { value: 'Ify', label: 'Ify' },
   { value: 'Joint', label: 'Joint' },
   { value: 'Other', label: 'Other' },
 ];
 
-const BANKS = [
+const DEFAULT_BANKS = [
   { value: 'AIB', label: 'AIB' },
   { value: 'Revolut', label: 'Revolut' },
   { value: 'N26', label: 'N26' },
@@ -58,16 +60,57 @@ export default function NewIncomePage({
   const router = useRouter();
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [persons, setPersons] = useState(DEFAULT_PERSONS);
+  const [banks, setBanks] = useState(DEFAULT_BANKS);
   const [formData, setFormData] = useState<FormData>({
     amount: '',
     source: 'Salary',
-    person: 'Kene',
-    bank: 'AIB',
+    person: '',
+    bank: '',
     date_paid: new Date().toISOString().split('T')[0],
     auto_tithe: true,
     auto_offering: true,
     description: '',
   });
+
+  // Load custom settings for persons and payment methods
+  useEffect(() => {
+    async function loadSettings() {
+      try {
+        const supabase = createSupabaseBrowserClient();
+        const settingsService = new SettingsService(supabase);
+        
+        const [loadedPersons, loadedBanks] = await Promise.all([
+          settingsService.getPeople(),
+          settingsService.getPaymentMethods(),
+        ]);
+
+        if (loadedPersons.length > 0) {
+          setPersons(loadedPersons);
+          setFormData(prev => ({ ...prev, person: loadedPersons[0].value }));
+        } else {
+          setFormData(prev => ({ ...prev, person: DEFAULT_PERSONS[0].value }));
+        }
+
+        if (loadedBanks.length > 0) {
+          setBanks(loadedBanks);
+          setFormData(prev => ({ ...prev, bank: loadedBanks[0].value }));
+        } else {
+          setFormData(prev => ({ ...prev, bank: DEFAULT_BANKS[0].value }));
+        }
+      } catch (err) {
+        console.error('Failed to load settings:', err);
+        // Use defaults
+        setFormData(prev => ({ 
+          ...prev, 
+          person: DEFAULT_PERSONS[0].value,
+          bank: DEFAULT_BANKS[0].value 
+        }));
+      }
+    }
+
+    loadSettings();
+  }, []);
 
   // Calculate tithe and offering amounts
   const calculations = useMemo(() => {
@@ -246,7 +289,7 @@ export default function NewIncomePage({
               name="person"
               value={formData.person}
               onChange={handleChange}
-              options={PERSONS}
+              options={persons}
               required
             />
           </div>
@@ -254,11 +297,11 @@ export default function NewIncomePage({
           {/* Bank & Date */}
           <div className="grid gap-4 sm:grid-cols-2">
             <Select
-              label="Bank"
+              label="Payment Method"
               name="bank"
               value={formData.bank}
               onChange={handleChange}
-              options={BANKS}
+              options={banks}
             />
             <Input
               label="Date Received"
