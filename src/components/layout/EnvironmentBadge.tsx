@@ -1,8 +1,21 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useState, useEffect } from 'react';
 
 type AppEnvironment = 'development' | 'preview' | 'production';
+
+const CONFIG = {
+  development: {
+    label: 'DEV',
+    bgColor: 'bg-blue-500',
+    textColor: 'text-white',
+  },
+  preview: {
+    label: 'PREVIEW',
+    bgColor: 'bg-amber-500',
+    textColor: 'text-black',
+  },
+} as const;
 
 /**
  * Environment Badge Component
@@ -12,33 +25,26 @@ type AppEnvironment = 'development' | 'preview' | 'production';
  * and testers identify which environment they're using.
  */
 export function EnvironmentBadge() {
-  const [environment, setEnvironment] = useState<AppEnvironment | null>(null);
+  const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
-    // Read environment on client side
-    const env = process.env.NEXT_PUBLIC_APP_ENV as AppEnvironment;
-    setEnvironment(env || 'development');
+    setMounted(true);
   }, []);
 
-  // Don't show badge in production or before hydration
-  if ( !environment || environment === 'production') {
+  // Don't render until client-side to avoid hydration mismatch
+  if (!mounted) {
     return null;
   }
 
-  const config = {
-    development: {
-      label: 'DEV',
-      bgColor: 'bg-blue-500',
-      textColor: 'text-white',
-    },
-    preview: {
-      label: 'PREVIEW',
-      bgColor: 'bg-amber-500',
-      textColor: 'text-black',
-    },
-  }[environment];
+  const environment = (process.env.NEXT_PUBLIC_APP_ENV || 'development') as AppEnvironment;
 
-  if ( !config) return null;
+  // Don't show badge in production
+  if (environment === 'production') {
+    return null;
+  }
+
+  const config = CONFIG[environment];
+  if (!config) return null;
 
   return (
     <div className="fixed bottom-4 left-4 z-50">
