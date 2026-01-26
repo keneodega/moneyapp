@@ -130,7 +130,7 @@ function PieChartIcon({ className }: { className?: string }) {
 function ChartBarIcon({ className }: { className?: string }) {
   return (
     <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-      <path strokeLinecap="round" strokeLinejoin="round" d="M3 13l8 0-8 8-8-8zM3 3l8 0M11 3l10 0M3 8l8 0M11 8l10 0M3 13l8 0M11 13l10 0M3 18l8 0M11 18l10 0" />
+      <path strokeLinecap="round" strokeLinejoin="round" d="M3 13l8-8 8 8M3 21l8-8 8 8" />
     </svg>
   );
 }
