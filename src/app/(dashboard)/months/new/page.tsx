@@ -122,7 +122,12 @@ export default function NewMonthPage() {
               Default Budgets
             </h3>
             <p className="text-small text-[var(--color-text-muted)] mt-1">
-              13 budget categories will be automatically created with your default amounts (€4,588 total).
+              All active master budgets will be automatically created for this month with their default amounts.
+              Manage your master budgets in the{' '}
+              <Link href="/master-budgets" className="text-[var(--color-primary)] hover:underline">
+                Master Budgets
+              </Link>{' '}
+              page.
             </p>
           </div>
         </div>
