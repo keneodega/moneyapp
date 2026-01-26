@@ -28,35 +28,47 @@ export function DashboardView() {
 
   useEffect(() => {
     // Update date range when period changes
+    if (period === 'custom') {
+      // Keep existing date range for custom
+      return;
+    }
+
     const now = new Date();
     let start: Date;
-    let end: Date = new Date(now);
+    let end: Date;
 
     switch (period) {
       case 'week':
         start = new Date(now);
         start.setDate(now.getDate() - 7);
+        end = new Date(now);
         break;
       case 'month':
         start = new Date(now.getFullYear(), now.getMonth(), 1);
         end = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+        end.setHours(23, 59, 59, 999); // End of day
         break;
       case 'quarter':
         const quarter = Math.floor(now.getMonth() / 3);
         start = new Date(now.getFullYear(), quarter * 3, 1);
         end = new Date(now.getFullYear(), (quarter + 1) * 3, 0);
+        end.setHours(23, 59, 59, 999);
         break;
       case 'year':
         start = new Date(now.getFullYear(), 0, 1);
         end = new Date(now.getFullYear(), 11, 31);
+        end.setHours(23, 59, 59, 999);
         break;
-      case 'custom':
-        // Keep existing date range
-        return;
       default:
         start = new Date(now.getFullYear(), now.getMonth(), 1);
         end = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+        end.setHours(23, 59, 59, 999);
     }
+
+    console.log(`Setting date range for ${period}:`, {
+      start: start.toISOString().split('T')[0],
+      end: end.toISOString().split('T')[0],
+    });
 
     setDateRange({ start, end });
   }, [period]);

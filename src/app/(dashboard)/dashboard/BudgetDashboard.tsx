@@ -43,16 +43,26 @@ export function BudgetDashboard({ dateRange }: BudgetDashboardProps) {
     try {
       setLoading(true);
       const supabase = createSupabaseBrowserClient();
-      const { data: { user } } = await supabase.auth.getUser();
+      const { data: { user }, error: userError } = await supabase.auth.getUser();
 
-      if (!user) return;
+      if (userError) {
+        console.error('Error getting user:', userError);
+        return;
+      }
+
+      if (!user) {
+        console.log('No user found');
+        return;
+      }
 
       // Get all months that overlap with the date range
       // A month overlaps if: month.start_date <= dateRange.end AND month.end_date >= dateRange.start
       const startDateStr = dateRange.start.toISOString().split('T')[0];
       const endDateStr = dateRange.end.toISOString().split('T')[0];
       
-      const { data: months } = await supabase
+      console.log('Loading budget data for date range:', { startDateStr, endDateStr });
+      
+      const { data: months, error: monthsError } = await supabase
         .from('monthly_overviews')
         .select('*')
         .eq('user_id', user.id)
@@ -60,41 +70,60 @@ export function BudgetDashboard({ dateRange }: BudgetDashboardProps) {
         .gte('end_date', startDateStr)   // Month ends after or on the start of our range
         .order('start_date', { ascending: false });
 
+      if (monthsError) {
+        console.error('Error fetching months:', monthsError);
+        setBudgetData([]);
+        return;
+      }
+
       if (!months || months.length === 0) {
         console.log('No months found for date range:', {
-          start: dateRange.start.toISOString().split('T')[0],
-          end: dateRange.end.toISOString().split('T')[0],
+          start: startDateStr,
+          end: endDateStr,
+          userId: user.id,
         });
         setBudgetData([]);
         return;
       }
 
-      console.log(`Found ${months.length} months for date range:`, months.map(m => m.name));
+      console.log(`Found ${months.length} months for date range:`, months.map(m => `${m.name} (${m.start_date} to ${m.end_date})`));
 
       // Fetch budget data for each month
       const monthData: BudgetData[] = await Promise.all(
         months.map(async (month) => {
           // Get income
-          const { data: income } = await supabase
+          const { data: income, error: incomeError } = await supabase
             .from('income_sources')
             .select('amount')
             .eq('monthly_overview_id', month.id);
 
+          if (incomeError) {
+            console.error(`Error fetching income for ${month.name}:`, incomeError);
+          }
+
           const totalIncome = income?.reduce((sum, i) => sum + Number(i.amount || 0), 0) || 0;
 
           // Get budgets
-          const { data: budgets } = await supabase
+          const { data: budgets, error: budgetsError } = await supabase
             .from('budgets')
             .select('id, name, budget_amount')
             .eq('monthly_overview_id', month.id);
 
+          if (budgetsError) {
+            console.error(`Error fetching budgets for ${month.name}:`, budgetsError);
+          }
+
           // Get expenses for each budget
           const budgetDetails = await Promise.all(
             (budgets || []).map(async (budget: any) => {
-              const { data: expenses } = await supabase
+              const { data: expenses, error: expensesError } = await supabase
                 .from('expenses')
                 .select('amount')
                 .eq('budget_id', budget.id);
+
+              if (expensesError) {
+                console.error(`Error fetching expenses for budget ${budget.name}:`, expensesError);
+              }
 
               const spent = (expenses || []).reduce(
                 (sum: number, e: any) => sum + Number(e.amount || 0),
@@ -138,6 +167,7 @@ export function BudgetDashboard({ dateRange }: BudgetDashboardProps) {
       setBudgetData(monthData);
     } catch (error) {
       console.error('Failed to load budget data:', error);
+      setBudgetData([]);
     } finally {
       setLoading(false);
     }
