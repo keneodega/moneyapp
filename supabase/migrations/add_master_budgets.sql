@@ -5,7 +5,10 @@
 -- ============================================
 -- Step 1: Create master_budgets table
 -- ============================================
-CREATE TABLE IF NOT EXISTS master_budgets (
+-- Drop table if it exists (for clean re-run)
+DROP TABLE IF EXISTS master_budgets CASCADE;
+
+CREATE TABLE master_budgets (
   id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
   user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE NOT NULL,
   name TEXT NOT NULL, -- Category name (e.g., "Food", "Housing")
@@ -23,12 +26,42 @@ CREATE TABLE IF NOT EXISTS master_budgets (
 -- ============================================
 -- Step 2: Add columns to budgets table for master budget tracking
 -- ============================================
-ALTER TABLE budgets
-  ADD COLUMN IF NOT EXISTS master_budget_id UUID REFERENCES master_budgets(id) ON DELETE SET NULL,
-  ADD COLUMN IF NOT EXISTS override_amount DECIMAL(12, 2),
-  ADD COLUMN IF NOT EXISTS override_reason TEXT;
+-- Note: We add columns first, then the foreign key constraint separately
+-- to avoid issues if master_budgets table doesn't exist yet
+DO $$
+BEGIN
+  -- Add columns if they don't exist
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'budgets' AND column_name = 'master_budget_id') THEN
+    ALTER TABLE budgets ADD COLUMN master_budget_id UUID;
+  END IF;
+  
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'budgets' AND column_name = 'override_amount') THEN
+    ALTER TABLE budgets ADD COLUMN override_amount DECIMAL(12, 2);
+  END IF;
+  
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'budgets' AND column_name = 'override_reason') THEN
+    ALTER TABLE budgets ADD COLUMN override_reason TEXT;
+  END IF;
+END $$;
+
+-- Add foreign key constraint if it doesn't exist
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.table_constraints 
+    WHERE constraint_name = 'budgets_master_budget_id_fkey'
+  ) THEN
+    ALTER TABLE budgets
+      ADD CONSTRAINT budgets_master_budget_id_fkey 
+      FOREIGN KEY (master_budget_id) REFERENCES master_budgets(id) ON DELETE SET NULL;
+  END IF;
+END $$;
 
 -- Add constraint: override_reason is required if override_amount is set
+-- Drop constraint if it already exists
+ALTER TABLE budgets
+  DROP CONSTRAINT IF EXISTS budgets_override_reason_required;
+
 ALTER TABLE budgets
   ADD CONSTRAINT budgets_override_reason_required 
   CHECK (
@@ -108,6 +141,12 @@ $$ LANGUAGE plpgsql SET search_path = '';
 -- ============================================
 ALTER TABLE master_budgets ENABLE ROW LEVEL SECURITY;
 
+-- Drop existing policies if they exist
+DROP POLICY IF EXISTS "Users can view their own master budgets" ON master_budgets;
+DROP POLICY IF EXISTS "Users can insert their own master budgets" ON master_budgets;
+DROP POLICY IF EXISTS "Users can update their own master budgets" ON master_budgets;
+DROP POLICY IF EXISTS "Users can delete their own master budgets" ON master_budgets;
+
 -- Users can only see their own master budgets
 CREATE POLICY "Users can view their own master budgets"
   ON master_budgets
@@ -136,6 +175,8 @@ CREATE POLICY "Users can delete their own master budgets"
 -- ============================================
 -- Step 8: Create trigger to update updated_at
 -- ============================================
+DROP TRIGGER IF EXISTS update_master_budgets_updated_at ON master_budgets;
+
 CREATE TRIGGER update_master_budgets_updated_at
   BEFORE UPDATE ON master_budgets
   FOR EACH ROW
