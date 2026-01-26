@@ -67,19 +67,32 @@ export default function SelectBudgetsPage({
       );
       
       // Also check by name in case budgets exist without master_budget_id
-      // Match master budget names to existing budget names
+      // Match master budget names to existing budget names (case-insensitive)
       const existingBudgetNames = new Set(
         existingBudgets?.map(b => b.name?.toLowerCase().trim()).filter(Boolean) || []
       );
       
       // Find master budgets that match existing budgets by name (for backwards compatibility)
+      // This handles budgets created before master budgets system or manually created budgets
       const matchedMasterIds = masterData
-        .filter(mb => existingBudgetNames.has(mb.name.toLowerCase().trim()))
+        .filter(mb => {
+          const masterName = mb.name?.toLowerCase().trim();
+          return masterName && existingBudgetNames.has(masterName);
+        })
         .map(mb => mb.id);
       
-      // Combine both sets
+      // Combine both sets - budgets that exist by master_budget_id OR by name match
       const allExistingIds = new Set([...existingMasterIds, ...matchedMasterIds]);
       setExistingBudgetIds(allExistingIds);
+      
+      // Log for debugging
+      if (allExistingIds.size > 0) {
+        console.log('Found existing budgets:', {
+          byMasterId: Array.from(existingMasterIds),
+          byName: Array.from(matchedMasterIds),
+          total: allExistingIds.size
+        });
+      }
     } catch (err) {
       console.error('Failed to load data:', err);
       setError(err instanceof Error ? err.message : 'Failed to load master budgets');
@@ -134,7 +147,14 @@ export default function SelectBudgetsPage({
 
       for (const masterBudget of selectedBudgets) {
         // Double-check if already exists (in case it was added between load and submit)
-        if (existingBudgetIds.has(masterBudget.id)) {
+        // Check both by master_budget_id and by name
+        const existsByMasterId = existingBudgetIds.has(masterBudget.id);
+        const existsByName = existingBudgets?.some(
+          b => b.name?.toLowerCase().trim() === masterBudget.name.toLowerCase().trim()
+        );
+        
+        if (existsByMasterId || existsByName) {
+          console.log(`Skipping ${masterBudget.name} - already exists (by master_id: ${existsByMasterId}, by name: ${existsByName})`);
           continue; // Skip if already added
         }
 
@@ -149,6 +169,11 @@ export default function SelectBudgetsPage({
           created.push(masterBudget.name);
         } catch (err) {
           console.error(`Failed to create budget ${masterBudget.name}:`, err);
+          // If error is about duplicate name, skip it (might have been added by another user/session)
+          if (err instanceof Error && err.message.includes('already exists')) {
+            console.log(`Budget ${masterBudget.name} already exists, skipping`);
+            continue;
+          }
           failed.push({
             name: masterBudget.name,
             error: err instanceof Error ? err.message : 'Unknown error'
