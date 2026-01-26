@@ -365,11 +365,11 @@ export default async function MonthDetailPage({
                 Create budget categories to start tracking your spending.
               </p>
               <Link
-                href={`/months/${id}/budgets/new`}
+                href={`/months/${id}/budgets/select`}
                 className="inline-flex items-center gap-2 h-10 px-4 rounded-[var(--radius-md)] bg-[var(--color-primary)] text-white font-medium hover:bg-[var(--color-primary-dark)] transition-colors"
               >
                 <PlusIcon className="w-4 h-4" />
-                Add First Budget
+                Select Budgets
               </Link>
             </Card>
           )}

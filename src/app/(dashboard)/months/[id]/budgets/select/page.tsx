@@ -39,6 +39,11 @@ export default function SelectBudgetsPage({
       // Load master budgets
       const masterBudgetService = new MasterBudgetService(supabase);
       const masterData = await masterBudgetService.getAll(true);
+      
+      if (!masterData || masterData.length === 0) {
+        setError('No master budgets found. Please create master budgets first in the Master Budgets page.');
+      }
+      
       setMasterBudgets(masterData);
 
       // Load existing budgets for this month
