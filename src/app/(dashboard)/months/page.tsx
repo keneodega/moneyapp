@@ -22,17 +22,64 @@ async function getMonths(): Promise<MonthData[]> {
       return [];
     }
 
-    const { data, error } = await supabase
+    // Try to fetch from view first
+    let { data, error } = await supabase
       .from('monthly_overview_summary')
       .select('*')
       .order('start_date', { ascending: false });
 
+    // If view fails, fallback to manual calculation
     if (error || !data) {
-      return [];
+      // Fetch from base table and calculate manually
+      const { data: months, error: monthsError } = await supabase
+        .from('monthly_overviews')
+        .select('*')
+        .order('start_date', { ascending: false });
+
+      if (monthsError || !months) {
+        return [];
+      }
+
+      // Calculate totals for each month
+      const monthsWithTotals = await Promise.all(
+        months.map(async (month) => {
+          // Get income total
+          const { data: income } = await supabase
+            .from('income_sources')
+            .select('amount')
+            .eq('monthly_overview_id', month.id);
+          const totalIncome = income?.reduce((sum, i) => sum + Number(i.amount || 0), 0) || 0;
+
+          // Get budget total
+          const { data: budgets } = await supabase
+            .from('budgets')
+            .select('budget_amount')
+            .eq('monthly_overview_id', month.id);
+          const totalBudgeted = budgets?.reduce((sum, b) => sum + Number(b.budget_amount || 0), 0) || 0;
+
+          // Get spent total
+          const { data: budgetSummaries } = await supabase
+            .from('budget_summary')
+            .select('amount_spent')
+            .eq('monthly_overview_id', month.id);
+          const totalSpent = budgetSummaries?.reduce((sum, b) => sum + Number(b.amount_spent || 0), 0) || 0;
+
+          return {
+            ...month,
+            total_income: totalIncome,
+            total_budgeted: totalBudgeted,
+            total_spent: totalSpent,
+            amount_unallocated: totalIncome - totalBudgeted,
+          };
+        })
+      );
+
+      return monthsWithTotals;
     }
 
     return data;
-  } catch {
+  } catch (err) {
+    console.error('Error fetching months:', err);
     return [];
   }
 }

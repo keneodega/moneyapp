@@ -44,15 +44,45 @@ async function getMonthData(id: string): Promise<{
       return null;
     }
 
-    // Fetch month with summary totals
-    const { data: month, error: monthError } = await supabase
+    // Try to fetch from view first
+    let { data: month, error: monthError } = await supabase
       .from('monthly_overview_summary')
       .select('*')
       .eq('id', id)
       .single();
 
+    // If view fails, fallback to base table and calculate manually
     if (monthError || !month) {
-      return null;
+      const { data: baseMonth, error: baseError } = await supabase
+        .from('monthly_overviews')
+        .select('*')
+        .eq('id', id)
+        .single();
+
+      if (baseError || !baseMonth) {
+        return null;
+      }
+
+      // Calculate totals manually
+      const { data: income } = await supabase
+        .from('income_sources')
+        .select('amount')
+        .eq('monthly_overview_id', id);
+      const totalIncome = income?.reduce((sum, i) => sum + Number(i.amount || 0), 0) || 0;
+
+      const { data: budgets } = await supabase
+        .from('budgets')
+        .select('budget_amount')
+        .eq('monthly_overview_id', id);
+      const totalBudgeted = budgets?.reduce((sum, b) => sum + Number(b.budget_amount || 0), 0) || 0;
+
+      month = {
+        ...baseMonth,
+        total_income: totalIncome,
+        total_budgeted: totalBudgeted,
+        total_spent: 0, // Will be calculated from budget_summary below
+        amount_unallocated: totalIncome - totalBudgeted,
+      };
     }
 
     // Fetch budgets with summary
