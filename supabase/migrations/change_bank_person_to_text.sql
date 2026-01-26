@@ -97,27 +97,46 @@ BEGIN
 END $$;
 
 -- Financial goals table (if it has person column)
--- Check if column exists first
 DO $$
 BEGIN
+  -- Check if financial_goals.person is already TEXT
   IF EXISTS (
     SELECT 1 FROM information_schema.columns 
-    WHERE table_name = 'financial_goals' AND column_name = 'person'
+    WHERE table_name = 'financial_goals' 
+    AND column_name = 'person' 
+    AND data_type = 'text'
+  ) THEN
+    RAISE NOTICE 'financial_goals.person is already TEXT, skipping';
+  ELSIF EXISTS (
+    SELECT 1 FROM information_schema.columns 
+    WHERE table_name = 'financial_goals' 
+    AND column_name = 'person'
   ) THEN
     ALTER TABLE financial_goals 
       ALTER COLUMN person TYPE TEXT USING person::TEXT;
+    RAISE NOTICE 'Updated financial_goals.person to TEXT';
   END IF;
 END $$;
 
 -- Financial sub-goals table (if it has person column)
 DO $$
 BEGIN
+  -- Check if financial_sub_goals.responsible_person is already TEXT
   IF EXISTS (
     SELECT 1 FROM information_schema.columns 
-    WHERE table_name = 'financial_sub_goals' AND column_name = 'responsible_person'
+    WHERE table_name = 'financial_sub_goals' 
+    AND column_name = 'responsible_person' 
+    AND data_type = 'text'
+  ) THEN
+    RAISE NOTICE 'financial_sub_goals.responsible_person is already TEXT, skipping';
+  ELSIF EXISTS (
+    SELECT 1 FROM information_schema.columns 
+    WHERE table_name = 'financial_sub_goals' 
+    AND column_name = 'responsible_person'
   ) THEN
     ALTER TABLE financial_sub_goals 
       ALTER COLUMN responsible_person TYPE TEXT USING responsible_person::TEXT;
+    RAISE NOTICE 'Updated financial_sub_goals.responsible_person to TEXT';
   END IF;
 END $$;
 
