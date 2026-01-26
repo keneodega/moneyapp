@@ -87,12 +87,10 @@ export class MonthlyOverviewService {
       throw new Error(`Failed to create monthly overview: ${error.message}`);
     }
 
-    // Auto-create default budget categories
-    // Note: This is also done via DB trigger, but we do it here for immediate feedback
-    // The DB trigger uses ON CONFLICT DO NOTHING, so duplicates won't be created
-    await this.createDefaultBudgets(monthlyOverview.id);
+    // Default budgets are automatically created by database trigger
+    // No need to create them manually here to avoid duplicates
 
-    // Get count of budgets created
+    // Get count of budgets created (by trigger)
     const { count } = await this.supabase
       .from('budgets')
       .select('*', { count: 'exact', head: true })
