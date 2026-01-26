@@ -99,7 +99,7 @@ async function getMonthData(id: string): Promise<{
     // Fetch budgets with summary and master budget info
     // Query budgets table directly and calculate spent amount manually
     // This is more reliable than using the view which may be missing columns
-    const { data: budgetsData, error: budgetsError } = await supabase
+    const { data: budgetsData, error: budgetsQueryError } = await supabase
       .from('budgets')
       .select(`
         *,
@@ -108,8 +108,8 @@ async function getMonthData(id: string): Promise<{
       .eq('monthly_overview_id', id)
       .order('name');
     
-    if (budgetsError) {
-      console.error(`Error fetching budgets for month ${id}:`, budgetsError);
+    if (budgetsQueryError) {
+      console.error(`Error fetching budgets for month ${id}:`, budgetsQueryError);
     }
     
     // Calculate spent amount for each budget
