@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
+import Link from 'next/link';
 import { Card, Button, Input } from '@/components/ui';
 import { createSupabaseBrowserClient } from '@/lib/supabase/client';
 import { SettingsService } from '@/lib/services';
