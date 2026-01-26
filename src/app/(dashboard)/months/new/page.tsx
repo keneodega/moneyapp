@@ -72,15 +72,18 @@ export default function NewMonthPage() {
         .single();
 
       if (insertError) {
-        // Check if error is due to missing budgets table
-        if (insertError.message.includes('relation') && insertError.message.includes('budgets')) {
+        // Check if error is due to missing budgets table (more specific check)
+        const errorMsg = insertError.message.toLowerCase();
+        if (errorMsg.includes('relation') && 
+            (errorMsg.includes('"budgets"') || errorMsg.includes('does not exist'))) {
           throw new Error(
             'Database setup incomplete. The budgets table does not exist. ' +
             'Please run the database schema migration in Supabase SQL Editor. ' +
             'See: supabase/schema.sql'
           );
         }
-        throw new Error(insertError.message);
+        // For other errors, show the actual error message
+        throw new Error(insertError.message || 'Failed to create month');
       }
 
       // Redirect to the new month
