@@ -53,7 +53,9 @@ export function TransactionsDashboard({ dateRange }: TransactionsDashboardProps)
             date_paid,
             description,
             source,
-            monthly_overviews(name)
+            monthly_overviews(
+              name
+            )
           `)
           .eq('user_id', user.id)
           .gte('date_paid', dateRange.start.toISOString().split('T')[0])
@@ -62,6 +64,7 @@ export function TransactionsDashboard({ dateRange }: TransactionsDashboardProps)
 
         if (income) {
           income.forEach((inc: any) => {
+            const monthlyOverview = inc.monthly_overviews as any;
             allTransactions.push({
               id: inc.id,
               type: 'income',
@@ -69,7 +72,7 @@ export function TransactionsDashboard({ dateRange }: TransactionsDashboardProps)
               date: inc.date_paid,
               description: inc.description || inc.source || 'Income',
               category: inc.source,
-              monthName: inc.monthly_overviews?.name,
+              monthName: monthlyOverview?.name,
             });
           });
         }
