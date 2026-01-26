@@ -49,6 +49,10 @@ export default function SelectBudgetsPage({
       
       if (existingError) {
         console.error('Error loading existing budgets:', existingError);
+        // If budgets table doesn't exist, that's okay - just continue with empty list
+        if (!existingError.message.includes('does not exist')) {
+          throw existingError;
+        }
       }
       
       // Get existing master budget IDs (filter out nulls)
@@ -98,50 +102,64 @@ export default function SelectBudgetsPage({
       const budgetService = new BudgetService(supabase);
       const selectedBudgets = masterBudgets.filter(mb => selectedIds.has(mb.id));
 
-      // Create budgets for selected master budgets
-      const results = await Promise.allSettled(
-        selectedBudgets.map(async (masterBudget) => {
-          // Double-check if already exists (in case it was added between load and submit)
-          if (existingBudgetIds.has(masterBudget.id)) {
-            return { success: false, skipped: true, name: masterBudget.name };
-          }
-
-          try {
-            await budgetService.create({
-              monthly_overview_id: monthId,
-              name: masterBudget.name,
-              budget_amount: masterBudget.budget_amount,
-              master_budget_id: masterBudget.id,
-              description: masterBudget.description || null,
-            });
-            return { success: true, name: masterBudget.name };
-          } catch (err) {
-            console.error(`Failed to create budget ${masterBudget.name}:`, err);
-            return { 
-              success: false, 
-              name: masterBudget.name, 
-              error: err instanceof Error ? err.message : 'Unknown error' 
-            };
-          }
-        })
-      );
-
-      // Check for any failures
-      const failures = results.filter(r => r.status === 'rejected' || (r.status === 'fulfilled' && !r.value.success && !r.value.skipped));
-      if (failures.length > 0) {
-        const failureMessages = failures.map(f => {
-          if (f.status === 'rejected') return f.reason?.message || 'Unknown error';
-          return f.value.error || 'Failed to create';
-        }).join(', ');
-        setError(`Some budgets failed to add: ${failureMessages}`);
+      if (selectedBudgets.length === 0) {
+        setError('No budgets selected');
         setIsSaving(false);
         return;
       }
 
+      // Create budgets for selected master budgets one by one to get better error messages
+      const created: string[] = [];
+      const failed: Array<{ name: string; error: string }> = [];
+
+      for (const masterBudget of selectedBudgets) {
+        // Double-check if already exists (in case it was added between load and submit)
+        if (existingBudgetIds.has(masterBudget.id)) {
+          continue; // Skip if already added
+        }
+
+        try {
+          await budgetService.create({
+            monthly_overview_id: monthId,
+            name: masterBudget.name,
+            budget_amount: masterBudget.budget_amount,
+            master_budget_id: masterBudget.id,
+            description: masterBudget.description || null,
+          });
+          created.push(masterBudget.name);
+        } catch (err) {
+          console.error(`Failed to create budget ${masterBudget.name}:`, err);
+          failed.push({
+            name: masterBudget.name,
+            error: err instanceof Error ? err.message : 'Unknown error'
+          });
+        }
+      }
+
+      // Show results
+      if (failed.length > 0) {
+        const errorMsg = failed.length === selectedBudgets.length
+          ? `Failed to add budgets: ${failed.map(f => `${f.name} (${f.error})`).join(', ')}`
+          : `Added ${created.length} budget(s). Failed: ${failed.map(f => `${f.name} (${f.error})`).join(', ')}`;
+        setError(errorMsg);
+        setIsSaving(false);
+        return;
+      }
+
+      if (created.length === 0) {
+        setError('No new budgets were added. They may already exist in this month.');
+        setIsSaving(false);
+        return;
+      }
+
+      // Refresh the page to show new budgets
       router.push(`/months/${monthId}`);
       router.refresh();
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to add budgets');
+      console.error('Error adding budgets:', err);
+      const errorMessage = err instanceof Error ? err.message : 'Failed to add budgets';
+      setError(errorMessage);
+      // Don't redirect on error so user can see the error message
     } finally {
       setIsSaving(false);
     }
