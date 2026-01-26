@@ -41,8 +41,16 @@ async function getMonths(): Promise<MonthData[]> {
           .from('income_sources')
           .select('amount')
           .eq('monthly_overview_id', month.id);
+        
+        if (incomeError) {
+          console.error(`Error fetching income for month ${month.id}:`, incomeError);
+        }
+        
         const totalIncome = income && !incomeError 
-          ? income.reduce((sum, i) => sum + Number(i.amount || 0), 0) 
+          ? income.reduce((sum, i) => {
+              const amount = typeof i.amount === 'string' ? parseFloat(i.amount) : Number(i.amount || 0);
+              return sum + (isNaN(amount) ? 0 : amount);
+            }, 0) 
           : 0;
 
         // Get budget total
@@ -50,8 +58,16 @@ async function getMonths(): Promise<MonthData[]> {
           .from('budgets')
           .select('budget_amount')
           .eq('monthly_overview_id', month.id);
+        
+        if (budgetsError) {
+          console.error(`Error fetching budgets for month ${month.id}:`, budgetsError);
+        }
+        
         const totalBudgeted = budgets && !budgetsError
-          ? budgets.reduce((sum, b) => sum + Number(b.budget_amount || 0), 0)
+          ? budgets.reduce((sum, b) => {
+              const amount = typeof b.budget_amount === 'string' ? parseFloat(b.budget_amount) : Number(b.budget_amount || 0);
+              return sum + (isNaN(amount) ? 0 : amount);
+            }, 0)
           : 0;
 
         // Get spent total from budget_summary view
@@ -59,8 +75,16 @@ async function getMonths(): Promise<MonthData[]> {
           .from('budget_summary')
           .select('amount_spent')
           .eq('monthly_overview_id', month.id);
+        
+        if (spentError) {
+          console.error(`Error fetching spent for month ${month.id}:`, spentError);
+        }
+        
         const totalSpent = budgetSummaries && !spentError
-          ? budgetSummaries.reduce((sum, b) => sum + Number(b.amount_spent || 0), 0)
+          ? budgetSummaries.reduce((sum, b) => {
+              const amount = typeof b.amount_spent === 'string' ? parseFloat(b.amount_spent) : Number(b.amount_spent || 0);
+              return sum + (isNaN(amount) ? 0 : amount);
+            }, 0)
           : 0;
 
         return {

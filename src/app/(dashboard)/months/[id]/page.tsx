@@ -60,16 +60,32 @@ async function getMonthData(id: string): Promise<{
       .from('income_sources')
       .select('amount')
       .eq('monthly_overview_id', id);
+    
+    if (incomeError) {
+      console.error(`Error fetching income for month ${id}:`, incomeError);
+    }
+    
     const totalIncome = income && !incomeError
-      ? income.reduce((sum, i) => sum + Number(i.amount || 0), 0)
+      ? income.reduce((sum, i) => {
+          const amount = typeof i.amount === 'string' ? parseFloat(i.amount) : Number(i.amount || 0);
+          return sum + (isNaN(amount) ? 0 : amount);
+        }, 0)
       : 0;
 
     const { data: budgets, error: budgetsError } = await supabase
       .from('budgets')
       .select('budget_amount')
       .eq('monthly_overview_id', id);
+    
+    if (budgetsError) {
+      console.error(`Error fetching budgets for month ${id}:`, budgetsError);
+    }
+    
     const totalBudgeted = budgets && !budgetsError
-      ? budgets.reduce((sum, b) => sum + Number(b.budget_amount || 0), 0)
+      ? budgets.reduce((sum, b) => {
+          const amount = typeof b.budget_amount === 'string' ? parseFloat(b.budget_amount) : Number(b.budget_amount || 0);
+          return sum + (isNaN(amount) ? 0 : amount);
+        }, 0)
       : 0;
 
     const month = {
