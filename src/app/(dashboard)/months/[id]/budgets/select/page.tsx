@@ -17,6 +17,7 @@ export default function SelectBudgetsPage({
   const router = useRouter();
   const [masterBudgets, setMasterBudgets] = useState<MasterBudget[]>([]);
   const [existingBudgetIds, setExistingBudgetIds] = useState<Set<string>>(new Set());
+  const [existingBudgets, setExistingBudgets] = useState<Array<{ master_budget_id: string | null; name: string | null }>>([]);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
@@ -84,13 +85,16 @@ export default function SelectBudgetsPage({
       // Combine both sets - budgets that exist by master_budget_id OR by name match
       const allExistingIds = new Set([...existingMasterIds, ...matchedMasterIds]);
       setExistingBudgetIds(allExistingIds);
+      // Also store the full existing budgets data for name matching in the filter
+      setExistingBudgets(existingBudgets || []);
       
       // Log for debugging
-      if (allExistingIds.size > 0) {
+      if (allExistingIds.size > 0 || (existingBudgets && existingBudgets.length > 0)) {
         console.log('Found existing budgets:', {
           byMasterId: Array.from(existingMasterIds),
           byName: Array.from(matchedMasterIds),
-          total: allExistingIds.size
+          total: allExistingIds.size,
+          existingCount: existingBudgets?.length || 0
         });
       }
     } catch (err) {
@@ -210,8 +214,32 @@ export default function SelectBudgetsPage({
     }
   };
 
-  const availableBudgets = masterBudgets.filter(mb => !existingBudgetIds.has(mb.id));
-  const alreadyAdded = masterBudgets.filter(mb => existingBudgetIds.has(mb.id));
+  // Filter budgets: check both by master_budget_id and by name match
+  const availableBudgets = masterBudgets.filter(mb => {
+    // Check if exists by master_budget_id
+    if (existingBudgetIds.has(mb.id)) {
+      return false;
+    }
+    // Also check if a budget with the same name already exists (case-insensitive)
+    // This handles budgets created before master budgets system
+    const existingBudgetsData = existingBudgets || [];
+    const nameMatch = existingBudgetsData.some(
+      b => b.name?.toLowerCase().trim() === mb.name.toLowerCase().trim()
+    );
+    return !nameMatch;
+  });
+  
+  const alreadyAdded = masterBudgets.filter(mb => {
+    // Check if exists by master_budget_id
+    if (existingBudgetIds.has(mb.id)) {
+      return true;
+    }
+    // Also check if a budget with the same name already exists
+    const existingBudgetsData = existingBudgets || [];
+    return existingBudgetsData.some(
+      b => b.name?.toLowerCase().trim() === mb.name.toLowerCase().trim()
+    );
+  });
 
   if (isLoading) {
     return (
