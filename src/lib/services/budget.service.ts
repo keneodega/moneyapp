@@ -61,13 +61,38 @@ export class BudgetService {
       throw new ValidationError('Budget amount cannot be negative', 'budget_amount');
     }
 
+    // Check if a budget with this name already exists for this monthly overview
+    const { data: existing } = await this.supabase
+      .from('budgets')
+      .select('id, name')
+      .eq('monthly_overview_id', data.monthly_overview_id)
+      .eq('name', data.name.trim())
+      .maybeSingle();
+
+    if (existing) {
+      throw new ValidationError(
+        `A budget category named "${data.name.trim()}" already exists for this month. Please use a different name or edit the existing budget.`,
+        'name'
+      );
+    }
+
     const { data: budget, error } = await this.supabase
       .from('budgets')
-      .insert(data)
+      .insert({
+        ...data,
+        name: data.name.trim(),
+      })
       .select()
       .single();
 
     if (error) {
+      // Check if error is due to unique constraint violation
+      if (error.code === '23505' || error.message.includes('unique') || error.message.includes('duplicate')) {
+        throw new ValidationError(
+          `A budget category named "${data.name.trim()}" already exists for this month.`,
+          'name'
+        );
+      }
       throw new Error(`Failed to create budget: ${error.message}`);
     }
 

@@ -52,6 +52,20 @@ export default function NewBudgetPage({
         return;
       }
 
+      // Check for duplicate budget name before creating
+      const { data: existing } = await supabase
+        .from('budgets')
+        .select('id, name')
+        .eq('monthly_overview_id', monthId)
+        .eq('name', formData.name.trim())
+        .maybeSingle();
+
+      if (existing) {
+        setError(`A budget category named "${formData.name.trim()}" already exists for this month. Please use a different name or edit the existing budget.`);
+        setIsLoading(false);
+        return;
+      }
+
       const budgetService = new BudgetService(supabase);
 
       await budgetService.create({
