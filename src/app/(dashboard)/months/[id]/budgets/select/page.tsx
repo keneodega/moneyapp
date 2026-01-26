@@ -42,14 +42,18 @@ export default function SelectBudgetsPage({
       setMasterBudgets(masterData);
 
       // Load existing budgets for this month
-      const { data: existingBudgets } = await supabase
+      const { data: existingBudgets, error: existingError } = await supabase
         .from('budgets')
-        .select('master_budget_id')
-        .eq('monthly_overview_id', monthId)
-        .not('master_budget_id', 'is', null);
+        .select('master_budget_id, name')
+        .eq('monthly_overview_id', monthId);
       
+      if (existingError) {
+        console.error('Error loading existing budgets:', existingError);
+      }
+      
+      // Get existing master budget IDs (filter out nulls)
       const existingIds = new Set(
-        existingBudgets?.map(b => b.master_budget_id).filter(Boolean) || []
+        existingBudgets?.map(b => b.master_budget_id).filter((id): id is string => Boolean(id)) || []
       );
       setExistingBudgetIds(existingIds);
     } catch (err) {
@@ -95,19 +99,43 @@ export default function SelectBudgetsPage({
       const selectedBudgets = masterBudgets.filter(mb => selectedIds.has(mb.id));
 
       // Create budgets for selected master budgets
-      for (const masterBudget of selectedBudgets) {
-        // Check if already exists
-        if (existingBudgetIds.has(masterBudget.id)) {
-          continue; // Skip if already added
-        }
+      const results = await Promise.allSettled(
+        selectedBudgets.map(async (masterBudget) => {
+          // Double-check if already exists (in case it was added between load and submit)
+          if (existingBudgetIds.has(masterBudget.id)) {
+            return { success: false, skipped: true, name: masterBudget.name };
+          }
 
-        await budgetService.create({
-          monthly_overview_id: monthId,
-          name: masterBudget.name,
-          budget_amount: masterBudget.budget_amount,
-          master_budget_id: masterBudget.id,
-          description: masterBudget.description || null,
-        });
+          try {
+            await budgetService.create({
+              monthly_overview_id: monthId,
+              name: masterBudget.name,
+              budget_amount: masterBudget.budget_amount,
+              master_budget_id: masterBudget.id,
+              description: masterBudget.description || null,
+            });
+            return { success: true, name: masterBudget.name };
+          } catch (err) {
+            console.error(`Failed to create budget ${masterBudget.name}:`, err);
+            return { 
+              success: false, 
+              name: masterBudget.name, 
+              error: err instanceof Error ? err.message : 'Unknown error' 
+            };
+          }
+        })
+      );
+
+      // Check for any failures
+      const failures = results.filter(r => r.status === 'rejected' || (r.status === 'fulfilled' && !r.value.success && !r.value.skipped));
+      if (failures.length > 0) {
+        const failureMessages = failures.map(f => {
+          if (f.status === 'rejected') return f.reason?.message || 'Unknown error';
+          return f.value.error || 'Failed to create';
+        }).join(', ');
+        setError(`Some budgets failed to add: ${failureMessages}`);
+        setIsSaving(false);
+        return;
       }
 
       router.push(`/months/${monthId}`);

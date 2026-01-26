@@ -61,15 +61,35 @@ export class BudgetService {
       throw new ValidationError('Budget amount cannot be negative', 'budget_amount');
     }
 
-    // Check if a budget with this name already exists for this monthly overview
-    const { data: existing } = await this.supabase
+    // Check if a budget with this name or master_budget_id already exists for this monthly overview
+    let existing = null;
+    
+    if (data.master_budget_id) {
+      // Check by master_budget_id first (more specific)
+      const { data: existingByMaster } = await this.supabase
+        .from('budgets')
+        .select('id, name')
+        .eq('monthly_overview_id', data.monthly_overview_id)
+        .eq('master_budget_id', data.master_budget_id)
+        .maybeSingle();
+      
+      if (existingByMaster) {
+        throw new ValidationError(
+          `This master budget has already been added to this month. Please edit the existing budget instead.`,
+          'master_budget_id'
+        );
+      }
+    }
+    
+    // Also check by name (for backwards compatibility)
+    const { data: existingByName } = await this.supabase
       .from('budgets')
       .select('id, name')
       .eq('monthly_overview_id', data.monthly_overview_id)
       .eq('name', data.name.trim())
       .maybeSingle();
 
-    if (existing) {
+    if (existingByName) {
       throw new ValidationError(
         `A budget category named "${data.name.trim()}" already exists for this month. Please use a different name or edit the existing budget.`,
         'name'
