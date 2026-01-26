@@ -109,26 +109,6 @@ export class MonthlyOverviewService {
     return monthlyOverview;
   }
 
-  /**
-   * Create the 13 default budget categories for a monthly overview
-   * 
-   * @param monthlyOverviewId - The ID of the monthly overview
-   */
-  private async createDefaultBudgets(monthlyOverviewId: string): Promise<void> {
-    const budgets: BudgetInsert[] = DEFAULT_BUDGET_CATEGORIES.map(category => ({
-      ...category,
-      monthly_overview_id: monthlyOverviewId,
-    }));
-
-    const { error } = await this.supabase
-      .from('budgets')
-      .insert(budgets);
-
-    if (error) {
-      // Log error but don't fail - DB trigger might have already created them
-      console.warn(`Warning creating default budgets: ${error.message}`);
-    }
-  }
 
   /**
    * Get all monthly overviews for the current user
