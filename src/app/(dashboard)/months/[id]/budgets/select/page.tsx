@@ -47,6 +47,7 @@ export default function SelectBudgetsPage({
       setMasterBudgets(masterData);
 
       // Load existing budgets for this month
+      // Check both by master_budget_id and by name to catch all existing budgets
       const { data: existingBudgets, error: existingError } = await supabase
         .from('budgets')
         .select('master_budget_id, name')
@@ -61,10 +62,24 @@ export default function SelectBudgetsPage({
       }
       
       // Get existing master budget IDs (filter out nulls)
-      const existingIds = new Set(
+      const existingMasterIds = new Set(
         existingBudgets?.map(b => b.master_budget_id).filter((id): id is string => Boolean(id)) || []
       );
-      setExistingBudgetIds(existingIds);
+      
+      // Also check by name in case budgets exist without master_budget_id
+      // Match master budget names to existing budget names
+      const existingBudgetNames = new Set(
+        existingBudgets?.map(b => b.name?.toLowerCase().trim()).filter(Boolean) || []
+      );
+      
+      // Find master budgets that match existing budgets by name (for backwards compatibility)
+      const matchedMasterIds = masterData
+        .filter(mb => existingBudgetNames.has(mb.name.toLowerCase().trim()))
+        .map(mb => mb.id);
+      
+      // Combine both sets
+      const allExistingIds = new Set([...existingMasterIds, ...matchedMasterIds]);
+      setExistingBudgetIds(allExistingIds);
     } catch (err) {
       console.error('Failed to load data:', err);
       setError(err instanceof Error ? err.message : 'Failed to load master budgets');
