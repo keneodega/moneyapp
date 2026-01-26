@@ -26,7 +26,7 @@ export type PriorityType =
   | 'Low' | 'Medium' | 'High' | 'Critical';
 
 export type GoalType = 
-  | 'Emergency Fund' | 'Vacation' | 'Home' | 'Car' | 'Education' | 'Wedding' | 'Retirement' | 'Investment' | 'Other';
+  | 'Short Term' | 'Medium Term' | 'Long Term';
 
 export type IncomeSourceType = 
   | 'Salary' | 'Freelance' | 'Side Hustle' | 'Investment' | 'Gift' | 'Refund' | 'Other';
