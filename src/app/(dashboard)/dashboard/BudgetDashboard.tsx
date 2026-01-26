@@ -72,30 +72,35 @@ export function BudgetDashboard({ dateRange }: BudgetDashboardProps) {
 
           const totalIncome = income?.reduce((sum, i) => sum + Number(i.amount || 0), 0) || 0;
 
-          // Get budgets with expenses
+          // Get budgets
           const { data: budgets } = await supabase
             .from('budgets')
-            .select(`
-              id,
-              name,
-              budget_amount,
-              expenses(amount)
-            `)
+            .select('id, name, budget_amount')
             .eq('monthly_overview_id', month.id);
 
-          const budgetDetails = (budgets || []).map((budget: any) => {
-            const spent = (budget.expenses || []).reduce(
-              (sum: number, e: any) => sum + Number(e.amount || 0),
-              0
-            );
-            return {
-              id: budget.id,
-              name: budget.name,
-              budgetAmount: Number(budget.budget_amount || 0),
-              spent,
-              remaining: Number(budget.budget_amount || 0) - spent,
-            };
-          });
+          // Get expenses for each budget
+          const budgetDetails = await Promise.all(
+            (budgets || []).map(async (budget: any) => {
+              const { data: expenses } = await supabase
+                .from('expenses')
+                .select('amount')
+                .eq('budget_id', budget.id);
+
+              const spent = (expenses || []).reduce(
+                (sum: number, e: any) => sum + Number(e.amount || 0),
+                0
+              );
+              
+              return {
+                id: budget.id,
+                name: budget.name,
+                budgetAmount: Number(budget.budget_amount || 0),
+                spent,
+                remaining: Number(budget.budget_amount || 0) - spent,
+              };
+            })
+          );
+
 
           const totalBudgeted = budgetDetails.reduce((sum, b) => sum + b.budgetAmount, 0);
           const totalSpent = budgetDetails.reduce((sum, b) => sum + b.spent, 0);
