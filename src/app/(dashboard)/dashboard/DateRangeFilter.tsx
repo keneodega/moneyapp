@@ -49,7 +49,7 @@ export function DateRangeFilter({
         {periods.map((p) => (
           <Button
             key={p.value}
-            variant={period === p.value ? 'primary' : 'outlined'}
+            variant={period === p.value ? 'primary' : 'secondary'}
             onClick={() => {
               onPeriodChange(p.value);
               setShowCustom(p.value === 'custom');
