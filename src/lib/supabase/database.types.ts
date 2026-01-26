@@ -86,6 +86,7 @@ export interface MonthlyOverviewSummary extends MonthlyOverview {
   is_active: boolean;
   total_income: number;
   total_budgeted: number;
+  total_spent: number;
   amount_unallocated: number;
 }
 

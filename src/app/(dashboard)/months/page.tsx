@@ -10,6 +10,7 @@ interface MonthData {
   total_income?: number;
   total_budgeted?: number;
   total_spent?: number;
+  amount_unallocated?: number;
 }
 
 async function getMonths(): Promise<MonthData[]> {
@@ -22,7 +23,7 @@ async function getMonths(): Promise<MonthData[]> {
     }
 
     const { data, error } = await supabase
-      .from('monthly_overviews')
+      .from('monthly_overview_summary')
       .select('*')
       .order('start_date', { ascending: false });
 

@@ -12,6 +12,7 @@ interface MonthData {
   end_date: string;
   total_income?: number;
   total_budgeted?: number;
+  amount_unallocated?: number;
 }
 
 interface BudgetData {
@@ -43,9 +44,9 @@ async function getMonthData(id: string): Promise<{
       return null;
     }
 
-    // Fetch month
+    // Fetch month with summary totals
     const { data: month, error: monthError } = await supabase
-      .from('monthly_overviews')
+      .from('monthly_overview_summary')
       .select('*')
       .eq('id', id)
       .single();
@@ -108,11 +109,13 @@ export default async function MonthDetailPage({
 
   const { month, budgets, income } = data;
   
-  // Calculate totals
-  const totalIncome = income.reduce((sum, i) => sum + Number(i.amount), 0);
-  const totalBudgeted = budgets.reduce((sum, b) => sum + Number(b.budget_amount), 0);
-  const totalSpent = budgets.reduce((sum, b) => sum + Number(b.amount_spent), 0);
-  const unallocated = totalIncome - totalBudgeted;
+  // Use totals from view (more accurate than manual calculation)
+  const totalIncome = month.total_income || 0;
+  const totalBudgeted = month.total_budgeted || 0;
+  const unallocated = month.amount_unallocated || 0;
+  
+  // Calculate spent from budgets (view provides this per budget)
+  const totalSpent = budgets.reduce((sum, b) => sum + Number(b.amount_spent || 0), 0);
   const spentPercent = totalBudgeted > 0 ? (totalSpent / totalBudgeted) * 100 : 0;
 
   return (
