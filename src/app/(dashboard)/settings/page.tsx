@@ -160,6 +160,23 @@ export default function SettingsPage() {
           </p>
         </div>
 
+        {/* Master Budgets Link - Always visible */}
+        <Card variant="outlined" padding="lg" className="border-[var(--color-primary)]/30">
+          <div className="flex items-start justify-between">
+            <div>
+              <h2 className="text-title text-[var(--color-text)] mb-1">Master Budgets</h2>
+              <p className="text-small text-[var(--color-text-muted)]">
+                Manage your baseline budget categories. These amounts are copied to each new month.
+              </p>
+            </div>
+            <Link href="/settings/master-budgets">
+              <Button variant="primary">
+                Manage Master Budgets
+              </Button>
+            </Link>
+          </div>
+        </Card>
+
         <Card variant="outlined" padding="lg">
           <div className="text-center space-y-4">
             <div className="w-16 h-16 mx-auto rounded-full bg-[var(--color-warning)]/10 flex items-center justify-center">
