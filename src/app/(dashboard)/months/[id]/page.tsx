@@ -135,6 +135,13 @@ async function getMonthData(id: string): Promise<{
       console.error(`Failed to fetch budgets for month ${id}:`, budgetsQueryError);
     }
     
+    // Log for debugging
+    if (budgetsData) {
+      console.log(`Found ${budgetsData.length} budgets for month ${id}`);
+    } else {
+      console.warn(`No budgets data returned for month ${id}`);
+    }
+    
     // Calculate spent amount for each budget
     const budgets = await Promise.all(
       (budgetsData || []).map(async (budget) => {
@@ -191,6 +198,9 @@ async function getMonthData(id: string): Promise<{
     // Update month with total_spent
     month.total_spent = totalSpent;
 
+    // Log final budgets count for debugging
+    console.log(`Returning ${budgets?.length || 0} budgets for month ${id}`);
+    
     return {
       month,
       budgets: budgets || [],
