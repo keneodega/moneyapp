@@ -44,6 +44,12 @@ BEGIN
   END IF;
 END $$;
 
+-- Clean up any invalid master_budget_id references before adding constraint
+UPDATE budgets
+SET master_budget_id = NULL
+WHERE master_budget_id IS NOT NULL
+  AND master_budget_id NOT IN (SELECT id FROM master_budgets);
+
 -- Add foreign key constraint if it doesn't exist
 DO $$
 BEGIN
