@@ -62,13 +62,46 @@ export function BudgetDashboard({ dateRange }: BudgetDashboardProps) {
       
       console.log('Loading budget data for date range:', { startDateStr, endDateStr });
       
-      const { data: months, error: monthsError } = await supabase
+      // First, get all months for the user
+      const { data: allMonths, error: monthsError } = await supabase
         .from('monthly_overviews')
         .select('*')
         .eq('user_id', user.id)
-        .lte('start_date', endDateStr)  // Month starts before or on the end of our range
-        .gte('end_date', startDateStr)   // Month ends after or on the start of our range
         .order('start_date', { ascending: false });
+
+      if (monthsError) {
+        console.error('Error fetching months:', monthsError);
+        setBudgetData([]);
+        return;
+      }
+
+      if (!allMonths || allMonths.length === 0) {
+        console.log('No months found for user:', user.id);
+        setBudgetData([]);
+        return;
+      }
+
+      // Filter months that overlap with the date range
+      const months = allMonths.filter((month) => {
+        const monthStart = new Date(month.start_date);
+        const monthEnd = new Date(month.end_date);
+        const rangeStart = dateRange.start;
+        const rangeEnd = dateRange.end;
+        
+        // Month overlaps if: monthStart <= rangeEnd AND monthEnd >= rangeStart
+        const overlaps = monthStart <= rangeEnd && monthEnd >= rangeStart;
+        
+        if (overlaps) {
+          console.log(`Month ${month.name} overlaps:`, {
+            monthStart: month.start_date,
+            monthEnd: month.end_date,
+            rangeStart: startDateStr,
+            rangeEnd: endDateStr,
+          });
+        }
+        
+        return overlaps;
+      });
 
       if (monthsError) {
         console.error('Error fetching months:', monthsError);
