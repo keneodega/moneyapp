@@ -250,7 +250,7 @@ CREATE POLICY "Users can manage own settings" ON app_settings
               Manage your baseline budget categories. These amounts are copied to each new month.
             </p>
           </div>
-          <Link href="/settings/master-budgets">
+          <Link href="/master-budgets">
             <Button variant="primary">
               Manage Master Budgets
             </Button>
