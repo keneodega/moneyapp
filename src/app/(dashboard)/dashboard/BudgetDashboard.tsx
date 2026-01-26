@@ -47,13 +47,17 @@ export function BudgetDashboard({ dateRange }: BudgetDashboardProps) {
 
       if (!user) return;
 
-      // Get all months in the date range
+      // Get all months that overlap with the date range
+      // A month overlaps if: month.start_date <= dateRange.end AND month.end_date >= dateRange.start
+      const startDateStr = dateRange.start.toISOString().split('T')[0];
+      const endDateStr = dateRange.end.toISOString().split('T')[0];
+      
       const { data: months } = await supabase
         .from('monthly_overviews')
         .select('*')
         .eq('user_id', user.id)
-        .gte('start_date', dateRange.start.toISOString().split('T')[0])
-        .lte('end_date', dateRange.end.toISOString().split('T')[0])
+        .lte('start_date', endDateStr)  // Month starts before or on the end of our range
+        .gte('end_date', startDateStr)   // Month ends after or on the start of our range
         .order('start_date', { ascending: false });
 
       if (!months) {
