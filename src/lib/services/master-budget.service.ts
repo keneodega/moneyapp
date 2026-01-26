@@ -44,7 +44,7 @@ export class MasterBudgetService {
   private async getUserId(): Promise<string> {
     const { data: { user }, error } = await this.supabase.auth.getUser();
     if (error || !user) {
-      throw new UnauthorizedError('You must be logged in to manage master budgets');
+      throw new UnauthorizedError();
     }
     return user.id;
   }
@@ -169,7 +169,7 @@ export class MasterBudgetService {
     // Verify ownership
     const existing = await this.getById(id);
     if (existing.user_id !== userId) {
-      throw new UnauthorizedError('You do not have permission to update this master budget');
+      throw new UnauthorizedError();
     }
 
     // Validate budget amount if provided
