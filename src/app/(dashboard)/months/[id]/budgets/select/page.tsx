@@ -1,0 +1,284 @@
+'use client';
+
+import { useState, useEffect, use } from 'react';
+import { useRouter } from 'next/navigation';
+import Link from 'next/link';
+import { Card, Button } from '@/components/ui';
+import { createSupabaseBrowserClient } from '@/lib/supabase/client';
+import { BudgetService, MasterBudgetService } from '@/lib/services';
+import type { MasterBudget } from '@/lib/services/master-budget.service';
+
+export default function SelectBudgetsPage({
+  params,
+}: {
+  params: Promise<{ id: string }>;
+}) {
+  const { id: monthId } = use(params);
+  const router = useRouter();
+  const [masterBudgets, setMasterBudgets] = useState<MasterBudget[]>([]);
+  const [existingBudgetIds, setExistingBudgetIds] = useState<Set<string>>(new Set());
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [isLoading, setIsLoading] = useState(true);
+  const [isSaving, setIsSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    loadData();
+  }, [monthId]);
+
+  async function loadData() {
+    try {
+      const supabase = createSupabaseBrowserClient();
+      const { data: { user } } = await supabase.auth.getUser();
+      
+      if (!user) {
+        router.push('/login');
+        return;
+      }
+
+      // Load master budgets
+      const masterBudgetService = new MasterBudgetService(supabase);
+      const masterData = await masterBudgetService.getAll(true);
+      setMasterBudgets(masterData);
+
+      // Load existing budgets for this month
+      const { data: existingBudgets } = await supabase
+        .from('budgets')
+        .select('master_budget_id')
+        .eq('monthly_overview_id', monthId)
+        .not('master_budget_id', 'is', null);
+      
+      const existingIds = new Set(
+        existingBudgets?.map(b => b.master_budget_id).filter(Boolean) || []
+      );
+      setExistingBudgetIds(existingIds);
+    } catch (err) {
+      console.error('Failed to load data:', err);
+      setError(err instanceof Error ? err.message : 'Failed to load master budgets');
+    } finally {
+      setIsLoading(false);
+    }
+  }
+
+  const toggleSelection = (masterBudgetId: string) => {
+    setSelectedIds(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(masterBudgetId)) {
+        newSet.delete(masterBudgetId);
+      } else {
+        newSet.add(masterBudgetId);
+      }
+      return newSet;
+    });
+  };
+
+  const handleSubmit = async () => {
+    if (selectedIds.size === 0) {
+      setError('Please select at least one budget to add');
+      return;
+    }
+
+    setIsSaving(true);
+    setError(null);
+
+    try {
+      const supabase = createSupabaseBrowserClient();
+      const { data: { user } } = await supabase.auth.getUser();
+
+      if (!user) {
+        setError('You must be logged in');
+        setIsSaving(false);
+        return;
+      }
+
+      const budgetService = new BudgetService(supabase);
+      const selectedBudgets = masterBudgets.filter(mb => selectedIds.has(mb.id));
+
+      // Create budgets for selected master budgets
+      for (const masterBudget of selectedBudgets) {
+        // Check if already exists
+        if (existingBudgetIds.has(masterBudget.id)) {
+          continue; // Skip if already added
+        }
+
+        await budgetService.create({
+          monthly_overview_id: monthId,
+          name: masterBudget.name,
+          budget_amount: masterBudget.budget_amount,
+          master_budget_id: masterBudget.id,
+          description: masterBudget.description || null,
+        });
+      }
+
+      router.push(`/months/${monthId}`);
+      router.refresh();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to add budgets');
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const availableBudgets = masterBudgets.filter(mb => !existingBudgetIds.has(mb.id));
+  const alreadyAdded = masterBudgets.filter(mb => existingBudgetIds.has(mb.id));
+
+  if (isLoading) {
+    return (
+      <div className="max-w-4xl mx-auto space-y-6 animate-fade-in">
+        <p className="text-body text-[var(--color-text-muted)]">Loading master budgets...</p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="max-w-4xl mx-auto space-y-6 animate-fade-in">
+      {/* Header */}
+      <div className="flex items-center gap-4">
+        <Link
+          href={`/months/${monthId}`}
+          className="w-10 h-10 rounded-[var(--radius-md)] bg-[var(--color-surface-sunken)] flex items-center justify-center hover:bg-[var(--color-border)] transition-colors"
+        >
+          <ChevronLeftIcon className="w-5 h-5 text-[var(--color-text)]" />
+        </Link>
+        <div>
+          <h1 className="text-headline text-[var(--color-text)]">Select Budgets</h1>
+          <p className="text-small text-[var(--color-text-muted)]">
+            Choose which master budgets to include in this month
+          </p>
+        </div>
+      </div>
+
+      {/* Error Message */}
+      {error && (
+        <Card variant="raised" padding="md" className="border border-[var(--color-danger)]">
+          <p className="text-small text-[var(--color-danger)]">{error}</p>
+        </Card>
+      )}
+
+      {/* Already Added Section */}
+      {alreadyAdded.length > 0 && (
+        <Card variant="outlined" padding="md">
+          <h3 className="text-body font-medium text-[var(--color-text)] mb-3">
+            Already Added ({alreadyAdded.length})
+          </h3>
+          <div className="flex flex-wrap gap-2">
+            {alreadyAdded.map((mb) => (
+              <span
+                key={mb.id}
+                className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-[var(--color-surface-sunken)] text-small text-[var(--color-text)]"
+              >
+                {mb.name}
+                <span className="text-[var(--color-text-muted)]">
+                  €{mb.budget_amount.toLocaleString('en-IE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                </span>
+              </span>
+            ))}
+          </div>
+        </Card>
+      )}
+
+      {/* Available Budgets */}
+      {availableBudgets.length === 0 ? (
+        <Card variant="raised" padding="lg">
+          <div className="text-center space-y-4">
+            <p className="text-body text-[var(--color-text-muted)]">
+              All master budgets have been added to this month.
+            </p>
+            <p className="text-small text-[var(--color-text-muted)]">
+              To add more budgets, create them in the{' '}
+              <Link href="/master-budgets" className="text-[var(--color-primary)] hover:underline">
+                Master Budgets
+              </Link>{' '}
+              page.
+            </p>
+          </div>
+        </Card>
+      ) : (
+        <>
+          <Card variant="raised" padding="lg">
+            <h3 className="text-body font-medium text-[var(--color-text)] mb-4">
+              Available Master Budgets ({availableBudgets.length})
+            </h3>
+            <p className="text-small text-[var(--color-text-muted)] mb-4">
+              Select the budgets you want to include in this month. You can add more later.
+            </p>
+            
+            <div className="space-y-2">
+              {availableBudgets.map((mb) => {
+                const isSelected = selectedIds.has(mb.id);
+                return (
+                  <label
+                    key={mb.id}
+                    className={`flex items-center gap-3 p-4 rounded-[var(--radius-md)] border cursor-pointer transition-colors ${
+                      isSelected
+                        ? 'bg-[var(--color-primary)]/10 border-[var(--color-primary)]'
+                        : 'bg-[var(--color-surface)] border-[var(--color-border)] hover:bg-[var(--color-surface-sunken)]'
+                    }`}
+                  >
+                    <input
+                      type="checkbox"
+                      checked={isSelected}
+                      onChange={() => toggleSelection(mb.id)}
+                      className="w-5 h-5 rounded border-[var(--color-border)] text-[var(--color-primary)] focus:ring-2 focus:ring-[var(--color-primary)]"
+                    />
+                    <div className="flex-1">
+                      <div className="flex items-center justify-between">
+                        <span className="text-body font-medium text-[var(--color-text)]">
+                          {mb.name}
+                        </span>
+                        <span className="text-body font-medium text-[var(--color-text)]">
+                          €{mb.budget_amount.toLocaleString('en-IE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                        </span>
+                      </div>
+                      {mb.description && (
+                        <p className="text-small text-[var(--color-text-muted)] mt-1">
+                          {mb.description}
+                        </p>
+                      )}
+                    </div>
+                  </label>
+                );
+              })}
+            </div>
+          </Card>
+
+          {/* Actions */}
+          <div className="flex flex-col-reverse sm:flex-row gap-3">
+            <Link
+              href={`/months/${monthId}`}
+              className="flex-1 h-12 flex items-center justify-center rounded-[var(--radius-md)] border border-[var(--color-border)] text-[var(--color-text)] font-medium hover:bg-[var(--color-surface-sunken)] transition-colors"
+            >
+              Cancel
+            </Link>
+            <Button
+              onClick={handleSubmit}
+              size="lg"
+              isLoading={isSaving}
+              disabled={selectedIds.size === 0}
+              className="flex-1"
+            >
+              <PlusIcon className="w-5 h-5" />
+              Add {selectedIds.size > 0 ? `${selectedIds.size} ` : ''}Budget{selectedIds.size !== 1 ? 's' : ''}
+            </Button>
+          </div>
+        </>
+      )}
+    </div>
+  );
+}
+
+function ChevronLeftIcon({ className }: { className?: string }) {
+  return (
+    <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+      <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 19.5L8.25 12l7.5-7.5" />
+    </svg>
+  );
+}
+
+function PlusIcon({ className }: { className?: string }) {
+  return (
+    <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+      <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
+    </svg>
+  );
+}

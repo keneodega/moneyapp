@@ -277,10 +277,17 @@ export default async function MonthDetailPage({
             <div>
               <h2 className="text-title text-[var(--color-text)]">Budget Categories</h2>
               <p className="text-small text-[var(--color-text-muted)] mt-1">
-                Budgets are managed via <Link href="/master-budgets" className="text-[var(--color-primary)] hover:underline">Master Budgets</Link>
+                Select budgets from <Link href="/master-budgets" className="text-[var(--color-primary)] hover:underline">Master Budgets</Link>
               </p>
             </div>
             <div className="flex items-center gap-2">
+              <Link
+                href={`/months/${id}/budgets/select`}
+                className="inline-flex items-center gap-2 h-9 px-4 rounded-[var(--radius-md)] border border-[var(--color-border)] text-[var(--color-text)] text-small font-medium hover:bg-[var(--color-surface-sunken)] transition-colors"
+              >
+                <PlusIcon className="w-4 h-4" />
+                Add Budget
+              </Link>
               <Link
                 href={`/months/${id}/expense/new`}
                 className="inline-flex items-center gap-2 h-9 px-4 rounded-[var(--radius-md)] bg-[var(--color-primary)] text-white text-small font-medium hover:bg-[var(--color-primary-dark)] transition-colors"

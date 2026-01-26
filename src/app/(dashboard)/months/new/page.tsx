@@ -122,7 +122,7 @@ export default function NewMonthPage() {
               Default Budgets
             </h3>
             <p className="text-small text-[var(--color-text-muted)] mt-1">
-              All active master budgets will be automatically created for this month with their default amounts.
+              After creating this month, you can select which master budgets to include.
               Manage your master budgets in the{' '}
               <Link href="/master-budgets" className="text-[var(--color-primary)] hover:underline">
                 Master Budgets

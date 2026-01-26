@@ -120,56 +120,23 @@ END;
 $$ LANGUAGE plpgsql IMMUTABLE;
 
 -- ============================================
--- Step 6: Update trigger function to copy from master_budgets
+-- Step 6: Disable automatic budget creation
 -- ============================================
--- First, drop the trigger if it exists
+-- Remove the trigger that automatically creates budgets
+-- Users will now manually select which master budgets to include
 DROP TRIGGER IF EXISTS create_default_budgets_trigger ON monthly_overviews;
 
--- Create/update the function
+-- Keep the function for backwards compatibility, but it won't be triggered automatically
+-- Users can manually select budgets from master budgets
 CREATE OR REPLACE FUNCTION create_default_budgets()
 RETURNS TRIGGER AS $$
 BEGIN
-  -- Copy budgets from master_budgets for this user
-  -- Check if master_budget_id column exists before using it
-  IF EXISTS (
-    SELECT 1 FROM information_schema.columns 
-    WHERE table_name = 'budgets' AND column_name = 'master_budget_id'
-  ) THEN
-    -- Use master budgets if column exists
-    INSERT INTO budgets (monthly_overview_id, name, budget_amount, description, master_budget_id)
-    SELECT 
-      NEW.id,
-      mb.name,
-      mb.budget_amount,
-      mb.description,
-      mb.id
-    FROM master_budgets mb
-    WHERE mb.user_id = NEW.user_id
-      AND mb.is_active = TRUE
-    ON CONFLICT (monthly_overview_id, name) DO NOTHING;
-  ELSE
-    -- Fallback: create budgets without master_budget_id (for backwards compatibility)
-    INSERT INTO budgets (monthly_overview_id, name, budget_amount, description)
-    SELECT 
-      NEW.id,
-      mb.name,
-      mb.budget_amount,
-      mb.description
-    FROM master_budgets mb
-    WHERE mb.user_id = NEW.user_id
-      AND mb.is_active = TRUE
-    ON CONFLICT (monthly_overview_id, name) DO NOTHING;
-  END IF;
-  
+  -- This function is kept for backwards compatibility
+  -- But budgets are now manually selected from master budgets
+  -- No automatic creation happens
   RETURN NEW;
 END;
 $$ LANGUAGE plpgsql SET search_path = '';
-
--- Recreate the trigger
-CREATE TRIGGER create_default_budgets_trigger
-  AFTER INSERT ON monthly_overviews
-  FOR EACH ROW
-  EXECUTE FUNCTION create_default_budgets();
 
 -- ============================================
 -- Step 7: Create RLS policies for master_budgets
