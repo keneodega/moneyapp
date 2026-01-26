@@ -78,9 +78,10 @@ export default function EditBudgetPage({
   const newAmount = parseFloat(formData.budget_amount) || 0;
   const isOverride = masterBudgetAmount !== null && Math.abs(newAmount - masterBudgetAmount) > 0.01;
   const deviation = masterBudgetAmount !== null ? newAmount - masterBudgetAmount : null;
-  const deviationPercent = masterBudgetAmount !== null && masterBudgetAmount > 0
-    ? ((deviation! / masterBudgetAmount) * 100).toFixed(1)
+  const deviationPercentValue = masterBudgetAmount !== null && masterBudgetAmount > 0
+    ? (deviation! / masterBudgetAmount) * 100
     : null;
+  const deviationPercent = deviationPercentValue !== null ? deviationPercentValue.toFixed(1) : null;
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -217,7 +218,7 @@ export default function EditBudgetPage({
                 {deviation > 0 ? '↑' : '↓'} Deviation from Master: 
                 <span className={deviation > 0 ? 'text-[var(--color-warning)]' : 'text-[var(--color-success)]'}>
                   {' '}{deviation > 0 ? '+' : ''}€{deviation.toLocaleString('en-IE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                  {deviationPercent && ` (${deviationPercent > 0 ? '+' : ''}${deviationPercent}%)`}
+                  {deviationPercent && ` (${deviationPercentValue! > 0 ? '+' : ''}${deviationPercent}%)`}
                 </span>
               </p>
             </div>
