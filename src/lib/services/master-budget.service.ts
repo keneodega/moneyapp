@@ -90,7 +90,7 @@ export class MasterBudgetService {
       .single();
 
     if (error || !data) {
-      throw new NotFoundError('Master budget not found');
+      throw new NotFoundError('Master budget', id);
     }
 
     return data;
