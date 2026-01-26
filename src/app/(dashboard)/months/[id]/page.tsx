@@ -51,8 +51,12 @@ async function getMonthData(id: string): Promise<{
       .eq('id', id)
       .single();
 
-    // If view fails, fallback to base table and calculate manually
-    if (monthError || !month) {
+    // If view fails or returns zeros, fallback to base table and calculate manually
+    const needsRecalculation = monthError || !month || 
+      ((!month.total_income || month.total_income === 0) && 
+       (!month.total_budgeted || month.total_budgeted === 0));
+
+    if (needsRecalculation) {
       const { data: baseMonth, error: baseError } = await supabase
         .from('monthly_overviews')
         .select('*')
