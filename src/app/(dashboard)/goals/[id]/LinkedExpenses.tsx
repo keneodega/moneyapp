@@ -35,14 +35,22 @@ async function getLinkedExpenses(goalId: string) {
         date,
         description,
         budget_id,
-        budgets(name, monthly_overview_id),
-        monthly_overviews(id, name)
+        budgets(
+          name,
+          monthly_overview_id,
+          monthly_overviews(id, name)
+        )
       `)
       .eq('financial_goal_id', goalId)
       .order('date', { ascending: false })
       .limit(10);
 
-    if (error || !data) {
+    if (error) {
+      console.error('Error fetching linked expenses:', error);
+      return [];
+    }
+
+    if (!data) {
       return [];
     }
 
@@ -84,27 +92,34 @@ export async function LinkedExpenses({ goalId }: { goalId: string }) {
 
       {/* Expenses List */}
       <div className="space-y-2">
-        {expenses.map((expense: any) => (
-          <Link
-            key={expense.id}
-            href={`/months/${(expense.budgets as any)?.monthly_overview_id || ''}`}
-            className="block p-3 rounded-[var(--radius-md)] border border-[var(--color-border)] hover:border-[var(--color-primary)] hover:bg-[var(--color-primary)]/5 transition-colors"
-          >
-            <div className="flex items-start justify-between mb-1">
-              <div className="flex-1">
-                <p className="text-body font-medium text-[var(--color-text)]">
-                  {expense.description || 'Expense'}
-                </p>
-                <p className="text-small text-[var(--color-text-muted)]">
-                  {(expense.budgets as any)?.name || 'Unknown'} • {formatDate(expense.date)}
-                </p>
+        {expenses.map((expense: any) => {
+          const budget = expense.budgets as any;
+          const monthlyOverview = budget?.monthly_overviews as any;
+          const monthId = budget?.monthly_overview_id || monthlyOverview?.id || '';
+          const budgetName = budget?.name || 'Unknown';
+          
+          return (
+            <Link
+              key={expense.id}
+              href={monthId ? `/months/${monthId}` : '#'}
+              className="block p-3 rounded-[var(--radius-md)] border border-[var(--color-border)] hover:border-[var(--color-primary)] hover:bg-[var(--color-primary)]/5 transition-colors"
+            >
+              <div className="flex items-start justify-between mb-1">
+                <div className="flex-1">
+                  <p className="text-body font-medium text-[var(--color-text)]">
+                    {expense.description || 'Expense'}
+                  </p>
+                  <p className="text-small text-[var(--color-text-muted)]">
+                    {budgetName} • {formatDate(expense.date)}
+                  </p>
+                </div>
+                <span className="text-body font-medium text-[var(--color-text)] tabular-nums ml-4">
+                  {formatCurrency(expense.amount)}
+                </span>
               </div>
-              <span className="text-body font-medium text-[var(--color-text)] tabular-nums ml-4">
-                {formatCurrency(expense.amount)}
-              </span>
-            </div>
-          </Link>
-        ))}
+            </Link>
+          );
+        })}
       </div>
 
       {expenses.length >= 10 && (
