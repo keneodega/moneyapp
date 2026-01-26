@@ -72,6 +72,14 @@ export default function NewMonthPage() {
         .single();
 
       if (insertError) {
+        // Check if error is due to missing budgets table
+        if (insertError.message.includes('relation') && insertError.message.includes('budgets')) {
+          throw new Error(
+            'Database setup incomplete. The budgets table does not exist. ' +
+            'Please run the database schema migration in Supabase SQL Editor. ' +
+            'See: supabase/schema.sql'
+          );
+        }
         throw new Error(insertError.message);
       }
 

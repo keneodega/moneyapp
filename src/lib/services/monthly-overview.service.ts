@@ -91,10 +91,18 @@ export class MonthlyOverviewService {
     // No need to create them manually here to avoid duplicates
 
     // Get count of budgets created (by trigger)
-    const { count } = await this.supabase
+    // Wait a moment for trigger to complete, then check
+    await new Promise(resolve => setTimeout(resolve, 500));
+    
+    const { count, error: countError } = await this.supabase
       .from('budgets')
       .select('*', { count: 'exact', head: true })
       .eq('monthly_overview_id', monthlyOverview.id);
+    
+    // If budgets table doesn't exist, log warning but don't fail
+    if (countError && (countError.message.includes('does not exist') || countError.code === '42P01')) {
+      console.warn('Budgets table does not exist. Please run the database schema migration.');
+    }
 
     // Log successful month creation
     logMonthCreated({
