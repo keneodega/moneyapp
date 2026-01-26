@@ -110,6 +110,17 @@ async function getMonthData(id: string): Promise<{
       .eq('monthly_overview_id', id)
       .order('date_paid', { ascending: false });
 
+    // Calculate total spent from budgets
+    const totalSpent = budgets && budgets.length > 0
+      ? budgets.reduce((sum, b) => {
+          const amount = typeof b.amount_spent === 'string' ? parseFloat(b.amount_spent) : Number(b.amount_spent || 0);
+          return sum + (isNaN(amount) ? 0 : amount);
+        }, 0)
+      : 0;
+
+    // Update month with total_spent
+    month.total_spent = totalSpent;
+
     return {
       month,
       budgets: budgets || [],
