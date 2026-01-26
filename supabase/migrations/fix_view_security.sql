@@ -57,6 +57,9 @@ SELECT
   b.monthly_overview_id,
   b.name,
   b.budget_amount,
+  b.master_budget_id,
+  b.override_amount,
+  b.override_reason,
   COALESCE(SUM(e.amount), 0) AS amount_spent,
   b.budget_amount - COALESCE(SUM(e.amount), 0) AS amount_left,
   CASE 
@@ -109,5 +112,5 @@ GRANT SELECT ON public.investment_holding_summary TO authenticated;
 -- Add comments
 -- ============================================
 COMMENT ON VIEW public.monthly_overview_summary IS 'Monthly overview with computed totals (security invoker)';
-COMMENT ON VIEW public.budget_summary IS 'Budget with spent amount calculations (security invoker)';
+COMMENT ON VIEW public.budget_summary IS 'Budget with spent amount calculations and master budget references (security invoker)';
 COMMENT ON VIEW public.investment_holding_summary IS 'Investment holding with transaction totals (security invoker)';
