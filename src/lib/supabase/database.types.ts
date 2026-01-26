@@ -38,8 +38,9 @@ export type ExpenseSubCategoryType =
   | 'Tithe' | 'Offering' | 'Charity' | 'Education' | 'Childcare' | 'Pet' | 'Home Maintenance'
   | 'Furniture' | 'Electronics' | 'Travel' | 'Vacation' | 'Investment' | 'Savings' | 'Other';
 
-export type SubscriptionType = 
-  | 'Streaming' | 'Software' | 'Membership' | 'Insurance' | 'Utility' | 'News' | 'Gaming' | 'Health' | 'Other';
+// SubscriptionType is now TEXT in database, allowing dynamic values from Settings
+// Keeping the type as string for flexibility
+export type SubscriptionType = string;
 
 export type InvestmentType = 
   | 'Stocks' | 'ETF' | 'Bonds' | 'Crypto' | 'Real Estate' | 'Mutual Fund' | 'Pension' | 'Savings Account' | 'Other';
@@ -555,7 +556,7 @@ export interface Database {
       goal_type: GoalType;
       income_source_type: IncomeSourceType;
       expense_sub_category_type: ExpenseSubCategoryType;
-      subscription_type: SubscriptionType;
+      subscription_type: string; // Now TEXT in database, allowing dynamic values
       investment_type: InvestmentType;
       transaction_type: TransactionType;
       platform_type: PlatformType;
