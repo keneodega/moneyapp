@@ -128,7 +128,7 @@ export interface Expense {
   date: string;
   description?: string | null;
   sub_category?: ExpenseSubCategoryType | null;
-  bank?: BankType | null;
+  bank?: string | null;
   is_recurring: boolean;
   recurring_frequency?: FrequencyType | null;
   financial_goal_id?: string | null;
@@ -144,7 +144,7 @@ export interface ExpenseInsert {
   date: string;
   description?: string | null;
   sub_category?: ExpenseSubCategoryType | null;
-  bank?: BankType | null;
+  bank?: string | null;
   is_recurring?: boolean;
   recurring_frequency?: FrequencyType | null;
   financial_goal_id?: string | null;
@@ -156,7 +156,7 @@ export interface ExpenseUpdate {
   date?: string;
   description?: string | null;
   sub_category?: ExpenseSubCategoryType | null;
-  bank?: BankType | null;
+  bank?: string | null;
   is_recurring?: boolean;
   recurring_frequency?: FrequencyType | null;
   financial_goal_id?: string | null;
@@ -168,8 +168,8 @@ export interface IncomeSource {
   user_id: string;
   amount: number;
   source: IncomeSourceType;
-  person?: PersonType | null;
-  bank?: BankType | null;
+  person?: string | null;
+  bank?: string | null;
   date_paid: string;
   tithe_deduction: boolean;
   description?: string | null;
@@ -183,8 +183,8 @@ export interface IncomeSourceInsert {
   user_id: string;
   amount: number;
   source: IncomeSourceType;
-  person?: PersonType | null;
-  bank?: BankType | null;
+  person?: string | null;
+  bank?: string | null;
   date_paid: string;
   tithe_deduction?: boolean;
   description?: string | null;
@@ -193,8 +193,8 @@ export interface IncomeSourceInsert {
 export interface IncomeSourceUpdate {
   amount?: number;
   source?: IncomeSourceType;
-  person?: PersonType | null;
-  bank?: BankType | null;
+  person?: string | null;
+  bank?: string | null;
   date_paid?: string;
   tithe_deduction?: boolean;
   description?: string | null;
@@ -209,7 +209,7 @@ export interface FinancialGoal {
   start_date: string;
   end_date?: string | null;
   status: StatusType;
-  person?: PersonType | null;
+  person?: string | null;
   priority: PriorityType;
   goal_type?: GoalType | null;
   estimated_contributions?: number | null;
@@ -230,7 +230,7 @@ export interface FinancialGoalInsert {
   start_date: string;
   end_date?: string | null;
   status?: StatusType;
-  person?: PersonType | null;
+  person?: string | null;
   priority?: PriorityType;
   goal_type?: GoalType | null;
   estimated_contributions?: number | null;
@@ -247,7 +247,7 @@ export interface FinancialGoalUpdate {
   start_date?: string;
   end_date?: string | null;
   status?: StatusType;
-  person?: PersonType | null;
+  person?: string | null;
   priority?: PriorityType;
   goal_type?: GoalType | null;
   estimated_contributions?: number | null;
@@ -265,7 +265,7 @@ export interface FinancialSubGoal {
   actual_cost?: number | null;
   status: StatusType;
   priority: PriorityType;
-  responsible_person?: PersonType | null;
+  responsible_person?: string | null;
   start_date?: string | null;
   end_date?: string | null;
   progress: number;
@@ -284,7 +284,7 @@ export interface FinancialSubGoalInsert {
   actual_cost?: number | null;
   status?: StatusType;
   priority?: PriorityType;
-  responsible_person?: PersonType | null;
+  responsible_person?: string | null;
   start_date?: string | null;
   end_date?: string | null;
   progress?: number;
@@ -299,7 +299,7 @@ export interface FinancialSubGoalUpdate {
   actual_cost?: number | null;
   status?: StatusType;
   priority?: PriorityType;
-  responsible_person?: PersonType | null;
+  responsible_person?: string | null;
   start_date?: string | null;
   end_date?: string | null;
   progress?: number;
@@ -315,8 +315,8 @@ export interface Subscription {
   amount: number;
   frequency: FrequencyType;
   status: SubscriptionStatusType;
-  person?: PersonType | null;
-  bank?: BankType | null;
+  person?: string | null;
+  bank?: string | null;
   subscription_type?: SubscriptionType | null;
   start_date?: string | null;
   end_date?: string | null;
@@ -336,8 +336,8 @@ export interface SubscriptionInsert {
   amount: number;
   frequency: FrequencyType;
   status?: SubscriptionStatusType;
-  person?: PersonType | null;
-  bank?: BankType | null;
+  person?: string | null;
+  bank?: string | null;
   subscription_type?: SubscriptionType | null;
   start_date?: string | null;
   end_date?: string | null;
@@ -353,8 +353,8 @@ export interface SubscriptionUpdate {
   amount?: number;
   frequency?: FrequencyType;
   status?: SubscriptionStatusType;
-  person?: PersonType | null;
-  bank?: BankType | null;
+  person?: string | null;
+  bank?: string | null;
   subscription_type?: SubscriptionType | null;
   start_date?: string | null;
   end_date?: string | null;

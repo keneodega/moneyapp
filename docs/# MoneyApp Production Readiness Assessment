@@ -1,0 +1,113 @@
+# MoneyApp Production Readiness Assessment
+
+## Storage Limits
+
+### Supabase Free Tier
+- **Database:** 500 MB storage
+- **File Storage:** 1 GB  
+- **Bandwidth:** 2 GB/month
+- **API Requests:** Unlimited (with rate limits)
+
+**Assessment:** For a personal/family money tracker, 500 MB is **more than enough**. A typical expense record is ~1 KB. You could store **500,000+ records** before hitting limits. Years of daily transactions won't come close.
+
+### Vercel Free Tier
+- 100 GB bandwidth/month
+- Serverless function limits (won't affect normal use)
+
+---
+
+## Real Risks to Consider
+
+### 1. Data Loss (Biggest Risk)
+- **Supabase Free Tier** includes **daily backups** (retained 7 days)
+- **No Point-in-Time Recovery (PITR)** on free tier
+- If you accidentally delete data, you have 7 days to restore from a backup
+
+**Mitigation:**
+- Export your data periodically (Supabase Table Editor → Export CSV)
+- Consider upgrading to Pro ($25/mo) for PITR if data becomes critical
+
+### 2. Accidental Deletion
+- Your app has delete functionality now
+- No "soft delete" or recycle bin - deletions are permanent
+
+**Mitigation:**
+- Be careful with the delete button
+- Consider adding a confirmation step (which you have)
+
+### 3. Account Issues
+- If your Supabase or Vercel account gets locked/deleted, you lose access
+- Free tier projects can be paused after 7 days of inactivity (Supabase)
+
+**Mitigation:**
+- Keep accounts in good standing
+- Log in occasionally to keep projects active
+- Download backups periodically
+
+### 4. No Multi-User Support
+- Currently single-user (you)
+- If someone else signs up, they get their own isolated data (which is fine)
+
+### 5. No Offline Support
+- Requires internet connection
+- No data sync if offline
+
+---
+
+## What You Should NOT Be Afraid Of
+
+1. **Performance** - PostgreSQL handles millions of records easily
+2. **Security** - You have RLS enabled, data is user-scoped
+3. **Reliability** - Supabase/Vercel have excellent uptime
+4. **Cost** - Free tier is genuinely free for personal use
+
+---
+
+## Recommendation
+
+**Yes, you can use this for real daily tracking.** To be safe:
+
+1. **Export your data monthly** (CSV backup from Supabase)
+2. **Don't delete records casually** - edit them instead if possible
+3. **Consider upgrading Supabase** if you reach ~6 months of heavy use and want peace of mind
+
+You've built something solid. The main risk is human error (accidental deletion), not technical failure.
+
+---
+
+## Backup Strategy
+
+### Monthly Backup Process:
+1. Go to Supabase Dashboard → Table Editor
+2. Select each table (subscriptions, expenses, budgets, etc.)
+3. Click "Export" → Download as CSV
+4. Store in a safe location (Google Drive, iCloud, etc.)
+
+### Critical Tables to Backup:
+- `subscriptions`
+- `expenses`
+- `budgets`
+- `monthly_overviews`
+- `income_sources`
+- `financial_goals`
+- `app_settings`
+
+---
+
+## Upgrade Considerations
+
+### When to Consider Supabase Pro ($25/month):
+- After 6+ months of regular use
+- If data becomes critical to your financial planning
+- If you want Point-in-Time Recovery (PITR)
+- If you need more storage (8 GB database)
+
+### When to Consider Vercel Pro ($20/month):
+- If you need custom domains
+- If you exceed free tier bandwidth
+- If you need team collaboration
+
+---
+
+*Document created: January 2026*
+*Last updated: January 2026*
