@@ -22,113 +22,58 @@ async function getMonths(): Promise<MonthData[]> {
       return [];
     }
 
-    // Try to fetch from view first
-    let { data, error } = await supabase
-      .from('monthly_overview_summary')
+    // Always calculate manually for now (more reliable than view)
+    // Fetch from base table and calculate manually
+    const { data: months, error: monthsError } = await supabase
+      .from('monthly_overviews')
       .select('*')
       .order('start_date', { ascending: false });
 
-    // If view fails or returns no data, fallback to manual calculation
-    if (error || !data || data.length === 0) {
-      // Fetch from base table and calculate manually
-      const { data: months, error: monthsError } = await supabase
-        .from('monthly_overviews')
-        .select('*')
-        .order('start_date', { ascending: false });
-
-      if (monthsError || !months) {
-        return [];
-      }
-
-      // Calculate totals for each month
-      const monthsWithTotals = await Promise.all(
-        months.map(async (month) => {
-          // Get income total
-          const { data: income } = await supabase
-            .from('income_sources')
-            .select('amount')
-            .eq('monthly_overview_id', month.id);
-          const totalIncome = income?.reduce((sum, i) => sum + Number(i.amount || 0), 0) || 0;
-
-          // Get budget total
-          const { data: budgets } = await supabase
-            .from('budgets')
-            .select('budget_amount')
-            .eq('monthly_overview_id', month.id);
-          const totalBudgeted = budgets?.reduce((sum, b) => sum + Number(b.budget_amount || 0), 0) || 0;
-
-          // Get spent total
-          const { data: budgetSummaries } = await supabase
-            .from('budget_summary')
-            .select('amount_spent')
-            .eq('monthly_overview_id', month.id);
-          const totalSpent = budgetSummaries?.reduce((sum, b) => sum + Number(b.amount_spent || 0), 0) || 0;
-
-          return {
-            ...month,
-            total_income: totalIncome,
-            total_budgeted: totalBudgeted,
-            total_spent: totalSpent,
-            amount_unallocated: totalIncome - totalBudgeted,
-          };
-        })
-      );
-
-      return monthsWithTotals;
+    if (monthsError || !months || months.length === 0) {
+      return [];
     }
 
-    // If view returned data but totals are 0, verify with manual calculation
-    // This handles cases where view exists but RLS blocks subqueries
-    if (data && data.length > 0) {
-      // Check if any month has non-zero totals - if all zeros, recalculate
-      const hasRealData = data.some(m => 
-        (m.total_income && m.total_income > 0) || 
-        (m.total_budgeted && m.total_budgeted > 0)
-      );
-      
-      if (!hasRealData) {
-        // View returned zeros - recalculate manually
-        const { data: months } = await supabase
-          .from('monthly_overviews')
-          .select('*')
-          .order('start_date', { ascending: false });
+    // Calculate totals for each month
+    const monthsWithTotals = await Promise.all(
+      months.map(async (month) => {
+        // Get income total
+        const { data: income, error: incomeError } = await supabase
+          .from('income_sources')
+          .select('amount')
+          .eq('monthly_overview_id', month.id);
+        const totalIncome = income && !incomeError 
+          ? income.reduce((sum, i) => sum + Number(i.amount || 0), 0) 
+          : 0;
 
-        if (months && months.length > 0) {
-          const monthsWithTotals = await Promise.all(
-            months.map(async (month) => {
-              const { data: income } = await supabase
-                .from('income_sources')
-                .select('amount')
-                .eq('monthly_overview_id', month.id);
-              const totalIncome = income?.reduce((sum, i) => sum + Number(i.amount || 0), 0) || 0;
+        // Get budget total
+        const { data: budgets, error: budgetsError } = await supabase
+          .from('budgets')
+          .select('budget_amount')
+          .eq('monthly_overview_id', month.id);
+        const totalBudgeted = budgets && !budgetsError
+          ? budgets.reduce((sum, b) => sum + Number(b.budget_amount || 0), 0)
+          : 0;
 
-              const { data: budgets } = await supabase
-                .from('budgets')
-                .select('budget_amount')
-                .eq('monthly_overview_id', month.id);
-              const totalBudgeted = budgets?.reduce((sum, b) => sum + Number(b.budget_amount || 0), 0) || 0;
+        // Get spent total from budget_summary view
+        const { data: budgetSummaries, error: spentError } = await supabase
+          .from('budget_summary')
+          .select('amount_spent')
+          .eq('monthly_overview_id', month.id);
+        const totalSpent = budgetSummaries && !spentError
+          ? budgetSummaries.reduce((sum, b) => sum + Number(b.amount_spent || 0), 0)
+          : 0;
 
-              const { data: budgetSummaries } = await supabase
-                .from('budget_summary')
-                .select('amount_spent')
-                .eq('monthly_overview_id', month.id);
-              const totalSpent = budgetSummaries?.reduce((sum, b) => sum + Number(b.amount_spent || 0), 0) || 0;
+        return {
+          ...month,
+          total_income: totalIncome,
+          total_budgeted: totalBudgeted,
+          total_spent: totalSpent,
+          amount_unallocated: totalIncome - totalBudgeted,
+        };
+      })
+    );
 
-              return {
-                ...month,
-                total_income: totalIncome,
-                total_budgeted: totalBudgeted,
-                total_spent: totalSpent,
-                amount_unallocated: totalIncome - totalBudgeted,
-              };
-            })
-          );
-          return monthsWithTotals;
-        }
-      }
-    }
-
-    return data || [];
+    return monthsWithTotals;
   } catch (err) {
     console.error('Error fetching months:', err);
     return [];

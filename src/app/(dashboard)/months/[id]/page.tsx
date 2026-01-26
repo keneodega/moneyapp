@@ -44,50 +44,41 @@ async function getMonthData(id: string): Promise<{
       return null;
     }
 
-    // Try to fetch from view first
-    let { data: month, error: monthError } = await supabase
-      .from('monthly_overview_summary')
+    // Always calculate manually for reliability
+    const { data: baseMonth, error: baseError } = await supabase
+      .from('monthly_overviews')
       .select('*')
       .eq('id', id)
       .single();
 
-    // If view fails or returns zeros, fallback to base table and calculate manually
-    const needsRecalculation = monthError || !month || 
-      ((!month.total_income || month.total_income === 0) && 
-       (!month.total_budgeted || month.total_budgeted === 0));
-
-    if (needsRecalculation) {
-      const { data: baseMonth, error: baseError } = await supabase
-        .from('monthly_overviews')
-        .select('*')
-        .eq('id', id)
-        .single();
-
-      if (baseError || !baseMonth) {
-        return null;
-      }
-
-      // Calculate totals manually
-      const { data: income } = await supabase
-        .from('income_sources')
-        .select('amount')
-        .eq('monthly_overview_id', id);
-      const totalIncome = income?.reduce((sum, i) => sum + Number(i.amount || 0), 0) || 0;
-
-      const { data: budgets } = await supabase
-        .from('budgets')
-        .select('budget_amount')
-        .eq('monthly_overview_id', id);
-      const totalBudgeted = budgets?.reduce((sum, b) => sum + Number(b.budget_amount || 0), 0) || 0;
-
-      month = {
-        ...baseMonth,
-        total_income: totalIncome,
-        total_budgeted: totalBudgeted,
-        total_spent: 0, // Will be calculated from budget_summary below
-        amount_unallocated: totalIncome - totalBudgeted,
-      };
+    if (baseError || !baseMonth) {
+      return null;
     }
+
+    // Calculate totals manually
+    const { data: income, error: incomeError } = await supabase
+      .from('income_sources')
+      .select('amount')
+      .eq('monthly_overview_id', id);
+    const totalIncome = income && !incomeError
+      ? income.reduce((sum, i) => sum + Number(i.amount || 0), 0)
+      : 0;
+
+    const { data: budgets, error: budgetsError } = await supabase
+      .from('budgets')
+      .select('budget_amount')
+      .eq('monthly_overview_id', id);
+    const totalBudgeted = budgets && !budgetsError
+      ? budgets.reduce((sum, b) => sum + Number(b.budget_amount || 0), 0)
+      : 0;
+
+    const month = {
+      ...baseMonth,
+      total_income: totalIncome,
+      total_budgeted: totalBudgeted,
+      total_spent: 0, // Will be calculated from budget_summary below
+      amount_unallocated: totalIncome - totalBudgeted,
+    };
 
     // Fetch budgets with summary
     const { data: budgets } = await supabase
