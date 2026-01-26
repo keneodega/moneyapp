@@ -97,14 +97,58 @@ async function getMonthData(id: string): Promise<{
     };
 
     // Fetch budgets with summary and master budget info
-    const { data: budgets } = await supabase
-      .from('budget_summary')
+    // Query budgets table directly and calculate spent amount manually
+    // This is more reliable than using the view which may be missing columns
+    const { data: budgetsData, error: budgetsError } = await supabase
+      .from('budgets')
       .select(`
         *,
         master_budget:master_budgets(budget_amount, name)
       `)
       .eq('monthly_overview_id', id)
       .order('name');
+    
+    if (budgetsError) {
+      console.error(`Error fetching budgets for month ${id}:`, budgetsError);
+    }
+    
+    // Calculate spent amount for each budget
+    const budgets = await Promise.all(
+      (budgetsData || []).map(async (budget) => {
+        const { data: expenses, error: expensesError } = await supabase
+          .from('expenses')
+          .select('amount')
+          .eq('budget_id', budget.id);
+        
+        if (expensesError) {
+          console.error(`Error fetching expenses for budget ${budget.id}:`, expensesError);
+        }
+        
+        const amount_spent = expenses?.reduce((sum, e) => {
+          const amount = typeof e.amount === 'string' ? parseFloat(e.amount) : Number(e.amount || 0);
+          return sum + (isNaN(amount) ? 0 : amount);
+        }, 0) || 0;
+        
+        return {
+          id: budget.id,
+          monthly_overview_id: budget.monthly_overview_id,
+          name: budget.name,
+          budget_amount: budget.budget_amount,
+          amount_spent,
+          amount_left: Number(budget.budget_amount) - amount_spent,
+          percent_used: Number(budget.budget_amount) > 0 
+            ? (amount_spent / Number(budget.budget_amount)) * 100 
+            : 0,
+          description: budget.description,
+          master_budget_id: budget.master_budget_id,
+          override_amount: budget.override_amount,
+          override_reason: budget.override_reason,
+          master_budget: budget.master_budget,
+          created_at: budget.created_at,
+          updated_at: budget.updated_at,
+        };
+      })
+    );
 
     // Fetch income
     const { data: income } = await supabase
