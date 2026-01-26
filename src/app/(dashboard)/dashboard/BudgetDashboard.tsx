@@ -60,10 +60,16 @@ export function BudgetDashboard({ dateRange }: BudgetDashboardProps) {
         .gte('end_date', startDateStr)   // Month ends after or on the start of our range
         .order('start_date', { ascending: false });
 
-      if (!months) {
+      if (!months || months.length === 0) {
+        console.log('No months found for date range:', {
+          start: dateRange.start.toISOString().split('T')[0],
+          end: dateRange.end.toISOString().split('T')[0],
+        });
         setBudgetData([]);
         return;
       }
+
+      console.log(`Found ${months.length} months for date range:`, months.map(m => m.name));
 
       // Fetch budget data for each month
       const monthData: BudgetData[] = await Promise.all(
@@ -109,6 +115,13 @@ export function BudgetDashboard({ dateRange }: BudgetDashboardProps) {
           const totalBudgeted = budgetDetails.reduce((sum, b) => sum + b.budgetAmount, 0);
           const totalSpent = budgetDetails.reduce((sum, b) => sum + b.spent, 0);
 
+          console.log(`Month ${month.name}:`, {
+            totalIncome,
+            totalBudgeted,
+            totalSpent,
+            budgetCount: budgetDetails.length,
+          });
+
           return {
             monthId: month.id,
             monthName: month.name,
@@ -121,6 +134,7 @@ export function BudgetDashboard({ dateRange }: BudgetDashboardProps) {
         })
       );
 
+      console.log('Budget data loaded:', monthData);
       setBudgetData(monthData);
     } catch (error) {
       console.error('Failed to load budget data:', error);
