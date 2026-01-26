@@ -96,10 +96,13 @@ async function getMonthData(id: string): Promise<{
       amount_unallocated: totalIncome - totalBudgeted,
     };
 
-    // Fetch budgets with summary
+    // Fetch budgets with summary and master budget info
     const { data: budgets } = await supabase
       .from('budget_summary')
-      .select('*')
+      .select(`
+        *,
+        master_budget:master_budgets(budget_amount, name)
+      `)
       .eq('monthly_overview_id', id)
       .order('name');
 
@@ -292,10 +295,20 @@ export default async function MonthDetailPage({
           
           {budgets.length > 0 ? (
             <div className="grid gap-3">
-              {budgets.map((budget, index) => {
+              {budgets.map((budget: any, index) => {
                 const percent = budget.budget_amount > 0 
                   ? (budget.amount_spent / budget.budget_amount) * 100 
                   : 0;
+                
+                // Calculate deviation from master budget
+                const masterAmount = budget.master_budget?.budget_amount;
+                const effectiveAmount = budget.override_amount ?? budget.budget_amount;
+                const deviation = masterAmount && Math.abs(effectiveAmount - masterAmount) > 0.01
+                  ? effectiveAmount - masterAmount
+                  : null;
+                const deviationPercent = deviation && masterAmount && masterAmount > 0
+                  ? ((deviation / masterAmount) * 100).toFixed(1)
+                  : null;
                 
                 return (
                   <Link 
@@ -305,16 +318,32 @@ export default async function MonthDetailPage({
                   >
                     <Card variant="outlined" padding="md" hover>
                       <div className="flex items-center justify-between mb-3">
-                        <h3 className="text-body font-medium text-[var(--color-text)]">
-                          {budget.name}
-                        </h3>
+                        <div className="flex-1">
+                          <h3 className="text-body font-medium text-[var(--color-text)]">
+                            {budget.name}
+                          </h3>
+                          {deviation !== null && (
+                            <p className={`text-caption mt-0.5 ${
+                              deviation > 0 ? 'text-[var(--color-warning)]' : 'text-[var(--color-success)]'
+                            }`}>
+                              {deviation > 0 ? '↑' : '↓'} {deviation > 0 ? '+' : ''}€{Math.abs(deviation).toLocaleString('en-IE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                              {deviationPercent && ` (${deviation > 0 ? '+' : ''}${deviationPercent}%)`}
+                              {' '}from master
+                            </p>
+                          )}
+                          {budget.override_reason && (
+                            <p className="text-caption text-[var(--color-text-muted)] mt-0.5 italic">
+                              "{budget.override_reason}"
+                            </p>
+                          )}
+                        </div>
                         <span className="text-small font-medium text-[var(--color-text)] tabular-nums">
-                          {formatCurrency(budget.budget_amount)}
+                          {formatCurrency(effectiveAmount)}
                         </span>
                       </div>
                       <BudgetProgress 
                         spent={budget.amount_spent} 
-                        total={budget.budget_amount} 
+                        total={effectiveAmount} 
                       />
                     </Card>
                   </Link>
