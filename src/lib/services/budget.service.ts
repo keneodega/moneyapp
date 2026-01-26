@@ -76,6 +76,16 @@ export class BudgetService {
       );
     }
 
+    // If override_amount is set, override_reason must be provided
+    if (data.override_amount !== null && data.override_amount !== undefined) {
+      if (!data.override_reason || !data.override_reason.trim()) {
+        throw new ValidationError(
+          'A reason is required when overriding the master budget amount',
+          'override_reason'
+        );
+      }
+    }
+
     const { data: budget, error } = await this.supabase
       .from('budgets')
       .insert({
@@ -187,6 +197,21 @@ export class BudgetService {
     // Validate budget amount if provided
     if (data.budget_amount !== undefined && data.budget_amount < 0) {
       throw new ValidationError('Budget amount cannot be negative', 'budget_amount');
+    }
+
+    // If override_amount is set, override_reason must be provided
+    if (data.override_amount !== null && data.override_amount !== undefined) {
+      if (!data.override_reason || !data.override_reason.trim()) {
+        throw new ValidationError(
+          'A reason is required when overriding the master budget amount',
+          'override_reason'
+        );
+      }
+    }
+
+    // If override_amount is null, also clear override_reason
+    if (data.override_amount === null) {
+      data.override_reason = null;
     }
 
     const { data: updated, error } = await this.supabase
