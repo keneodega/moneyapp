@@ -84,8 +84,11 @@ export function TransactionsDashboard({ dateRange }: TransactionsDashboardProps)
             amount,
             date,
             description,
-            budgets(name, monthly_overview_id),
-            monthly_overviews(name)
+            budgets(
+              name,
+              monthly_overview_id,
+              monthly_overviews(name)
+            )
           `)
           .eq('user_id', user.id)
           .gte('date', dateRange.start.toISOString().split('T')[0])
@@ -94,14 +97,15 @@ export function TransactionsDashboard({ dateRange }: TransactionsDashboardProps)
 
         if (expenses) {
           expenses.forEach((exp: any) => {
+            const budget = exp.budgets as any;
             allTransactions.push({
               id: exp.id,
               type: 'expense',
               amount: Number(exp.amount || 0),
               date: exp.date,
-              description: exp.description || exp.budgets?.name || 'Expense',
-              category: exp.budgets?.name,
-              monthName: exp.monthly_overviews?.name || exp.budgets?.monthly_overview_id,
+              description: exp.description || budget?.name || 'Expense',
+              category: budget?.name,
+              monthName: budget?.monthly_overviews?.name,
             });
           });
         }
