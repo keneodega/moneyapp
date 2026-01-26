@@ -5,6 +5,7 @@ import { usePathname, useRouter } from 'next/navigation';
 import { createSupabaseBrowserClient } from '@/lib/supabase/client';
 
 const navItems = [
+  { href: '/dashboard', label: 'Dashboard', icon: ChartBarIcon },
   { href: '/months', label: 'Months', icon: CalendarIcon },
   { href: '/master-budgets', label: 'Master Budgets', icon: PieChartIcon },
   { href: '/goals', label: 'Goals', icon: TargetIcon },
@@ -122,6 +123,14 @@ function PieChartIcon({ className }: { className?: string }) {
     <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
       <path strokeLinecap="round" strokeLinejoin="round" d="M10.5 6a7.5 7.5 0 107.5 7.5h-7.5V6z" />
       <path strokeLinecap="round" strokeLinejoin="round" d="M13.5 10.5H21A7.5 7.5 0 0013.5 3v7.5z" />
+    </svg>
+  );
+}
+
+function ChartBarIcon({ className }: { className?: string }) {
+  return (
+    <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+      <path strokeLinecap="round" strokeLinejoin="round" d="M3 13l8 0-8 8-8-8zM3 3l8 0M11 3l10 0M3 8l8 0M11 8l10 0M3 13l8 0M11 13l10 0M3 18l8 0M11 18l10 0" />
     </svg>
   );
 }
