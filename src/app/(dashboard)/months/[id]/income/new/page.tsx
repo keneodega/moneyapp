@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { Card, Button, Input, Select, Textarea } from '@/components/ui';
 import { createSupabaseBrowserClient } from '@/lib/supabase/client';
-import { SettingsService } from '@/lib/services';
+import { SettingsService, IncomeSourceService } from '@/lib/services';
 
 const INCOME_SOURCES = [
   { value: 'Salary', label: 'Salary' },
@@ -154,24 +154,18 @@ export default function NewIncomePage({
         return;
       }
 
-      // 1. Insert the income source
-      const { error: insertError } = await supabase
-        .from('income_sources')
-        .insert({
-          monthly_overview_id: monthId,
-          user_id: user.id,
-          amount: calculations.amount,
-          source: formData.source,
-          person: formData.person,
-          bank: formData.bank,
-          date_paid: formData.date_paid,
-          tithe_deduction: formData.auto_tithe || formData.auto_offering,
-          description: formData.description || null,
-        });
-
-      if (insertError) {
-        throw new Error(insertError.message);
-      }
+      // 1. Insert the income source using the service (which will auto-create budgets)
+      const incomeService = new IncomeSourceService(supabase);
+      await incomeService.create({
+        monthly_overview_id: monthId,
+        amount: calculations.amount,
+        source: formData.source as any,
+        person: formData.person || null,
+        bank: formData.bank || null,
+        date_paid: formData.date_paid,
+        tithe_deduction: formData.auto_tithe || formData.auto_offering,
+        description: formData.description || null,
+      });
 
       // 2. If auto-tithe is enabled, create expense in Tithe budget
       if (formData.auto_tithe && calculations.titheAmount > 0) {
