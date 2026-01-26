@@ -29,6 +29,7 @@
 export { MonthlyOverviewService, DEFAULT_BUDGET_CATEGORIES } from './monthly-overview.service';
 export { ExpenseService } from './expense.service';
 export { BudgetService } from './budget.service';
+export { MasterBudgetService } from './master-budget.service';
 export { IncomeSourceService } from './income-source.service';
 export { FinancialGoalService } from './financial-goal.service';
 export { SubscriptionService } from './subscription.service';
@@ -68,6 +69,7 @@ import { SupabaseClient } from '@supabase/supabase-js';
 import { MonthlyOverviewService } from './monthly-overview.service';
 import { ExpenseService } from './expense.service';
 import { BudgetService } from './budget.service';
+import { MasterBudgetService } from './master-budget.service';
 import { IncomeSourceService } from './income-source.service';
 import { FinancialGoalService } from './financial-goal.service';
 import { SubscriptionService } from './subscription.service';
@@ -77,6 +79,7 @@ export interface Services {
   monthlyOverview: MonthlyOverviewService;
   expense: ExpenseService;
   budget: BudgetService;
+  masterBudget: MasterBudgetService;
   incomeSource: IncomeSourceService;
   financialGoal: FinancialGoalService;
   subscription: SubscriptionService;
@@ -88,6 +91,7 @@ export function createServices(supabase: SupabaseClient): Services {
     monthlyOverview: new MonthlyOverviewService(supabase),
     expense: new ExpenseService(supabase),
     budget: new BudgetService(supabase),
+    masterBudget: new MasterBudgetService(supabase),
     incomeSource: new IncomeSourceService(supabase),
     financialGoal: new FinancialGoalService(supabase),
     subscription: new SubscriptionService(supabase),

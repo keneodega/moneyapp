@@ -223,6 +223,23 @@ CREATE POLICY "Users can manage own settings" ON app_settings
         </p>
       </div>
 
+      {/* Master Budgets Link */}
+      <Card variant="outlined" padding="lg" className="border-[var(--color-primary)]/30">
+        <div className="flex items-start justify-between">
+          <div>
+            <h2 className="text-title text-[var(--color-text)] mb-1">Master Budgets</h2>
+            <p className="text-small text-[var(--color-text-muted)]">
+              Manage your baseline budget categories. These amounts are copied to each new month.
+            </p>
+          </div>
+          <Link href="/settings/master-budgets">
+            <Button variant="primary">
+              Manage Master Budgets
+            </Button>
+          </Link>
+        </div>
+      </Card>
+
       {/* Settings Sections */}
       {(Object.keys(SETTING_LABELS) as SettingType[]).map((type) => (
         <Card key={type} variant="outlined" padding="lg">

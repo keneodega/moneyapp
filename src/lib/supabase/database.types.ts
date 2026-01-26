@@ -96,6 +96,9 @@ export interface Budget {
   name: string;
   budget_amount: number;
   description?: string | null;
+  master_budget_id?: string | null;
+  override_amount?: number | null;
+  override_reason?: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -106,12 +109,17 @@ export interface BudgetInsert {
   name: string;
   budget_amount: number;
   description?: string | null;
+  master_budget_id?: string | null;
+  override_amount?: number | null;
+  override_reason?: string | null;
 }
 
 export interface BudgetUpdate {
   name?: string;
   budget_amount?: number;
   description?: string | null;
+  override_amount?: number | null;
+  override_reason?: string | null;
 }
 
 // Budget with computed fields (from view)
@@ -119,6 +127,37 @@ export interface BudgetSummary extends Budget {
   amount_spent: number;
   amount_left: number;
   percent_used: number;
+}
+
+// Master Budget types
+export interface MasterBudget {
+  id: string;
+  user_id: string;
+  name: string;
+  budget_amount: number;
+  description?: string | null;
+  is_active: boolean;
+  display_order: number;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface MasterBudgetInsert {
+  id?: string;
+  user_id?: string;
+  name: string;
+  budget_amount: number;
+  description?: string | null;
+  is_active?: boolean;
+  display_order?: number;
+}
+
+export interface MasterBudgetUpdate {
+  name?: string;
+  budget_amount?: number;
+  description?: string | null;
+  is_active?: boolean;
+  display_order?: number;
 }
 
 export interface Expense {

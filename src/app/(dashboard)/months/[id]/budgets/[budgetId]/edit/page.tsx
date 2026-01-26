@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { Card, Button, Input, DeleteButton } from '@/components/ui';
 import { createSupabaseBrowserClient } from '@/lib/supabase/client';
-import { BudgetService } from '@/lib/services';
+import { BudgetService, MasterBudgetService } from '@/lib/services';
 
 export default function EditBudgetPage({
   params,
@@ -20,7 +20,10 @@ export default function EditBudgetPage({
   const [formData, setFormData] = useState({
     name: '',
     budget_amount: '',
+    override_reason: '',
   });
+  const [masterBudgetAmount, setMasterBudgetAmount] = useState<number | null>(null);
+  const [masterBudgetName, setMasterBudgetName] = useState<string | null>(null);
 
   useEffect(() => {
     async function loadBudget() {
@@ -36,9 +39,22 @@ export default function EditBudgetPage({
         const budgetService = new BudgetService(supabase);
         const budget = await budgetService.getById(budgetId);
 
+        // Load master budget if linked
+        if (budget.master_budget_id) {
+          const masterBudgetService = new MasterBudgetService(supabase);
+          try {
+            const masterBudget = await masterBudgetService.getById(budget.master_budget_id);
+            setMasterBudgetAmount(masterBudget.budget_amount);
+            setMasterBudgetName(masterBudget.name);
+          } catch (err) {
+            console.warn('Could not load master budget:', err);
+          }
+        }
+
         setFormData({
           name: budget.name,
           budget_amount: budget.budget_amount.toString(),
+          override_reason: budget.override_reason || '',
         });
       } catch (err) {
         setError(err instanceof Error ? err.message : 'Failed to load budget');
@@ -50,13 +66,21 @@ export default function EditBudgetPage({
     loadBudget();
   }, [budgetId, monthId, router]);
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
     setFormData((prev) => ({
       ...prev,
       [name]: value,
     }));
   };
+
+  // Calculate if this is an override
+  const newAmount = parseFloat(formData.budget_amount) || 0;
+  const isOverride = masterBudgetAmount !== null && Math.abs(newAmount - masterBudgetAmount) > 0.01;
+  const deviation = masterBudgetAmount !== null ? newAmount - masterBudgetAmount : null;
+  const deviationPercent = masterBudgetAmount !== null && masterBudgetAmount > 0
+    ? ((deviation! / masterBudgetAmount) * 100).toFixed(1)
+    : null;
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -75,9 +99,21 @@ export default function EditBudgetPage({
 
       const budgetService = new BudgetService(supabase);
 
+      const newAmount = parseFloat(formData.budget_amount) || 0;
+      const isOverride = masterBudgetAmount !== null && Math.abs(newAmount - masterBudgetAmount) > 0.01;
+
+      // Require reason if overriding master budget
+      if (isOverride && !formData.override_reason.trim()) {
+        setError('Please provide a reason for changing this budget amount from the master budget.');
+        setIsSaving(false);
+        return;
+      }
+
       await budgetService.update(budgetId, {
         name: formData.name.trim(),
-        budget_amount: parseFloat(formData.budget_amount) || 0,
+        budget_amount: newAmount,
+        override_amount: isOverride ? newAmount : null,
+        override_reason: isOverride ? formData.override_reason.trim() : null,
       });
 
       router.push(`/months/${monthId}/budgets/${budgetId}`);
@@ -142,6 +178,16 @@ export default function EditBudgetPage({
             required
           />
 
+          {/* Master Budget Info */}
+          {masterBudgetAmount !== null && (
+            <div className="p-4 rounded-[var(--radius-md)] bg-[var(--color-surface-sunken)] border border-[var(--color-border)]">
+              <p className="text-small text-[var(--color-text-muted)] mb-1">Master Budget</p>
+              <p className="text-body font-medium text-[var(--color-text)]">
+                {masterBudgetName}: €{masterBudgetAmount.toLocaleString('en-IE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+              </p>
+            </div>
+          )}
+
           {/* Budget Amount */}
           <Input
             label="Budget Amount (€)"
@@ -153,8 +199,50 @@ export default function EditBudgetPage({
             value={formData.budget_amount}
             onChange={handleChange}
             required
-            hint="You can increase or decrease this at any time"
+            hint={
+              masterBudgetAmount !== null
+                ? `Master budget: €${masterBudgetAmount.toLocaleString('en-IE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+                : "You can increase or decrease this at any time"
+            }
           />
+
+          {/* Deviation Display */}
+          {deviation !== null && Math.abs(deviation) > 0.01 && (
+            <div className={`p-4 rounded-[var(--radius-md)] ${
+              deviation > 0 
+                ? 'bg-[var(--color-warning)]/10 border border-[var(--color-warning)]/20' 
+                : 'bg-[var(--color-success)]/10 border border-[var(--color-success)]/20'
+            }`}>
+              <p className="text-small font-medium text-[var(--color-text)]">
+                {deviation > 0 ? '↑' : '↓'} Deviation from Master: 
+                <span className={deviation > 0 ? 'text-[var(--color-warning)]' : 'text-[var(--color-success)]'}>
+                  {' '}{deviation > 0 ? '+' : ''}€{deviation.toLocaleString('en-IE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                  {deviationPercent && ` (${deviationPercent > 0 ? '+' : ''}${deviationPercent}%)`}
+                </span>
+              </p>
+            </div>
+          )}
+
+          {/* Override Reason (required if override) */}
+          {isOverride && (
+            <div>
+              <label className="block text-small font-medium text-[var(--color-text)] mb-2">
+                Reason for Override <span className="text-[var(--color-danger)]">*</span>
+              </label>
+              <textarea
+                name="override_reason"
+                value={formData.override_reason}
+                onChange={handleChange}
+                placeholder="e.g., Special event this month, Holiday season, Unexpected expenses..."
+                required
+                rows={3}
+                className="w-full px-4 py-3 rounded-[var(--radius-md)] bg-[var(--color-surface)] border border-[var(--color-border)] text-body text-[var(--color-text)] placeholder:text-[var(--color-text-muted)] focus:outline-none focus:ring-2 focus:ring-[var(--color-primary)] focus:border-transparent"
+              />
+              <p className="text-small text-[var(--color-text-muted)] mt-1">
+                Explain why this month's budget differs from the master budget. This helps with reporting and analysis.
+              </p>
+            </div>
+          )}
 
           {/* Actions */}
           <div className="flex flex-col-reverse sm:flex-row gap-3 pt-4">
