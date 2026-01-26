@@ -1,11 +1,12 @@
 'use client';
 
-import { useState, use } from 'react';
+import { useState, useEffect, use } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { Card, Button, Input } from '@/components/ui';
 import { createSupabaseBrowserClient } from '@/lib/supabase/client';
-import { BudgetService } from '@/lib/services';
+import { BudgetService, MasterBudgetService } from '@/lib/services';
+import type { MasterBudget } from '@/lib/services/master-budget.service';
 
 export default function NewBudgetPage({
   params,
@@ -16,19 +17,64 @@ export default function NewBudgetPage({
   const router = useRouter();
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [masterBudgets, setMasterBudgets] = useState<MasterBudget[]>([]);
+  const [existingBudgetNames, setExistingBudgetNames] = useState<string[]>([]);
+  const [loadingMasterBudgets, setLoadingMasterBudgets] = useState(true);
   const [formData, setFormData] = useState({
-    name: '',
+    master_budget_id: '',
     budget_amount: '',
   });
+  const [selectedMasterBudget, setSelectedMasterBudget] = useState<MasterBudget | null>(null);
+
+  useEffect(() => {
+    async function loadData() {
+      try {
+        const supabase = createSupabaseBrowserClient();
+        const { data: { user } } = await supabase.auth.getUser();
+        
+        if (!user) return;
+
+        // Load master budgets
+        const masterBudgetService = new MasterBudgetService(supabase);
+        const masterData = await masterBudgetService.getAll(true);
+        setMasterBudgets(masterData);
+
+        // Load existing budget names for this month to filter out
+        const { data: existingBudgets } = await supabase
+          .from('budgets')
+          .select('name, master_budget_id')
+          .eq('monthly_overview_id', monthId);
+        
+        setExistingBudgetNames(existingBudgets?.map(b => b.name) || []);
+      } catch (err) {
+        console.error('Failed to load master budgets:', err);
+      } finally {
+        setLoadingMasterBudgets(false);
+      }
+    }
+
+    loadData();
+  }, [monthId]);
 
   const handleChange = (
-    e: React.ChangeEvent<HTMLInputElement>
+    e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>
   ) => {
     const { name, value } = e.target;
-    setFormData((prev) => ({
-      ...prev,
-      [name]: value,
-    }));
+    
+    if (name === 'master_budget_id') {
+      const selected = masterBudgets.find(mb => mb.id === value);
+      setSelectedMasterBudget(selected || null);
+      setFormData((prev) => ({
+        ...prev,
+        [name]: value,
+        budget_amount: selected ? selected.budget_amount.toString() : '',
+      }));
+    } else {
+      setFormData((prev) => ({
+        ...prev,
+        [name]: value,
+      }));
+    }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -46,22 +92,28 @@ export default function NewBudgetPage({
         return;
       }
 
-      if (!formData.name.trim()) {
-        setError('Please enter a budget name');
+      if (!formData.master_budget_id) {
+        setError('Please select a master budget category');
         setIsLoading(false);
         return;
       }
 
-      // Check for duplicate budget name before creating
+      if (!selectedMasterBudget) {
+        setError('Selected master budget not found');
+        setIsLoading(false);
+        return;
+      }
+
+      // Check if this master budget is already used in this month
       const { data: existing } = await supabase
         .from('budgets')
         .select('id, name')
         .eq('monthly_overview_id', monthId)
-        .eq('name', formData.name.trim())
+        .eq('master_budget_id', formData.master_budget_id)
         .maybeSingle();
 
       if (existing) {
-        setError(`A budget category named "${formData.name.trim()}" already exists for this month. Please use a different name or edit the existing budget.`);
+        setError(`The budget category "${selectedMasterBudget.name}" already exists for this month. Please edit the existing budget instead.`);
         setIsLoading(false);
         return;
       }
@@ -70,8 +122,10 @@ export default function NewBudgetPage({
 
       await budgetService.create({
         monthly_overview_id: monthId,
-        name: formData.name.trim(),
-        budget_amount: parseFloat(formData.budget_amount) || 0,
+        name: selectedMasterBudget.name,
+        budget_amount: parseFloat(formData.budget_amount) || selectedMasterBudget.budget_amount,
+        master_budget_id: formData.master_budget_id,
+        description: selectedMasterBudget.description || null,
       });
 
       router.push(`/months/${monthId}`);
@@ -96,7 +150,7 @@ export default function NewBudgetPage({
         <div>
           <h1 className="text-headline text-[var(--color-text)]">Add Budget Category</h1>
           <p className="text-small text-[var(--color-text-muted)]">
-            Create a new budget category for this month
+            Select a master budget category to add to this month
           </p>
         </div>
       </div>
@@ -110,30 +164,71 @@ export default function NewBudgetPage({
             </div>
           )}
 
-          {/* Category Name */}
-          <Input
-            label="Category Name"
-            name="name"
-            placeholder="e.g., Food, Entertainment, Baby Expenses"
-            value={formData.name}
-            onChange={handleChange}
-            required
-            hint="Enter a name for this budget category"
-          />
+          {loadingMasterBudgets ? (
+            <div className="text-center py-8">
+              <p className="text-body text-[var(--color-text-muted)]">Loading master budgets...</p>
+            </div>
+          ) : masterBudgets.length === 0 ? (
+            <div className="p-4 rounded-[var(--radius-md)] bg-[var(--color-warning)]/10 border border-[var(--color-warning)]/20">
+              <p className="text-small text-[var(--color-warning)]">
+                No master budgets found. Please create master budgets first in the{' '}
+                <Link href="/master-budgets" className="underline">Master Budgets</Link> page.
+              </p>
+            </div>
+          ) : (
+            <>
+              {/* Master Budget Selection */}
+              <div>
+                <label className="block text-small font-medium text-[var(--color-text)] mb-2">
+                  Select Master Budget Category <span className="text-[var(--color-danger)]">*</span>
+                </label>
+                <select
+                  name="master_budget_id"
+                  value={formData.master_budget_id}
+                  onChange={handleChange}
+                  required
+                  className="w-full px-4 py-3 rounded-[var(--radius-md)] bg-[var(--color-surface)] border border-[var(--color-border)] text-body text-[var(--color-text)] focus:outline-none focus:ring-2 focus:ring-[var(--color-primary)] focus:border-transparent"
+                >
+                  <option value="">-- Select a budget category --</option>
+                  {masterBudgets
+                    .filter(mb => !existingBudgetNames.includes(mb.name))
+                    .map((mb) => (
+                      <option key={mb.id} value={mb.id}>
+                        {mb.name} - €{mb.budget_amount.toLocaleString('en-IE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                      </option>
+                    ))}
+                </select>
+                {existingBudgetNames.length > 0 && (
+                  <p className="text-caption text-[var(--color-text-muted)] mt-1">
+                    {masterBudgets.filter(mb => existingBudgetNames.includes(mb.name)).length} master budget(s) already added to this month
+                  </p>
+                )}
+                {selectedMasterBudget?.description && (
+                  <p className="text-small text-[var(--color-text-muted)] mt-1">
+                    {selectedMasterBudget.description}
+                  </p>
+                )}
+              </div>
 
-          {/* Budget Amount */}
-          <Input
-            label="Budget Amount (€)"
-            name="budget_amount"
-            type="number"
-            step="0.01"
-            min="0"
-            placeholder="0.00"
-            value={formData.budget_amount}
-            onChange={handleChange}
-            required
-            hint="How much do you want to allocate to this category?"
-          />
+              {/* Budget Amount */}
+              <Input
+                label="Budget Amount (€)"
+                name="budget_amount"
+                type="number"
+                step="0.01"
+                min="0"
+                placeholder={selectedMasterBudget ? selectedMasterBudget.budget_amount.toString() : "0.00"}
+                value={formData.budget_amount}
+                onChange={handleChange}
+                required
+                hint={
+                  selectedMasterBudget
+                    ? `Default amount from master budget: €${selectedMasterBudget.budget_amount.toLocaleString('en-IE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}. You can override this amount.`
+                    : "Amount will be set from selected master budget"
+                }
+              />
+            </>
+          )}
 
           {/* Actions */}
           <div className="flex flex-col-reverse sm:flex-row gap-3 pt-4">
