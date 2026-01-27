@@ -353,11 +353,19 @@ export class ExpenseService {
 
   /**
    * Delete an expense
+   * 
+   * If the expense is linked to a financial goal, updates the goal's current_amount
+   * by subtracting the expense amount and recalculates progress.
+   * 
    * @param id - Expense ID
    */
   async delete(id: string): Promise<void> {
     await this.getUserId();
 
+    // Get the expense before deleting to check if it's linked to a goal
+    const expense = await this.getById(id);
+
+    // Delete the expense
     const { error } = await this.supabase
       .from('expenses')
       .delete()
@@ -365,6 +373,38 @@ export class ExpenseService {
 
     if (error) {
       throw new Error(`Failed to delete expense: ${error.message}`);
+    }
+
+    // If expense was linked to a goal, update the goal's current_amount
+    if (expense.financial_goal_id) {
+      try {
+        // Get the current goal state
+        const { data: goal, error: goalError } = await this.supabase
+          .from('financial_goals')
+          .select('current_amount, target_amount')
+          .eq('id', expense.financial_goal_id)
+          .single();
+
+        if (!goalError && goal) {
+          // Subtract the expense amount from the goal's current_amount
+          // Ensure it doesn't go below 0
+          const newCurrentAmount = Math.max(0, (goal.current_amount || 0) - expense.amount);
+
+          // Update the goal
+          const { error: updateError } = await this.supabase
+            .from('financial_goals')
+            .update({ current_amount: newCurrentAmount })
+            .eq('id', expense.financial_goal_id);
+
+          if (updateError) {
+            console.error(`Failed to update goal ${expense.financial_goal_id} after expense deletion:`, updateError);
+            // Don't throw - expense is already deleted, just log the error
+          }
+        }
+      } catch (err) {
+        // Don't fail expense deletion if goal update fails
+        console.error('Error updating goal after expense deletion:', err);
+      }
     }
   }
 
