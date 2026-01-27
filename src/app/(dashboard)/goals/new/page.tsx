@@ -59,7 +59,6 @@ export default function NewGoalPage() {
   const [formData, setFormData] = useState({
     name: '',
     target_amount: '',
-    current_amount: '0',
     start_date: new Date().toISOString().split('T')[0],
     end_date: '',
     status: 'Not Started',
@@ -122,7 +121,7 @@ export default function NewGoalPage() {
       await goalService.create({
         name: formData.name,
         target_amount: parseFloat(formData.target_amount),
-        current_amount: parseFloat(formData.current_amount) || 0,
+        current_amount: 0, // Default to 0, will be updated when expenses are linked
         start_date: formData.start_date,
         end_date: formData.end_date || null,
         status: formData.status as any,
@@ -196,19 +195,6 @@ export default function NewGoalPage() {
             value={formData.target_amount}
             onChange={handleChange}
             required
-          />
-
-          {/* Current Amount */}
-          <Input
-            label="Current Amount"
-            name="current_amount"
-            type="number"
-            step="0.01"
-            min="0"
-            placeholder="0.00"
-            value={formData.current_amount}
-            onChange={handleChange}
-            hint="How much you've saved so far"
           />
 
           {/* Date Range */}
