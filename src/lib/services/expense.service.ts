@@ -352,20 +352,28 @@ export class ExpenseService {
     const goalIdChanged = data.financial_goal_id !== undefined && data.financial_goal_id !== existingExpense.financial_goal_id;
     const amountChanged = data.amount !== undefined && data.amount !== existingExpense.amount;
     const goalLinkRemoved = data.financial_goal_id === null && existingExpense.financial_goal_id !== null;
+    const goalLinkAdded = data.financial_goal_id !== undefined && data.financial_goal_id !== null && existingExpense.financial_goal_id === null;
 
-    if (goalIdChanged || amountChanged || goalLinkRemoved) {
+    // Determine which goals need recalculation
+    const oldGoalId = existingExpense.financial_goal_id;
+    const newGoalId = updated.financial_goal_id || (data.financial_goal_id !== undefined ? data.financial_goal_id : existingExpense.financial_goal_id);
+
+    if (goalIdChanged || amountChanged || goalLinkRemoved || goalLinkAdded) {
       try {
         const { FinancialGoalService } = await import('./financial-goal.service');
         const goalService = new FinancialGoalService(this.supabase);
 
-        // Recalculate old goal if link was removed or changed
-        if ((goalLinkRemoved || goalIdChanged) && existingExpense.financial_goal_id) {
-          await goalService.recalculateCurrentAmount(existingExpense.financial_goal_id);
+        // Recalculate old goal if link was removed or changed to a different goal
+        if ((goalLinkRemoved || goalIdChanged) && oldGoalId) {
+          await goalService.recalculateCurrentAmount(oldGoalId);
         }
 
-        // Recalculate new goal if link was added or changed
-        if ((goalIdChanged || (amountChanged && updated.financial_goal_id)) && updated.financial_goal_id) {
-          await goalService.recalculateCurrentAmount(updated.financial_goal_id);
+        // Recalculate goal if:
+        // 1. Goal link was added (new goal)
+        // 2. Goal link changed (new goal)
+        // 3. Amount changed and expense is linked to a goal
+        if (newGoalId && (goalLinkAdded || goalIdChanged || (amountChanged && newGoalId))) {
+          await goalService.recalculateCurrentAmount(newGoalId);
         }
       } catch (err) {
         // Don't fail expense update if goal update fails
