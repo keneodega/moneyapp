@@ -348,34 +348,30 @@ export class ExpenseService {
       throw new NotFoundError('Expense', id);
     }
 
-    // Handle goal updates if amount or goal link changed - recalculate affected goals
-    const goalIdChanged = data.financial_goal_id !== undefined && data.financial_goal_id !== existingExpense.financial_goal_id;
-    const amountChanged = data.amount !== undefined && data.amount !== existingExpense.amount;
-    const goalLinkRemoved = data.financial_goal_id === null && existingExpense.financial_goal_id !== null;
-    
-    // Determine which goals need recalculation
+    // Handle goal updates - recalculate affected goals whenever expense changes
     const oldGoalId = existingExpense.financial_goal_id;
-    const newGoalId = updated.financial_goal_id || (data.financial_goal_id !== undefined ? data.financial_goal_id : existingExpense.financial_goal_id);
+    const newGoalId = updated.financial_goal_id;
+    const amountChanged = data.amount !== undefined && data.amount !== existingExpense.amount;
+    const goalIdChanged = oldGoalId !== newGoalId;
 
     // Recalculate goals if:
-    // 1. Amount changed and expense is/was linked to a goal
+    // 1. Amount changed and expense is linked to a goal (old or new)
     // 2. Goal link changed (need to update both old and new)
-    // 3. Goal link was removed
-    if (amountChanged || goalIdChanged || goalLinkRemoved) {
+    if (amountChanged || goalIdChanged) {
       try {
         const { FinancialGoalService } = await import('./financial-goal.service');
         const goalService = new FinancialGoalService(this.supabase);
 
-        // Recalculate old goal if link was removed or changed to a different goal
-        if ((goalLinkRemoved || goalIdChanged) && oldGoalId) {
+        // Recalculate old goal if link was removed or changed
+        if (goalIdChanged && oldGoalId) {
           await goalService.recalculateCurrentAmount(oldGoalId);
         }
 
         // Recalculate goal if:
-        // 1. Amount changed and expense is linked to a goal (same or new)
+        // 1. Amount changed and expense is linked to a goal
         // 2. Goal link changed (new goal)
         // 3. Goal link was added (new goal)
-        if (newGoalId && (goalIdChanged || amountChanged || (data.financial_goal_id !== undefined && data.financial_goal_id !== null && !oldGoalId))) {
+        if (newGoalId && (goalIdChanged || amountChanged)) {
           await goalService.recalculateCurrentAmount(newGoalId);
         }
       } catch (err) {
