@@ -348,11 +348,13 @@ export class ExpenseService {
       throw new NotFoundError('Expense', id);
     }
 
-    // Handle goal updates - recalculate affected goals whenever expense changes
+    // Handle goal updates - ALWAYS recalculate goals when expense linked to a goal is updated
     const oldGoalId = existingExpense.financial_goal_id;
     const newGoalId = updated.financial_goal_id;
     const amountChanged = data.amount !== undefined && data.amount !== existingExpense.amount;
     const goalIdChanged = oldGoalId !== newGoalId;
+    const dateChanged = data.date !== undefined && data.date !== existingExpense.date;
+    const budgetChanged = data.budget_id !== undefined && data.budget_id !== existingExpense.budget_id;
 
     console.log('Expense update - goal recalculation check:', {
       expenseId: id,
@@ -360,29 +362,29 @@ export class ExpenseService {
       newGoalId,
       amountChanged,
       goalIdChanged,
+      dateChanged,
+      budgetChanged,
       oldAmount: existingExpense.amount,
       newAmount: updated.amount,
     });
 
-    // Recalculate goals if:
-    // 1. Amount changed and expense is linked to a goal (old or new)
-    // 2. Goal link changed (need to update both old and new)
-    if (amountChanged || goalIdChanged) {
+    // Always recalculate goals if expense is/was linked to a goal and something changed
+    if (oldGoalId || newGoalId) {
       try {
         const { FinancialGoalService } = await import('./financial-goal.service');
         const goalService = new FinancialGoalService(this.supabase);
 
-        // Recalculate old goal if link was removed or changed
-        if (goalIdChanged && oldGoalId) {
-          console.log(`Recalculating old goal ${oldGoalId} after expense update`);
+        // Recalculate old goal if link was removed or changed to a different goal
+        if (goalIdChanged && oldGoalId && oldGoalId !== newGoalId) {
+          console.log(`Recalculating old goal ${oldGoalId} after expense update (link removed/changed)`);
           await goalService.recalculateCurrentAmount(oldGoalId);
         }
 
-        // Recalculate goal if:
-        // 1. Amount changed and expense is linked to a goal
-        // 2. Goal link changed (new goal)
-        if (newGoalId && (goalIdChanged || amountChanged)) {
-          console.log(`Recalculating goal ${newGoalId} after expense update (amountChanged: ${amountChanged}, goalIdChanged: ${goalIdChanged})`);
+        // Recalculate new goal if:
+        // 1. Expense is linked to a goal (new or existing)
+        // 2. Any field changed that could affect the goal
+        if (newGoalId) {
+          console.log(`Recalculating goal ${newGoalId} after expense update (amountChanged: ${amountChanged}, goalIdChanged: ${goalIdChanged}, dateChanged: ${dateChanged}, budgetChanged: ${budgetChanged})`);
           await goalService.recalculateCurrentAmount(newGoalId);
         }
       } catch (err) {
@@ -393,7 +395,7 @@ export class ExpenseService {
         }
       }
     } else {
-      console.log('No goal recalculation needed - amount and goal link unchanged');
+      console.log('No goal recalculation needed - expense not linked to any goal');
     }
 
     return updated;
