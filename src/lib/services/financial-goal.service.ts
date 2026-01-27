@@ -76,14 +76,18 @@ export class FinancialGoalService {
     // Store the initial current_amount as base_amount, and set current_amount to the same value
     // (expenses will be added to this later)
     const initialAmount = data.current_amount || 0;
+    
+    // Prepare insert data
+    const insertData: any = {
+      ...data,
+      user_id: userId,
+      current_amount: initialAmount,
+      base_amount: initialAmount, // Store initial amount as base
+    };
+    
     const { data: goal, error } = await this.supabase
       .from('financial_goals')
-      .insert({
-        ...data,
-        user_id: userId,
-        current_amount: initialAmount,
-        base_amount: initialAmount, // Store initial amount as base
-      })
+      .insert(insertData)
       .select()
       .single();
 
