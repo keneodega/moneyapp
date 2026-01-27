@@ -247,6 +247,7 @@ export interface FinancialGoal {
   name: string;
   target_amount: number;
   current_amount: number;
+  base_amount?: number; // Base/initial amount set manually (not from linked expenses)
   start_date: string;
   end_date?: string | null;
   status: StatusType;
@@ -268,6 +269,7 @@ export interface FinancialGoalInsert {
   name: string;
   target_amount: number;
   current_amount?: number;
+  base_amount?: number; // Base/initial amount set manually
   start_date: string;
   end_date?: string | null;
   status?: StatusType;
@@ -285,6 +287,7 @@ export interface FinancialGoalUpdate {
   name?: string;
   target_amount?: number;
   current_amount?: number;
+  base_amount?: number; // Base/initial amount set manually
   start_date?: string;
   end_date?: string | null;
   status?: StatusType;
