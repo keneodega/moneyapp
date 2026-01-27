@@ -220,13 +220,20 @@ export class FinancialGoalService {
       oldCurrentAmount: goal.current_amount,
     });
 
-    // Update the goal's current_amount and base_amount (in case base_amount was null)
+    // Update the goal's current_amount
+    // Only update base_amount if the column exists (migration has been run)
+    const updateData: any = { 
+      current_amount: newCurrentAmount,
+    };
+    
+    // Only include base_amount if it was successfully selected (column exists)
+    if (goal.base_amount !== undefined) {
+      updateData.base_amount = baseAmount;
+    }
+    
     const { error: updateError } = await this.supabase
       .from('financial_goals')
-      .update({ 
-        current_amount: newCurrentAmount,
-        base_amount: baseAmount // Ensure base_amount is set
-      })
+      .update(updateData)
       .eq('id', id);
 
     if (updateError) {
