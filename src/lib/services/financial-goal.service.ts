@@ -168,11 +168,28 @@ export class FinancialGoalService {
     // Calculate total from linked expenses
     const totalFromExpenses = expenses?.reduce((sum, exp) => sum + Number(exp.amount || 0), 0) || 0;
 
-    // Get base_amount (initial/manual amount), defaulting to current_amount if base_amount doesn't exist yet
-    const baseAmount = Number(goal.base_amount ?? goal.current_amount ?? 0);
+    // Get base_amount (initial/manual amount)
+    // If base_amount doesn't exist (migration not run), calculate it from current_amount - expenses
+    let baseAmount: number;
+    if (goal.base_amount !== null && goal.base_amount !== undefined) {
+      // base_amount exists, use it
+      baseAmount = Number(goal.base_amount);
+    } else {
+      // base_amount doesn't exist yet, calculate it from current_amount - expenses
+      // This handles the case where migration hasn't been run
+      const currentAmount = Number(goal.current_amount || 0);
+      baseAmount = Math.max(0, currentAmount - totalFromExpenses);
+    }
 
     // New current_amount = base_amount + sum of linked expenses
     const newCurrentAmount = baseAmount + totalFromExpenses;
+
+    console.log(`Recalculating goal ${id}:`, {
+      baseAmount,
+      totalFromExpenses,
+      newCurrentAmount,
+      oldCurrentAmount: goal.current_amount,
+    });
 
     // Update the goal's current_amount and base_amount (in case base_amount was null)
     const { error: updateError } = await this.supabase
@@ -185,6 +202,8 @@ export class FinancialGoalService {
 
     if (updateError) {
       console.error(`Error updating current_amount for goal ${id}:`, updateError);
+    } else {
+      console.log(`Successfully updated goal ${id} current_amount to ${newCurrentAmount}`);
     }
   }
 

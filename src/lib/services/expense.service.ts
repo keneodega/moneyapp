@@ -354,6 +354,16 @@ export class ExpenseService {
     const amountChanged = data.amount !== undefined && data.amount !== existingExpense.amount;
     const goalIdChanged = oldGoalId !== newGoalId;
 
+    console.log('Expense update - goal recalculation check:', {
+      expenseId: id,
+      oldGoalId,
+      newGoalId,
+      amountChanged,
+      goalIdChanged,
+      oldAmount: existingExpense.amount,
+      newAmount: updated.amount,
+    });
+
     // Recalculate goals if:
     // 1. Amount changed and expense is linked to a goal (old or new)
     // 2. Goal link changed (need to update both old and new)
@@ -364,20 +374,26 @@ export class ExpenseService {
 
         // Recalculate old goal if link was removed or changed
         if (goalIdChanged && oldGoalId) {
+          console.log(`Recalculating old goal ${oldGoalId} after expense update`);
           await goalService.recalculateCurrentAmount(oldGoalId);
         }
 
         // Recalculate goal if:
         // 1. Amount changed and expense is linked to a goal
         // 2. Goal link changed (new goal)
-        // 3. Goal link was added (new goal)
         if (newGoalId && (goalIdChanged || amountChanged)) {
+          console.log(`Recalculating goal ${newGoalId} after expense update (amountChanged: ${amountChanged}, goalIdChanged: ${goalIdChanged})`);
           await goalService.recalculateCurrentAmount(newGoalId);
         }
       } catch (err) {
-        // Don't fail expense update if goal update fails
+        // Don't fail expense update if goal update fails, but log the error
         console.error('Error updating goal after expense update:', err);
+        if (err instanceof Error) {
+          console.error('Error details:', err.message, err.stack);
+        }
       }
+    } else {
+      console.log('No goal recalculation needed - amount and goal link unchanged');
     }
 
     return updated;
