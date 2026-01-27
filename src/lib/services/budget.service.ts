@@ -62,8 +62,6 @@ export class BudgetService {
     }
 
     // Check if a budget with this name or master_budget_id already exists for this monthly overview
-    let existing = null;
-    
     if (data.master_budget_id) {
       // Check by master_budget_id first (more specific)
       const { data: existingByMaster } = await this.supabase

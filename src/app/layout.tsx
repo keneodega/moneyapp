@@ -3,6 +3,8 @@ import { DM_Sans, JetBrains_Mono } from "next/font/google";
 import { Analytics } from "@vercel/analytics/react";
 import { EnvironmentBadge } from "@/components/layout/EnvironmentBadge";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
+import { ToastProvider } from "@/components/ui";
+import { ConfirmDialogProvider } from "@/components/ui";
 import "./globals.css";
 
 // Initialize Sentry for client-side (only in browser)
@@ -36,7 +38,11 @@ export default function RootLayout({
     <html lang="en">
       <body className={`${dmSans.variable} ${jetbrainsMono.variable} antialiased`}>
         <ErrorBoundary>
-          {children}
+          <ToastProvider>
+            <ConfirmDialogProvider>
+              {children}
+            </ConfirmDialogProvider>
+          </ToastProvider>
         </ErrorBoundary>
         <EnvironmentBadge />
         <Analytics />

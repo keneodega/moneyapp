@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useCallback, memo } from 'react';
 import { useRouter } from 'next/navigation';
 import { createSupabaseBrowserClient } from '@/lib/supabase/client';
 import { IncomeSourceService } from '@/lib/services';
@@ -35,13 +35,13 @@ function formatDate(date: string): string {
   });
 }
 
-export function IncomeList({ income, monthId }: IncomeListProps) {
+export const IncomeList = memo(function IncomeList({ income, monthId }: IncomeListProps) {
   const [deleting, setDeleting] = useState<string | null>(null);
   const [confirmDelete, setConfirmDelete] = useState<string | null>(null);
   const router = useRouter();
   const supabase = createSupabaseBrowserClient();
 
-  const handleDelete = async (id: string) => {
+  const handleDelete = useCallback(async (id: string) => {
     setDeleting(id);
     try {
       const service = new IncomeSourceService(supabase);
@@ -54,7 +54,7 @@ export function IncomeList({ income, monthId }: IncomeListProps) {
       setDeleting(null);
       setConfirmDelete(null);
     }
-  };
+  }, [supabase, router]);
 
   if (income.length === 0) {
     return (
@@ -116,7 +116,7 @@ export function IncomeList({ income, monthId }: IncomeListProps) {
       ))}
     </div>
   );
-}
+});
 
 function TrashIcon({ className }: { className?: string }) {
   return (

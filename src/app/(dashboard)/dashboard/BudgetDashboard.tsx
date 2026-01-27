@@ -1,9 +1,9 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import Link from 'next/link';
 import { createSupabaseBrowserClient } from '@/lib/supabase/client';
-import { Card } from '@/components/ui';
+import { Card, SkeletonCard } from '@/components/ui';
 
 interface DateRange {
   start: Date;
@@ -35,11 +35,7 @@ export function BudgetDashboard({ dateRange }: BudgetDashboardProps) {
   const [loading, setLoading] = useState(true);
   const [selectedMonth, setSelectedMonth] = useState<string | null>(null);
 
-  useEffect(() => {
-    loadBudgetData();
-  }, [dateRange]);
-
-  async function loadBudgetData() {
+  const loadBudgetData = useCallback(async () => {
     try {
       setLoading(true);
       const supabase = createSupabaseBrowserClient();
@@ -204,7 +200,11 @@ export function BudgetDashboard({ dateRange }: BudgetDashboardProps) {
     } finally {
       setLoading(false);
     }
-  }
+  }, [dateRange]);
+
+  useEffect(() => {
+    loadBudgetData();
+  }, [loadBudgetData]);
 
   function formatCurrency(amount: number): string {
     return new Intl.NumberFormat('en-IE', {
@@ -215,15 +215,31 @@ export function BudgetDashboard({ dateRange }: BudgetDashboardProps) {
     }).format(amount);
   }
 
-  if (loading) {
-    return <div className="text-body text-[var(--color-text-muted)]">Loading budget data...</div>;
-  }
+  // Memoize expensive calculations
+  const { totalBudgeted, totalSpent, totalIncome, savings } = useMemo(() => {
+    const budgeted = budgetData.reduce((sum, m) => sum + m.totalBudgeted, 0);
+    const spent = budgetData.reduce((sum, m) => sum + m.totalSpent, 0);
+    const income = budgetData.reduce((sum, m) => sum + m.totalIncome, 0);
+    return {
+      totalBudgeted: budgeted,
+      totalSpent: spent,
+      totalIncome: income,
+      savings: income - spent,
+    };
+  }, [budgetData]);
 
-  const totalBudgeted = budgetData.reduce((sum, m) => sum + m.totalBudgeted, 0);
-  const totalSpent = budgetData.reduce((sum, m) => sum + m.totalSpent, 0);
-  const totalIncome = budgetData.reduce((sum, m) => sum + m.totalIncome, 0);
-  const totalUnallocated = totalIncome - totalBudgeted;
-  const savings = totalIncome - totalSpent;
+  if (loading) {
+    return (
+      <div className="space-y-6">
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+          {Array.from({ length: 4 }).map((_, i) => (
+            <SkeletonCard key={i} />
+          ))}
+        </div>
+        <SkeletonCard />
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">

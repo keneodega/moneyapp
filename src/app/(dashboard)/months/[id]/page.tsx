@@ -1,9 +1,17 @@
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
+import dynamic from 'next/dynamic';
 import { Card, CardHeader, BudgetProgress } from '@/components/ui';
 import { createSupabaseServerClient } from '@/lib/supabase/server';
-import { IncomeList } from './IncomeList';
-import { MonthActions } from './MonthActions';
+
+// Code splitting: Load these components dynamically
+const IncomeList = dynamic(() => import('./IncomeList').then(mod => ({ default: mod.IncomeList })), {
+  loading: () => <div className="p-8 text-center text-small text-[var(--color-text-muted)]">Loading income...</div>,
+});
+
+const MonthActions = dynamic(() => import('./MonthActions').then(mod => ({ default: mod.MonthActions })), {
+  loading: () => <div className="text-small text-[var(--color-text-muted)]">Loading actions...</div>,
+});
 
 interface MonthData {
   id: string;
@@ -44,23 +52,32 @@ async function getMonthData(id: string): Promise<{
       return null;
     }
 
-    // Always calculate manually for reliability
-    const { data: baseMonth, error: baseError } = await supabase
-      .from('monthly_overviews')
-      .select('*')
-      .eq('id', id)
-      .single();
+    // Parallelize independent queries for better performance
+    const [baseMonthResult, incomeResult, budgetResult] = await Promise.all([
+      supabase
+        .from('monthly_overviews')
+        .select('*')
+        .eq('id', id)
+        .single(),
+      supabase
+        .from('income_sources')
+        .select('amount')
+        .eq('monthly_overview_id', id),
+      supabase
+        .from('budgets')
+        .select('budget_amount')
+        .eq('monthly_overview_id', id),
+    ]);
+
+    const { data: baseMonth, error: baseError } = baseMonthResult;
+    const { data: incomeAmounts, error: incomeError } = incomeResult;
+    const { data: budgetAmounts, error: budgetsError } = budgetResult;
 
     if (baseError || !baseMonth) {
       return null;
     }
 
     // Calculate totals manually
-    const { data: incomeAmounts, error: incomeError } = await supabase
-      .from('income_sources')
-      .select('amount')
-      .eq('monthly_overview_id', id);
-    
     if (incomeError) {
       console.error(`Error fetching income for month ${id}:`, incomeError);
     }
@@ -71,11 +88,6 @@ async function getMonthData(id: string): Promise<{
           return sum + (isNaN(amount) ? 0 : amount);
         }, 0)
       : 0;
-
-    const { data: budgetAmounts, error: budgetsError } = await supabase
-      .from('budgets')
-      .select('budget_amount')
-      .eq('monthly_overview_id', id);
     
     if (budgetsError) {
       console.error(`Error fetching budgets for month ${id}:`, budgetsError);

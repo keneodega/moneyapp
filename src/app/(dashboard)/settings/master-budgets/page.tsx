@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { Card, Button, Input } from '@/components/ui';
@@ -23,11 +23,7 @@ export default function MasterBudgetsPage() {
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
 
-  useEffect(() => {
-    loadBudgets();
-  }, []);
-
-  async function loadBudgets() {
+  const loadBudgets = useCallback(async () => {
     try {
       const supabase = createSupabaseBrowserClient();
       const { data: { user } } = await supabase.auth.getUser();
@@ -46,7 +42,11 @@ export default function MasterBudgetsPage() {
     } finally {
       setIsLoading(false);
     }
-  }
+  }, []);
+
+  useEffect(() => {
+    loadBudgets();
+  }, [loadBudgets]);
 
   const handleAdd = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -104,7 +104,6 @@ export default function MasterBudgetsPage() {
       const masterBudgetService = new MasterBudgetService(supabase);
 
       await masterBudgetService.delete(id, true);
-      setDeleteId(null);
       await loadBudgets();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to delete master budget');

@@ -1,6 +1,10 @@
 -- Fix Function Search Path Mutable Security Warnings
 -- This sets search_path to empty string to prevent security issues
 -- Run this in Supabase SQL Editor
+--
+-- NOTE: This migration fixes update_updated_at_column() and other core functions.
+-- For master budget functions (get_effective_budget_amount, get_budget_deviation),
+-- see: fix_master_budget_functions_search_path.sql
 
 -- ============================================
 -- 1. Fix update_updated_at_column()

@@ -1,6 +1,6 @@
 'use client';
 
-import { HTMLAttributes, forwardRef } from 'react';
+import { HTMLAttributes, forwardRef, memo } from 'react';
 
 interface CardProps extends HTMLAttributes<HTMLDivElement> {
   variant?: 'default' | 'raised' | 'outlined';
@@ -49,7 +49,7 @@ interface CardHeaderProps extends HTMLAttributes<HTMLDivElement> {
   action?: React.ReactNode;
 }
 
-export const CardHeader = forwardRef<HTMLDivElement, CardHeaderProps>(
+export const CardHeader = memo(forwardRef<HTMLDivElement, CardHeaderProps>(
   ({ className = '', title, subtitle, action, ...props }, ref) => {
     return (
       <div
@@ -67,6 +67,6 @@ export const CardHeader = forwardRef<HTMLDivElement, CardHeaderProps>(
       </div>
     );
   }
-);
+));
 
 CardHeader.displayName = 'CardHeader';

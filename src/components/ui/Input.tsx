@@ -26,7 +26,7 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(
           ref={ref}
           id={inputId}
           className={`
-            h-10 px-3 rounded-[var(--radius-md)]
+            min-h-[44px] px-3 rounded-[var(--radius-md)]
             bg-[var(--color-surface-raised)]
             border border-[var(--color-border)]
             text-[var(--color-text)] text-body
@@ -79,7 +79,7 @@ export const Select = forwardRef<HTMLSelectElement, SelectProps>(
           ref={ref}
           id={selectId}
           className={`
-            h-10 px-3 rounded-[var(--radius-md)]
+            min-h-[44px] px-3 rounded-[var(--radius-md)]
             bg-[var(--color-surface-raised)]
             border border-[var(--color-border)]
             text-[var(--color-text)] text-body

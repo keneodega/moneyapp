@@ -1,10 +1,10 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { createSupabaseBrowserClient } from '@/lib/supabase/client';
 import { SubscriptionService } from '@/lib/services';
-import { Card } from '@/components/ui';
-import type { Subscription, FrequencyType } from '@/lib/supabase/database.types';
+import { Card, SkeletonCard } from '@/components/ui';
+import type { Subscription } from '@/lib/supabase/database.types';
 
 interface DateRange {
   start: Date;
@@ -31,11 +31,7 @@ export function SubscriptionsDashboard({ dateRange }: SubscriptionsDashboardProp
   const [totalYearly, setTotalYearly] = useState(0);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    loadSubscriptions();
-  }, [dateRange]);
-
-  async function loadSubscriptions() {
+  const loadSubscriptions = useCallback(async () => {
     try {
       setLoading(true);
       const supabase = createSupabaseBrowserClient();
@@ -89,7 +85,11 @@ export function SubscriptionsDashboard({ dateRange }: SubscriptionsDashboardProp
     } finally {
       setLoading(false);
     }
-  }
+  }, [dateRange]);
+
+  useEffect(() => {
+    loadSubscriptions();
+  }, [loadSubscriptions]);
 
   function getMonthsInRange(start: Date, end: Date): Date[] {
     const months: Date[] = [];
@@ -129,7 +129,16 @@ export function SubscriptionsDashboard({ dateRange }: SubscriptionsDashboardProp
   }
 
   if (loading) {
-    return <div className="text-body text-[var(--color-text-muted)]">Loading subscriptions...</div>;
+    return (
+      <div className="space-y-6">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          {Array.from({ length: 3 }).map((_, i) => (
+            <SkeletonCard key={i} />
+          ))}
+        </div>
+        <SkeletonCard />
+      </div>
+    );
   }
 
   return (

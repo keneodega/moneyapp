@@ -1,33 +1,28 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
-import Link from 'next/link';
-import { Card, Button, Input } from '@/components/ui';
+import { Card, Button, Input, Skeleton, SkeletonList, useToast, useConfirmDialog } from '@/components/ui';
 import { createSupabaseBrowserClient } from '@/lib/supabase/client';
 import { MasterBudgetService } from '@/lib/services';
 import type { MasterBudget } from '@/lib/services/master-budget.service';
 
 export default function MasterBudgetsPage() {
   const router = useRouter();
+  const toast = useToast();
+  const confirmDialog = useConfirmDialog();
   const [budgets, setBudgets] = useState<MasterBudget[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [editingId, setEditingId] = useState<string | null>(null);
-  const [deleteId, setDeleteId] = useState<string | null>(null);
   const [showAddForm, setShowAddForm] = useState(false);
   const [formData, setFormData] = useState({
     name: '',
     budget_amount: '',
     description: '',
   });
-  const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
 
-  useEffect(() => {
-    loadBudgets();
-  }, []);
-
-  async function loadBudgets() {
+  const loadBudgets = useCallback(async () => {
     try {
       const supabase = createSupabaseBrowserClient();
       const { data: { user } } = await supabase.auth.getUser();
@@ -42,16 +37,22 @@ export default function MasterBudgetsPage() {
       setBudgets(data);
     } catch (err) {
       console.error('Failed to load master budgets:', err);
-      setError(err instanceof Error ? err.message : 'Failed to load master budgets');
+      toast.showToast(
+        err instanceof Error ? err.message : 'Failed to load master budgets',
+        'error'
+      );
     } finally {
       setIsLoading(false);
     }
-  }
+  }, [toast]);
+
+  useEffect(() => {
+    loadBudgets();
+  }, [loadBudgets]);
 
   const handleAdd = async (e: React.FormEvent) => {
     e.preventDefault();
     setSaving(true);
-    setError(null);
 
     try {
       const supabase = createSupabaseBrowserClient();
@@ -66,8 +67,12 @@ export default function MasterBudgetsPage() {
       setFormData({ name: '', budget_amount: '', description: '' });
       setShowAddForm(false);
       await loadBudgets();
+      toast.showToast('Master budget created successfully', 'success');
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to create master budget');
+      toast.showToast(
+        err instanceof Error ? err.message : 'Failed to create master budget',
+        'error'
+      );
     } finally {
       setSaving(false);
     }
@@ -75,7 +80,6 @@ export default function MasterBudgetsPage() {
 
   const handleEdit = async (id: string, updates: { name?: string; budget_amount?: number; description?: string | null }) => {
     setSaving(true);
-    setError(null);
 
     try {
       const supabase = createSupabaseBrowserClient();
@@ -84,33 +88,43 @@ export default function MasterBudgetsPage() {
       await masterBudgetService.update(id, updates);
       setEditingId(null);
       await loadBudgets();
+      toast.showToast('Master budget updated successfully', 'success');
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to update master budget');
+      toast.showToast(
+        err instanceof Error ? err.message : 'Failed to update master budget',
+        'error'
+      );
     } finally {
       setSaving(false);
     }
   };
 
   const handleDelete = async (id: string) => {
-    if (!confirm('Are you sure you want to delete this master budget? This will not affect existing monthly budgets, but new months will not include this category.')) {
-      return;
-    }
+    confirmDialog.showConfirm({
+      title: 'Delete Master Budget',
+      message: 'Are you sure you want to delete this master budget? This will not affect existing monthly budgets, but new months will not include this category.',
+      confirmText: 'Delete',
+      cancelText: 'Cancel',
+      variant: 'danger',
+      onConfirm: async () => {
+        setSaving(true);
+        try {
+          const supabase = createSupabaseBrowserClient();
+          const masterBudgetService = new MasterBudgetService(supabase);
 
-    setSaving(true);
-    setError(null);
-
-    try {
-      const supabase = createSupabaseBrowserClient();
-      const masterBudgetService = new MasterBudgetService(supabase);
-
-      await masterBudgetService.delete(id, true);
-      setDeleteId(null);
-      await loadBudgets();
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to delete master budget');
-    } finally {
-      setSaving(false);
-    }
+          await masterBudgetService.delete(id, true);
+          await loadBudgets();
+          toast.showToast('Master budget deleted successfully', 'success');
+        } catch (err) {
+          toast.showToast(
+            err instanceof Error ? err.message : 'Failed to delete master budget',
+            'error'
+          );
+        } finally {
+          setSaving(false);
+        }
+      },
+    });
   };
 
   const totalAmount = budgets.reduce((sum, b) => sum + Number(b.budget_amount || 0), 0);
@@ -118,7 +132,14 @@ export default function MasterBudgetsPage() {
   if (isLoading) {
     return (
       <div className="max-w-4xl mx-auto space-y-6 animate-fade-in">
-        <p className="text-body text-[var(--color-text-muted)]">Loading master budgets...</p>
+        <div>
+          <Skeleton variant="text" width="40%" height={40} className="mb-2" />
+          <Skeleton variant="text" width="60%" height={20} />
+        </div>
+        <Card variant="raised" padding="md">
+          <Skeleton variant="text" width="30%" height={24} />
+        </Card>
+        <SkeletonList items={5} />
       </div>
     );
   }
@@ -149,13 +170,6 @@ export default function MasterBudgetsPage() {
           </Button>
         </div>
       </Card>
-
-      {/* Error Message */}
-      {error && (
-        <Card variant="raised" padding="md" className="border border-[var(--color-danger)]">
-          <p className="text-small text-[var(--color-danger)]">{error}</p>
-        </Card>
-      )}
 
       {/* Add Form */}
       {showAddForm && (
@@ -196,7 +210,6 @@ export default function MasterBudgetsPage() {
                 onClick={() => {
                   setShowAddForm(false);
                   setFormData({ name: '', budget_amount: '', description: '' });
-                  setError(null);
                 }}
               >
                 Cancel
@@ -226,7 +239,6 @@ export default function MasterBudgetsPage() {
                   onSave={(updates) => handleEdit(budget.id, updates)}
                   onCancel={() => {
                     setEditingId(null);
-                    setError(null);
                   }}
                   saving={saving}
                 />
@@ -257,11 +269,7 @@ export default function MasterBudgetsPage() {
                     <Button
                       variant="danger"
                       size="sm"
-                      onClick={() => {
-                        if (confirm('Delete this master budget?')) {
-                          handleDelete(budget.id);
-                        }
-                      }}
+                      onClick={() => handleDelete(budget.id)}
                       disabled={saving}
                     >
                       Delete

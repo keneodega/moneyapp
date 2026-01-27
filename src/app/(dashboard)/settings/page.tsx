@@ -3,9 +3,10 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { Card, Button, Input } from '@/components/ui';
+import { Card, Button, Input, useToast } from '@/components/ui';
 import { createSupabaseBrowserClient } from '@/lib/supabase/client';
 import { SettingsService } from '@/lib/services';
+import { exportAllData } from '@/lib/utils/export';
 import type { AppSetting } from '@/lib/services/settings.service';
 
 type SettingType = 'payment_method' | 'person' | 'subscription_type';
@@ -27,6 +28,7 @@ const SETTING_LABELS: Record<SettingType, { title: string; description: string }
 
 export default function SettingsPage() {
   const router = useRouter();
+  const toast = useToast();
   const [settings, setSettings] = useState<Record<SettingType, AppSetting[]>>({
     payment_method: [],
     person: [],
@@ -40,6 +42,7 @@ export default function SettingsPage() {
     subscription_type: '',
   });
   const [saving, setSaving] = useState<string | null>(null);
+  const [isExporting, setIsExporting] = useState(false);
 
   useEffect(() => {
     async function loadSettings() {
@@ -314,6 +317,85 @@ CREATE POLICY "Users can manage own settings" ON app_settings
           </div>
         </Card>
       ))}
+
+      {/* Data Export */}
+      <Card variant="raised" padding="lg">
+        <h2 className="text-title text-[var(--color-text)] mb-2">Data Export</h2>
+        <p className="text-small text-[var(--color-text-muted)] mb-4">
+          Download your financial data in various formats for backup or analysis.
+        </p>
+        <div className="flex flex-wrap gap-3">
+          <Button
+            variant="secondary"
+            onClick={async () => {
+              setIsExporting(true);
+              try {
+                const supabase = createSupabaseBrowserClient();
+                const { data: { user } } = await supabase.auth.getUser();
+                if (user) {
+                  await exportAllData(supabase, user.id, 'csv');
+                  toast.showToast('Data exported as CSV', 'success');
+                }
+              } catch (error) {
+                toast.showToast('Failed to export data', 'error');
+              } finally {
+                setIsExporting(false);
+              }
+            }}
+            disabled={isExporting}
+            isLoading={isExporting}
+            className="min-h-[44px]"
+          >
+            Export CSV
+          </Button>
+          <Button
+            variant="secondary"
+            onClick={async () => {
+              setIsExporting(true);
+              try {
+                const supabase = createSupabaseBrowserClient();
+                const { data: { user } } = await supabase.auth.getUser();
+                if (user) {
+                  await exportAllData(supabase, user.id, 'json');
+                  toast.showToast('Data exported as JSON', 'success');
+                }
+              } catch (error) {
+                toast.showToast('Failed to export data', 'error');
+              } finally {
+                setIsExporting(false);
+              }
+            }}
+            disabled={isExporting}
+            isLoading={isExporting}
+            className="min-h-[44px]"
+          >
+            Export JSON
+          </Button>
+          <Button
+            variant="secondary"
+            onClick={async () => {
+              setIsExporting(true);
+              try {
+                const supabase = createSupabaseBrowserClient();
+                const { data: { user } } = await supabase.auth.getUser();
+                if (user) {
+                  await exportAllData(supabase, user.id, 'pdf');
+                  toast.showToast('PDF report generated', 'success');
+                }
+              } catch (error) {
+                toast.showToast('Failed to generate PDF', 'error');
+              } finally {
+                setIsExporting(false);
+              }
+            }}
+            disabled={isExporting}
+            isLoading={isExporting}
+            className="min-h-[44px]"
+          >
+            Export PDF
+          </Button>
+        </div>
+      </Card>
 
       {/* Info */}
       <Card variant="default" padding="md" className="bg-[var(--color-primary)]/5 border-[var(--color-primary)]/20">

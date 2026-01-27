@@ -1,13 +1,25 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import dynamic from 'next/dynamic';
 import { Card } from '@/components/ui';
-import { createSupabaseBrowserClient } from '@/lib/supabase/client';
-import { SubscriptionService } from '@/lib/services';
-import { SubscriptionsDashboard } from './SubscriptionsDashboard';
-import { BudgetDashboard } from './BudgetDashboard';
-import { TransactionsDashboard } from './TransactionsDashboard';
-import { DateRangeFilter } from './DateRangeFilter';
+
+// Code splitting: Load dashboard components dynamically
+const SubscriptionsDashboard = dynamic(() => import('./SubscriptionsDashboard').then(mod => ({ default: mod.SubscriptionsDashboard })), {
+  loading: () => <div className="p-4 text-small text-[var(--color-text-muted)]">Loading subscriptions...</div>,
+});
+
+const BudgetDashboard = dynamic(() => import('./BudgetDashboard').then(mod => ({ default: mod.BudgetDashboard })), {
+  loading: () => <div className="p-4 text-small text-[var(--color-text-muted)]">Loading budget data...</div>,
+});
+
+const TransactionsDashboard = dynamic(() => import('./TransactionsDashboard').then(mod => ({ default: mod.TransactionsDashboard })), {
+  loading: () => <div className="p-4 text-small text-[var(--color-text-muted)]">Loading transactions...</div>,
+});
+
+const DateRangeFilter = dynamic(() => import('./DateRangeFilter').then(mod => ({ default: mod.DateRangeFilter })), {
+  loading: () => <div className="h-10 w-48 bg-[var(--color-surface-sunken)] rounded-[var(--radius-md)] animate-pulse" />,
+});
 
 type PeriodType = 'week' | 'month' | 'quarter' | 'year' | 'custom';
 
@@ -24,7 +36,6 @@ export function DashboardView() {
     const end = new Date(now.getFullYear(), now.getMonth() + 1, 0);
     return { start, end };
   });
-  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     // Update date range when period changes

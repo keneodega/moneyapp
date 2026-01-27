@@ -1,9 +1,8 @@
 'use client';
 
-import { useState, useEffect } from 'react';
-import Link from 'next/link';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { createSupabaseBrowserClient } from '@/lib/supabase/client';
-import { Card } from '@/components/ui';
+import { Card, SkeletonCard, SkeletonTable } from '@/components/ui';
 
 interface DateRange {
   start: Date;
@@ -29,11 +28,7 @@ export function TransactionsDashboard({ dateRange }: TransactionsDashboardProps)
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState<'all' | 'income' | 'expenses'>('all');
 
-  useEffect(() => {
-    loadTransactions();
-  }, [dateRange, filter]);
-
-  async function loadTransactions() {
+  const loadTransactions = useCallback(async () => {
     try {
       setLoading(true);
       const supabase = createSupabaseBrowserClient();
@@ -123,7 +118,11 @@ export function TransactionsDashboard({ dateRange }: TransactionsDashboardProps)
     } finally {
       setLoading(false);
     }
-  }
+  }, [dateRange, filter]);
+
+  useEffect(() => {
+    loadTransactions();
+  }, [loadTransactions]);
 
   function formatCurrency(amount: number): string {
     return new Intl.NumberFormat('en-IE', {
@@ -142,16 +141,38 @@ export function TransactionsDashboard({ dateRange }: TransactionsDashboardProps)
     });
   }
 
-  const totalIncome = transactions
-    .filter((t) => t.type === 'income')
-    .reduce((sum, t) => sum + t.amount, 0);
-  const totalExpenses = transactions
-    .filter((t) => t.type === 'expense')
-    .reduce((sum, t) => sum + t.amount, 0);
-  const net = totalIncome - totalExpenses;
+  // Memoize filtered transactions and calculations
+  const { totalIncome, totalExpenses, net, filteredTransactions } = useMemo(() => {
+    const filtered = filter === 'all' 
+      ? transactions 
+      : transactions.filter((t) => t.type === filter);
+    
+    const income = filtered
+      .filter((t) => t.type === 'income')
+      .reduce((sum, t) => sum + t.amount, 0);
+    const expenses = filtered
+      .filter((t) => t.type === 'expense')
+      .reduce((sum, t) => sum + t.amount, 0);
+    
+    return {
+      totalIncome: income,
+      totalExpenses: expenses,
+      net: income - expenses,
+      filteredTransactions: filtered,
+    };
+  }, [transactions, filter]);
 
   if (loading) {
-    return <div className="text-body text-[var(--color-text-muted)]">Loading transactions...</div>;
+    return (
+      <div className="space-y-6">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          {Array.from({ length: 3 }).map((_, i) => (
+            <SkeletonCard key={i} />
+          ))}
+        </div>
+        <SkeletonTable rows={5} cols={4} />
+      </div>
+    );
   }
 
   return (
@@ -216,10 +237,10 @@ export function TransactionsDashboard({ dateRange }: TransactionsDashboardProps)
 
       {/* Transactions List */}
       <div className="space-y-2">
-        {transactions.length === 0 ? (
+        {filteredTransactions.length === 0 ? (
           <p className="text-body text-[var(--color-text-muted)]">No transactions in this period</p>
         ) : (
-          transactions.map((transaction) => (
+          filteredTransactions.map((transaction) => (
             <Card
               key={`${transaction.type}-${transaction.id}`}
               variant="outlined"

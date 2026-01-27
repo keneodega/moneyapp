@@ -1,6 +1,6 @@
 'use client';
 
-import { forwardRef, ButtonHTMLAttributes } from 'react';
+import { forwardRef, ButtonHTMLAttributes, memo } from 'react';
 
 interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
   variant?: 'primary' | 'secondary' | 'ghost' | 'danger';
@@ -43,9 +43,9 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
     };
 
     const sizes = {
-      sm: 'h-8 px-3 text-sm rounded-[var(--radius-sm)]',
-      md: 'h-10 px-4 text-sm rounded-[var(--radius-md)]',
-      lg: 'h-12 px-6 text-base rounded-[var(--radius-md)]',
+      sm: 'min-h-[44px] min-w-[44px] px-3 text-sm rounded-[var(--radius-sm)]',
+      md: 'min-h-[44px] min-w-[44px] px-4 text-sm rounded-[var(--radius-md)]',
+      lg: 'min-h-[44px] min-w-[44px] px-6 text-base rounded-[var(--radius-md)]',
     };
 
     return (

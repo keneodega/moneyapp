@@ -33,6 +33,7 @@ interface FormData {
   bank: string;
   description: string;
   is_recurring: boolean;
+  recurring_frequency: string;
   financial_goal_id: string;
 }
 
@@ -55,8 +56,18 @@ export default function NewExpensePage({
     bank: 'Revolut',
     description: '',
     is_recurring: false,
+    recurring_frequency: 'Monthly',
     financial_goal_id: '',
   });
+
+  const FREQUENCY_OPTIONS = [
+    { value: 'Weekly', label: 'Weekly' },
+    { value: 'Bi-Weekly', label: 'Bi-Weekly' },
+    { value: 'Monthly', label: 'Monthly' },
+    { value: 'Quarterly', label: 'Quarterly' },
+    { value: 'Bi-Annually', label: 'Bi-Annually' },
+    { value: 'Annually', label: 'Annually' },
+  ];
 
   // Fetch budgets, goals, and payment methods on mount
   useEffect(() => {
@@ -150,6 +161,7 @@ export default function NewExpensePage({
           bank: formData.bank || null,
           description: formData.description || null,
           is_recurring: formData.is_recurring,
+          recurring_frequency: formData.is_recurring ? (formData.recurring_frequency as any) : null,
           financial_goal_id: formData.financial_goal_id || null,
         });
 
@@ -319,23 +331,36 @@ export default function NewExpensePage({
           )}
 
           {/* Recurring */}
-          <label className="flex items-center gap-3 cursor-pointer">
-            <input
-              type="checkbox"
-              name="is_recurring"
-              checked={formData.is_recurring}
-              onChange={handleChange}
-              className="w-5 h-5 rounded-[var(--radius-sm)] border-[var(--color-border)] text-[var(--color-primary)] focus:ring-[var(--color-primary)] cursor-pointer"
-            />
-            <div>
-              <span className="text-body font-medium text-[var(--color-text)]">
-                Recurring Expense
-              </span>
-              <p className="text-small text-[var(--color-text-muted)]">
-                Mark this as a recurring monthly expense
-              </p>
-            </div>
-          </label>
+          <div className="space-y-3">
+            <label className="flex items-center gap-3 cursor-pointer min-h-[44px]">
+              <input
+                type="checkbox"
+                name="is_recurring"
+                checked={formData.is_recurring}
+                onChange={handleChange}
+                className="w-5 h-5 rounded-[var(--radius-sm)] border-[var(--color-border)] text-[var(--color-primary)] focus:ring-[var(--color-primary)] cursor-pointer"
+              />
+              <div>
+                <span className="text-body font-medium text-[var(--color-text)]">
+                  Recurring Expense
+                </span>
+                <p className="text-small text-[var(--color-text-muted)]">
+                  Mark this as a recurring expense
+                </p>
+              </div>
+            </label>
+            
+            {formData.is_recurring && (
+              <Select
+                label="Recurring Frequency"
+                name="recurring_frequency"
+                value={formData.recurring_frequency}
+                onChange={handleChange}
+                options={FREQUENCY_OPTIONS}
+                hint="How often should this expense be created?"
+              />
+            )}
+          </div>
 
           {/* Description */}
           <Textarea

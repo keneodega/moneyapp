@@ -1,5 +1,6 @@
 'use client';
 
+import { useCallback, memo } from 'react';
 import { createSupabaseBrowserClient } from '@/lib/supabase/client';
 import { MonthlyOverviewService } from '@/lib/services';
 import { DeleteButton } from '@/components/ui';
@@ -9,13 +10,13 @@ interface MonthActionsProps {
   monthName: string;
 }
 
-export function MonthActions({ monthId, monthName }: MonthActionsProps) {
+export const MonthActions = memo(function MonthActions({ monthId, monthName }: MonthActionsProps) {
   const supabase = createSupabaseBrowserClient();
 
-  const handleDelete = async () => {
+  const handleDelete = useCallback(async () => {
     const service = new MonthlyOverviewService(supabase);
     await service.delete(monthId);
-  };
+  }, [supabase, monthId]);
 
   return (
     <DeleteButton 
@@ -24,4 +25,4 @@ export function MonthActions({ monthId, monthName }: MonthActionsProps) {
       redirectTo="/months"
     />
   );
-}
+});

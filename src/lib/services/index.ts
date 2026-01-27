@@ -34,6 +34,14 @@ export { IncomeSourceService } from './income-source.service';
 export { FinancialGoalService } from './financial-goal.service';
 export { SubscriptionService } from './subscription.service';
 export { SettingsService, type AppSetting, type SettingType } from './settings.service';
+export { ReportsService } from './reports.service';
+export type {
+  SpendingTrendDataPoint,
+  CategoryBreakdownData,
+  YearOverYearData,
+  TimePeriod,
+  DateRange,
+} from './reports.service';
 
 // Export error types for handling
 export {
@@ -74,6 +82,8 @@ import { IncomeSourceService } from './income-source.service';
 import { FinancialGoalService } from './financial-goal.service';
 import { SubscriptionService } from './subscription.service';
 import { SettingsService } from './settings.service';
+import { ReportsService } from './reports.service';
+import { SavingsService } from './savings.service';
 
 export interface Services {
   monthlyOverview: MonthlyOverviewService;
@@ -84,6 +94,8 @@ export interface Services {
   financialGoal: FinancialGoalService;
   subscription: SubscriptionService;
   settings: SettingsService;
+  reports: ReportsService;
+  savings: SavingsService;
 }
 
 export function createServices(supabase: SupabaseClient): Services {
@@ -96,5 +108,7 @@ export function createServices(supabase: SupabaseClient): Services {
     financialGoal: new FinancialGoalService(supabase),
     subscription: new SubscriptionService(supabase),
     settings: new SettingsService(supabase),
+    reports: new ReportsService(supabase),
+    savings: new SavingsService(supabase),
   };
 }

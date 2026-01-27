@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, use } from 'react';
+import { useState, useEffect, use, useCallback, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { Card, Button } from '@/components/ui';
@@ -22,12 +22,9 @@ export default function SelectBudgetsPage({
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const selectAllCheckboxRef = useRef<HTMLInputElement>(null);
 
-  useEffect(() => {
-    loadData();
-  }, [monthId]);
-
-  async function loadData() {
+  const loadData = useCallback(async () => {
     try {
       const supabase = createSupabaseBrowserClient();
       const { data: { user } } = await supabase.auth.getUser();
@@ -103,7 +100,11 @@ export default function SelectBudgetsPage({
     } finally {
       setIsLoading(false);
     }
-  }
+  }, [monthId]);
+
+  useEffect(() => {
+    loadData();
+  }, [loadData]);
 
   const toggleSelection = (masterBudgetId: string) => {
     setSelectedIds(prev => {
@@ -116,6 +117,26 @@ export default function SelectBudgetsPage({
       return newSet;
     });
   };
+
+  const toggleSelectAll = useCallback(() => {
+    const allSelected = availableBudgets.length > 0 && availableBudgets.every(mb => selectedIds.has(mb.id));
+    
+    if (allSelected) {
+      // Deselect all available budgets
+      setSelectedIds(prev => {
+        const newSet = new Set(prev);
+        availableBudgets.forEach(mb => newSet.delete(mb.id));
+        return newSet;
+      });
+    } else {
+      // Select all available budgets
+      setSelectedIds(prev => {
+        const newSet = new Set(prev);
+        availableBudgets.forEach(mb => newSet.add(mb.id));
+        return newSet;
+      });
+    }
+  }, [availableBudgets, selectedIds]);
 
   const handleSubmit = async () => {
     if (selectedIds.size === 0) {
@@ -241,6 +262,17 @@ export default function SelectBudgetsPage({
     );
   });
 
+  // Calculate select all state
+  const allSelected = availableBudgets.length > 0 && availableBudgets.every(mb => selectedIds.has(mb.id));
+  const someSelected = availableBudgets.length > 0 && availableBudgets.some(mb => selectedIds.has(mb.id)) && !allSelected;
+
+  // Update indeterminate state of select all checkbox
+  useEffect(() => {
+    if (selectAllCheckboxRef.current) {
+      selectAllCheckboxRef.current.indeterminate = someSelected;
+    }
+  }, [someSelected]);
+
   if (isLoading) {
     return (
       <div className="max-w-4xl mx-auto space-y-6 animate-fade-in">
@@ -315,12 +347,34 @@ export default function SelectBudgetsPage({
       ) : (
         <>
           <Card variant="raised" padding="lg">
-            <h3 className="text-body font-medium text-[var(--color-text)] mb-4">
-              Available Master Budgets ({availableBudgets.length})
-            </h3>
-            <p className="text-small text-[var(--color-text-muted)] mb-4">
-              Select the budgets you want to include in this month. You can add more later.
-            </p>
+            <div className="flex items-center justify-between mb-4">
+              <div>
+                <h3 className="text-body font-medium text-[var(--color-text)]">
+                  Available Master Budgets ({availableBudgets.length})
+                </h3>
+                <p className="text-small text-[var(--color-text-muted)] mt-1">
+                  Select the budgets you want to include in this month. You can add more later.
+                </p>
+              </div>
+            </div>
+            
+            {/* Select All Checkbox */}
+            {availableBudgets.length > 0 && (
+              <div className="mb-4 pb-4 border-b border-[var(--color-border)]">
+                <label className="flex items-center gap-3 p-3 rounded-[var(--radius-md)] cursor-pointer hover:bg-[var(--color-primary)]/5 transition-colors min-h-[44px] border border-[var(--color-border)] hover:border-[var(--color-primary)]/30">
+                  <input
+                    ref={selectAllCheckboxRef}
+                    type="checkbox"
+                    checked={allSelected}
+                    onChange={toggleSelectAll}
+                    className="w-5 h-5 rounded border-[var(--color-border)] text-[var(--color-primary)] focus:ring-2 focus:ring-[var(--color-primary)] cursor-pointer"
+                  />
+                  <span className="text-body font-medium text-[var(--color-text)]">
+                    Select All ({selectedIds.size} of {availableBudgets.length} selected)
+                  </span>
+                </label>
+              </div>
+            )}
             
             <div className="space-y-2">
               {availableBudgets.map((mb) => {
