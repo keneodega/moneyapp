@@ -40,7 +40,7 @@ export function AddTransactionModal({ bucketId, onClose, onSuccess }: AddTransac
         description: formData.description || null,
       });
 
-      toast.success('Transaction added successfully');
+      toast.showToast('Transaction added successfully', 'success');
       onSuccess();
     } catch (err) {
       if (err instanceof ValidationError) {
@@ -48,7 +48,7 @@ export function AddTransactionModal({ bucketId, onClose, onSuccess }: AddTransac
       } else {
         setError(err instanceof Error ? err.message : 'Failed to add transaction');
       }
-      toast.error('Failed to add transaction');
+      toast.showToast('Failed to add transaction', 'error');
     } finally {
       setLoading(false);
     }
@@ -87,12 +87,13 @@ export function AddTransactionModal({ bucketId, onClose, onSuccess }: AddTransac
                     transaction_type: e.target.value as any,
                   })
                 }
-              >
-                <option value="deposit">Deposit</option>
-                <option value="withdrawal">Withdrawal</option>
-                <option value="transfer_in">Transfer In</option>
-                <option value="transfer_out">Transfer Out</option>
-              </Select>
+                options={[
+                  { value: 'deposit', label: 'Deposit' },
+                  { value: 'withdrawal', label: 'Withdrawal' },
+                  { value: 'transfer_in', label: 'Transfer In' },
+                  { value: 'transfer_out', label: 'Transfer Out' },
+                ]}
+              />
             </div>
 
             <div>

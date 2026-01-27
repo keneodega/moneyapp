@@ -52,7 +52,7 @@ export function BucketDetailModal({ bucketId, onClose, onUpdate }: BucketDetailM
         setBucket(bucketData);
         setTransactions(transactionsData);
       } catch (error) {
-        toast.error('Failed to load bucket details');
+        toast.showToast('Failed to load bucket details', 'error');
         console.error('Error loading bucket:', error);
       } finally {
         setLoading(false);
@@ -72,7 +72,7 @@ export function BucketDetailModal({ bucketId, onClose, onUpdate }: BucketDetailM
 
     try {
       await savingsService.deleteTransaction(transactionId);
-      toast.success('Transaction deleted');
+      toast.showToast('Transaction deleted', 'success');
       // Reload data
       const [bucketData, transactionsData] = await Promise.all([
         savingsService.getBucketById(bucketId),
@@ -82,7 +82,7 @@ export function BucketDetailModal({ bucketId, onClose, onUpdate }: BucketDetailM
       setTransactions(transactionsData);
       onUpdate();
     } catch (error) {
-      toast.error('Failed to delete transaction');
+      toast.showToast('Failed to delete transaction', 'error');
       console.error('Error deleting transaction:', error);
     }
   };

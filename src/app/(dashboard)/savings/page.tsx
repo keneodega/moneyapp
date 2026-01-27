@@ -43,7 +43,7 @@ export default function SavingsPage() {
       const total = data.reduce((sum, bucket) => sum + (bucket.current_amount || 0), 0);
       setTotalSavings(total);
     } catch (error) {
-      toast.error('Failed to load savings buckets');
+      toast.showToast('Failed to load savings buckets', 'error');
       console.error('Error loading buckets:', error);
     } finally {
       setLoading(false);
@@ -65,10 +65,10 @@ export default function SavingsPage() {
 
     try {
       await savingsService.deleteBucket(bucketId);
-      toast.success('Savings bucket deleted');
+      toast.showToast('Savings bucket deleted', 'success');
       loadBuckets();
     } catch (error) {
-      toast.error('Failed to delete savings bucket');
+      toast.showToast('Failed to delete savings bucket', 'error');
       console.error('Error deleting bucket:', error);
     }
   };

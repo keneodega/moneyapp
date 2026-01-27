@@ -57,7 +57,7 @@ export function CreateBucketModal({ onClose, onSuccess }: CreateBucketModalProps
         description: formData.description || null,
       });
 
-      toast.success('Savings bucket created successfully');
+      toast.showToast('Savings bucket created successfully', 'success');
       onSuccess();
     } catch (err) {
       if (err instanceof ValidationError) {
@@ -65,7 +65,7 @@ export function CreateBucketModal({ onClose, onSuccess }: CreateBucketModalProps
       } else {
         setError(err instanceof Error ? err.message : 'Failed to create savings bucket');
       }
-      toast.error('Failed to create savings bucket');
+      toast.showToast('Failed to create savings bucket', 'error');
     } finally {
       setLoading(false);
     }

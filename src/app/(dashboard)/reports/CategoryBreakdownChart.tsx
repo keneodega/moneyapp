@@ -58,6 +58,10 @@ function CustomTooltip({ active, payload }: { active?: boolean; payload?: any[] 
 }
 
 export function CategoryBreakdownChart({ data }: CategoryBreakdownChartProps) {
+  const totalSpent = useMemo(() => {
+    return data.reduce((sum, item) => sum + item.totalSpent, 0);
+  }, [data]);
+
   const chartData = useMemo(() => {
     return data.map((item) => ({
       name: item.category,
@@ -92,7 +96,12 @@ export function CategoryBreakdownChart({ data }: CategoryBreakdownChartProps) {
                   cx="50%"
                   cy="50%"
                   labelLine={false}
-                  label={({ name, percentage }) => `${name}: ${percentage.toFixed(1)}%`}
+                  label={(props: any) => {
+                    const name = props.name || '';
+                    const value = props.value || 0;
+                    const percentage = totalSpent > 0 ? (value / totalSpent) * 100 : 0;
+                    return `${name}: ${percentage.toFixed(1)}%`;
+                  }}
                   outerRadius={100}
                   fill="#8884d8"
                   dataKey="value"
