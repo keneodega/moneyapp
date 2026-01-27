@@ -82,14 +82,41 @@ export class FinancialGoalService {
       ...data,
       user_id: userId,
       current_amount: initialAmount,
-      base_amount: initialAmount, // Store initial amount as base
     };
     
-    const { data: goal, error } = await this.supabase
+    // Only include base_amount if the column exists (migration has been run)
+    // Try to insert with base_amount first, if it fails, retry without it
+    let goal: any;
+    let error: any;
+    
+    // First try with base_amount
+    insertData.base_amount = initialAmount;
+    const resultWithBase = await this.supabase
       .from('financial_goals')
       .insert(insertData)
       .select()
       .single();
+    
+    if (resultWithBase.error) {
+      // If error mentions base_amount column, try without it
+      if (resultWithBase.error.message?.includes('base_amount') || 
+          resultWithBase.error.message?.includes('column')) {
+        delete insertData.base_amount;
+        const resultWithoutBase = await this.supabase
+          .from('financial_goals')
+          .insert(insertData)
+          .select()
+          .single();
+        goal = resultWithoutBase.data;
+        error = resultWithoutBase.error;
+      } else {
+        goal = resultWithBase.data;
+        error = resultWithBase.error;
+      }
+    } else {
+      goal = resultWithBase.data;
+      error = null;
+    }
 
     if (error) {
       logError(new Error(`Failed to create financial goal: ${error.message}`), {
