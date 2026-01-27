@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, use, useCallback, useRef } from 'react';
+import { useState, useEffect, use, useCallback, useRef, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { Card, Button } from '@/components/ui';
@@ -105,6 +105,23 @@ export default function SelectBudgetsPage({
   useEffect(() => {
     loadData();
   }, [loadData]);
+
+  // Filter budgets: check both by master_budget_id and by name match
+  const availableBudgets = useMemo(() => {
+    return masterBudgets.filter(mb => {
+      // Check if exists by master_budget_id
+      if (existingBudgetIds.has(mb.id)) {
+        return false;
+      }
+      // Also check if a budget with the same name already exists (case-insensitive)
+      // This handles budgets created before master budgets system
+      const existingBudgetsData = existingBudgets || [];
+      const nameMatch = existingBudgetsData.some(
+        b => b.name?.toLowerCase().trim() === mb.name.toLowerCase().trim()
+      );
+      return !nameMatch;
+    });
+  }, [masterBudgets, existingBudgetIds, existingBudgets]);
 
   const toggleSelection = (masterBudgetId: string) => {
     setSelectedIds(prev => {
@@ -234,21 +251,6 @@ export default function SelectBudgetsPage({
       setIsSaving(false);
     }
   };
-
-  // Filter budgets: check both by master_budget_id and by name match
-  const availableBudgets = masterBudgets.filter(mb => {
-    // Check if exists by master_budget_id
-    if (existingBudgetIds.has(mb.id)) {
-      return false;
-    }
-    // Also check if a budget with the same name already exists (case-insensitive)
-    // This handles budgets created before master budgets system
-    const existingBudgetsData = existingBudgets || [];
-    const nameMatch = existingBudgetsData.some(
-      b => b.name?.toLowerCase().trim() === mb.name.toLowerCase().trim()
-    );
-    return !nameMatch;
-  });
   
   const alreadyAdded = masterBudgets.filter(mb => {
     // Check if exists by master_budget_id
