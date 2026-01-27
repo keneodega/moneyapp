@@ -147,11 +147,36 @@ export class FinancialGoalService {
     await this.getUserId();
 
     // Get the current goal to get base_amount
-    const { data: goal, error: goalError } = await this.supabase
+    // Try to select base_amount, but handle gracefully if column doesn't exist
+    let goal: any;
+    let goalError: any;
+    
+    // First try with base_amount
+    const resultWithBase = await this.supabase
       .from('financial_goals')
       .select('base_amount, current_amount')
       .eq('id', id)
       .single();
+    
+    if (resultWithBase.error) {
+      // If error mentions base_amount column, try without it
+      if (resultWithBase.error.message?.includes('base_amount') || 
+          resultWithBase.error.message?.includes('column')) {
+        const resultWithoutBase = await this.supabase
+          .from('financial_goals')
+          .select('current_amount')
+          .eq('id', id)
+          .single();
+        goal = resultWithoutBase.data;
+        goalError = resultWithoutBase.error;
+      } else {
+        goal = resultWithBase.data;
+        goalError = resultWithBase.error;
+      }
+    } else {
+      goal = resultWithBase.data;
+      goalError = null;
+    }
 
     if (goalError || !goal) {
       console.error(`Error fetching goal ${id}:`, goalError);
