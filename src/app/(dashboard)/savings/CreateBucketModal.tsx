@@ -140,14 +140,11 @@ export function CreateBucketModal({ onClose, onSuccess }: CreateBucketModalProps
               <Select
                 value={formData.linked_goal_id}
                 onChange={(e) => setFormData({ ...formData, linked_goal_id: e.target.value })}
-              >
-                <option value="">No goal linked</option>
-                {goals.map((goal) => (
-                  <option key={goal.id} value={goal.id}>
-                    {goal.name}
-                  </option>
-                ))}
-              </Select>
+                options={[
+                  { value: '', label: 'No goal linked' },
+                  ...goals.map((goal) => ({ value: goal.id, label: goal.name })),
+                ]}
+              />
             </div>
 
             <div>

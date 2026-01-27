@@ -51,28 +51,35 @@ CREATE INDEX IF NOT EXISTS idx_savings_transactions_date ON savings_transactions
 ALTER TABLE savings_buckets ENABLE ROW LEVEL SECURITY;
 ALTER TABLE savings_transactions ENABLE ROW LEVEL SECURITY;
 
+-- Drop existing policies if they exist (for idempotent migrations)
+
 -- Users can only see their own savings buckets
+DROP POLICY IF EXISTS "Users can view own savings buckets" ON savings_buckets;
 CREATE POLICY "Users can view own savings buckets"
   ON savings_buckets FOR SELECT
   USING (auth.uid() = user_id);
 
 -- Users can insert their own savings buckets
+DROP POLICY IF EXISTS "Users can insert own savings buckets" ON savings_buckets;
 CREATE POLICY "Users can insert own savings buckets"
   ON savings_buckets FOR INSERT
   WITH CHECK (auth.uid() = user_id);
 
 -- Users can update their own savings buckets
+DROP POLICY IF EXISTS "Users can update own savings buckets" ON savings_buckets;
 CREATE POLICY "Users can update own savings buckets"
   ON savings_buckets FOR UPDATE
   USING (auth.uid() = user_id)
   WITH CHECK (auth.uid() = user_id);
 
 -- Users can delete their own savings buckets
+DROP POLICY IF EXISTS "Users can delete own savings buckets" ON savings_buckets;
 CREATE POLICY "Users can delete own savings buckets"
   ON savings_buckets FOR DELETE
   USING (auth.uid() = user_id);
 
 -- Users can view transactions for their own buckets
+DROP POLICY IF EXISTS "Users can view own savings transactions" ON savings_transactions;
 CREATE POLICY "Users can view own savings transactions"
   ON savings_transactions FOR SELECT
   USING (
@@ -84,6 +91,7 @@ CREATE POLICY "Users can view own savings transactions"
   );
 
 -- Users can insert transactions for their own buckets
+DROP POLICY IF EXISTS "Users can insert own savings transactions" ON savings_transactions;
 CREATE POLICY "Users can insert own savings transactions"
   ON savings_transactions FOR INSERT
   WITH CHECK (
@@ -95,6 +103,7 @@ CREATE POLICY "Users can insert own savings transactions"
   );
 
 -- Users can update transactions for their own buckets
+DROP POLICY IF EXISTS "Users can update own savings transactions" ON savings_transactions;
 CREATE POLICY "Users can update own savings transactions"
   ON savings_transactions FOR UPDATE
   USING (
@@ -113,6 +122,7 @@ CREATE POLICY "Users can update own savings transactions"
   );
 
 -- Users can delete transactions for their own buckets
+DROP POLICY IF EXISTS "Users can delete own savings transactions" ON savings_transactions;
 CREATE POLICY "Users can delete own savings transactions"
   ON savings_transactions FOR DELETE
   USING (
