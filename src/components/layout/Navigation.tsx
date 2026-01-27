@@ -49,11 +49,11 @@ export function Navigation() {
       <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between h-16">
           {/* Logo */}
-          <Link href="/" className="flex items-center gap-3 group min-h-[44px] min-w-[44px]">
-            <div className="w-10 h-10 rounded-[var(--radius-md)] bg-[var(--color-primary)] flex items-center justify-center shadow-[var(--shadow-sm)] group-hover:shadow-[var(--shadow-md)] transition-shadow">
+          <Link href="/" className="flex items-center gap-3 group min-h-[44px]">
+            <div className="w-10 h-10 rounded-[var(--radius-md)] bg-[var(--color-primary)] flex items-center justify-center shadow-[var(--shadow-sm)] group-hover:shadow-[var(--shadow-md)] transition-shadow flex-shrink-0">
               <WalletIcon className="w-5 h-5 text-white" />
             </div>
-            <span className="text-title text-[var(--color-text)] hidden sm:block">
+            <span className="text-title text-[var(--color-text)] hidden sm:block whitespace-nowrap leading-normal">
               Family Money
             </span>
           </Link>
