@@ -132,11 +132,49 @@ export class FinancialGoalService {
   }
 
   /**
-   * Get a single financial goal by ID with sub-goals
+   * Recalculate and update the goal's current_amount based on linked expenses
    * @param id - Financial goal ID
    */
-  async getById(id: string): Promise<FinancialGoalWithSubGoals> {
+  async recalculateCurrentAmount(id: string): Promise<void> {
     await this.getUserId();
+
+    // Get all expenses linked to this goal
+    const { data: expenses, error: expensesError } = await this.supabase
+      .from('expenses')
+      .select('amount')
+      .eq('financial_goal_id', id);
+
+    if (expensesError) {
+      console.error(`Error fetching expenses for goal ${id}:`, expensesError);
+      return;
+    }
+
+    // Calculate total from linked expenses
+    const totalFromExpenses = expenses?.reduce((sum, exp) => sum + Number(exp.amount || 0), 0) || 0;
+
+    // Update the goal's current_amount
+    const { error: updateError } = await this.supabase
+      .from('financial_goals')
+      .update({ current_amount: totalFromExpenses })
+      .eq('id', id);
+
+    if (updateError) {
+      console.error(`Error updating current_amount for goal ${id}:`, updateError);
+    }
+  }
+
+  /**
+   * Get a single financial goal by ID with sub-goals
+   * @param id - Financial goal ID
+   * @param recalculate - If true, recalculate current_amount from linked expenses before returning
+   */
+  async getById(id: string, recalculate: boolean = true): Promise<FinancialGoalWithSubGoals> {
+    await this.getUserId();
+
+    // Recalculate current_amount from actual linked expenses to ensure accuracy
+    if (recalculate) {
+      await this.recalculateCurrentAmount(id);
+    }
 
     // Get the goal
     const { data: goal, error: goalError } = await this.supabase
