@@ -137,8 +137,12 @@ export default async function BudgetDetailPage({
           <Card variant="outlined" padding="none">
             <div className="divide-y divide-[var(--color-border)]">
               {expenses.map((expense) => (
-                <div key={expense.id} className="p-4 flex items-center justify-between">
-                  <div>
+                <Link
+                  key={expense.id}
+                  href={`/months/${monthId}/expense/${expense.id}/edit`}
+                  className="block p-4 flex items-center justify-between hover:bg-[var(--color-surface-sunken)] transition-colors"
+                >
+                  <div className="flex-1">
                     <p className="text-body font-medium text-[var(--color-text)]">
                       {expense.description || 'Expense'}
                     </p>
@@ -147,10 +151,10 @@ export default async function BudgetDetailPage({
                       {expense.bank && ` · ${expense.bank}`}
                     </p>
                   </div>
-                  <span className="text-body font-medium text-[var(--color-text)] tabular-nums">
+                  <span className="text-body font-medium text-[var(--color-text)] tabular-nums ml-4">
                     -{formatCurrency(expense.amount)}
                   </span>
-                </div>
+                </Link>
               ))}
             </div>
           </Card>
