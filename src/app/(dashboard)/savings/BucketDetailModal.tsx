@@ -61,30 +61,31 @@ export function BucketDetailModal({ bucketId, onClose, onUpdate }: BucketDetailM
     loadData();
   }, [bucketId, savingsService, toast]);
 
-  const handleDeleteTransaction = async (transactionId: string) => {
-    const confirmed = await confirmDialog({
+  const handleDeleteTransaction = (transactionId: string) => {
+    confirmDialog.showConfirm({
       title: 'Delete Transaction',
       message: 'Are you sure you want to delete this transaction?',
       variant: 'danger',
+      confirmText: 'Delete',
+      cancelText: 'Cancel',
+      onConfirm: async () => {
+        try {
+          await savingsService.deleteTransaction(transactionId);
+          toast.showToast('Transaction deleted', 'success');
+          // Reload data
+          const [bucketData, transactionsData] = await Promise.all([
+            savingsService.getBucketById(bucketId),
+            savingsService.getBucketTransactions(bucketId),
+          ]);
+          setBucket(bucketData);
+          setTransactions(transactionsData);
+          onUpdate();
+        } catch (error) {
+          toast.showToast('Failed to delete transaction', 'error');
+          console.error('Error deleting transaction:', error);
+        }
+      },
     });
-
-    if (!confirmed) return;
-
-    try {
-      await savingsService.deleteTransaction(transactionId);
-      toast.showToast('Transaction deleted', 'success');
-      // Reload data
-      const [bucketData, transactionsData] = await Promise.all([
-        savingsService.getBucketById(bucketId),
-        savingsService.getBucketTransactions(bucketId),
-      ]);
-      setBucket(bucketData);
-      setTransactions(transactionsData);
-      onUpdate();
-    } catch (error) {
-      toast.showToast('Failed to delete transaction', 'error');
-      console.error('Error deleting transaction:', error);
-    }
   };
 
   if (loading) {

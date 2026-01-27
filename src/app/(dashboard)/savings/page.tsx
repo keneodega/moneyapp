@@ -54,23 +54,24 @@ export default function SavingsPage() {
     loadBuckets();
   }, [loadBuckets]);
 
-  const handleDelete = async (bucketId: string, bucketName: string) => {
-    const confirmed = await confirmDialog({
+  const handleDelete = (bucketId: string, bucketName: string) => {
+    confirmDialog.showConfirm({
       title: 'Delete Savings Bucket',
       message: `Are you sure you want to delete "${bucketName}"? This will also delete all associated transactions.`,
       variant: 'danger',
+      confirmText: 'Delete',
+      cancelText: 'Cancel',
+      onConfirm: async () => {
+        try {
+          await savingsService.deleteBucket(bucketId);
+          toast.showToast('Savings bucket deleted', 'success');
+          loadBuckets();
+        } catch (error) {
+          toast.showToast('Failed to delete savings bucket', 'error');
+          console.error('Error deleting bucket:', error);
+        }
+      },
     });
-
-    if (!confirmed) return;
-
-    try {
-      await savingsService.deleteBucket(bucketId);
-      toast.showToast('Savings bucket deleted', 'success');
-      loadBuckets();
-    } catch (error) {
-      toast.showToast('Failed to delete savings bucket', 'error');
-      console.error('Error deleting bucket:', error);
-    }
   };
 
   const handleBucketCreated = () => {
