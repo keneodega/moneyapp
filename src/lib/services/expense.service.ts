@@ -348,93 +348,24 @@ export class ExpenseService {
       throw new NotFoundError('Expense', id);
     }
 
-    // Handle goal updates if amount or goal link changed
+    // Handle goal updates if amount or goal link changed - recalculate affected goals
     const goalIdChanged = data.financial_goal_id !== undefined && data.financial_goal_id !== existingExpense.financial_goal_id;
     const amountChanged = data.amount !== undefined && data.amount !== existingExpense.amount;
     const goalLinkRemoved = data.financial_goal_id === null && existingExpense.financial_goal_id !== null;
 
     if (goalIdChanged || amountChanged || goalLinkRemoved) {
       try {
-        // If goal link was removed, subtract the old amount from the old goal
-        if (goalLinkRemoved && existingExpense.financial_goal_id) {
-          const { data: oldGoal } = await this.supabase
-            .from('financial_goals')
-            .select('current_amount')
-            .eq('id', existingExpense.financial_goal_id)
-            .single();
+        const { FinancialGoalService } = await import('./financial-goal.service');
+        const goalService = new FinancialGoalService(this.supabase);
 
-          if (oldGoal) {
-            const newCurrentAmount = Math.max(0, (oldGoal.current_amount || 0) - existingExpense.amount);
-            await this.supabase
-              .from('financial_goals')
-              .update({ current_amount: newCurrentAmount })
-              .eq('id', existingExpense.financial_goal_id);
-          }
+        // Recalculate old goal if link was removed or changed
+        if ((goalLinkRemoved || goalIdChanged) && existingExpense.financial_goal_id) {
+          await goalService.recalculateCurrentAmount(existingExpense.financial_goal_id);
         }
-        // If goal link changed from one goal to another
-        else if (goalIdChanged && existingExpense.financial_goal_id && updated.financial_goal_id) {
-          // Subtract old amount from old goal
-          const { data: oldGoal } = await this.supabase
-            .from('financial_goals')
-            .select('current_amount')
-            .eq('id', existingExpense.financial_goal_id)
-            .single();
 
-          if (oldGoal) {
-            const newOldGoalAmount = Math.max(0, (oldGoal.current_amount || 0) - existingExpense.amount);
-            await this.supabase
-              .from('financial_goals')
-              .update({ current_amount: newOldGoalAmount })
-              .eq('id', existingExpense.financial_goal_id);
-          }
-
-          // Add new amount to new goal
-          const { data: newGoal } = await this.supabase
-            .from('financial_goals')
-            .select('current_amount')
-            .eq('id', updated.financial_goal_id)
-            .single();
-
-          if (newGoal) {
-            const newNewGoalAmount = (newGoal.current_amount || 0) + updated.amount;
-            await this.supabase
-              .from('financial_goals')
-              .update({ current_amount: newNewGoalAmount })
-              .eq('id', updated.financial_goal_id);
-          }
-        }
-        // If amount changed but goal link stayed the same
-        else if (amountChanged && updated.financial_goal_id) {
-          const { data: goal } = await this.supabase
-            .from('financial_goals')
-            .select('current_amount')
-            .eq('id', updated.financial_goal_id)
-            .single();
-
-          if (goal) {
-            // Subtract old amount, add new amount
-            const newCurrentAmount = Math.max(0, (goal.current_amount || 0) - existingExpense.amount + updated.amount);
-            await this.supabase
-              .from('financial_goals')
-              .update({ current_amount: newCurrentAmount })
-              .eq('id', updated.financial_goal_id);
-          }
-        }
-        // If goal link was added (was null, now has a goal)
-        else if (goalIdChanged && !existingExpense.financial_goal_id && updated.financial_goal_id) {
-          const { data: goal } = await this.supabase
-            .from('financial_goals')
-            .select('current_amount')
-            .eq('id', updated.financial_goal_id)
-            .single();
-
-          if (goal) {
-            const newCurrentAmount = (goal.current_amount || 0) + updated.amount;
-            await this.supabase
-              .from('financial_goals')
-              .update({ current_amount: newCurrentAmount })
-              .eq('id', updated.financial_goal_id);
-          }
+        // Recalculate new goal if link was added or changed
+        if ((goalIdChanged || (amountChanged && updated.financial_goal_id)) && updated.financial_goal_id) {
+          await goalService.recalculateCurrentAmount(updated.financial_goal_id);
         }
       } catch (err) {
         // Don't fail expense update if goal update fails
@@ -469,32 +400,13 @@ export class ExpenseService {
       throw new Error(`Failed to delete expense: ${error.message}`);
     }
 
-    // If expense was linked to a goal, update the goal's current_amount
+    // If expense was linked to a goal, recalculate the goal's current_amount
     if (expense.financial_goal_id) {
       try {
-        // Get the current goal state
-        const { data: goal, error: goalError } = await this.supabase
-          .from('financial_goals')
-          .select('current_amount, target_amount')
-          .eq('id', expense.financial_goal_id)
-          .single();
-
-        if (!goalError && goal) {
-          // Subtract the expense amount from the goal's current_amount
-          // Ensure it doesn't go below 0
-          const newCurrentAmount = Math.max(0, (goal.current_amount || 0) - expense.amount);
-
-          // Update the goal
-          const { error: updateError } = await this.supabase
-            .from('financial_goals')
-            .update({ current_amount: newCurrentAmount })
-            .eq('id', expense.financial_goal_id);
-
-          if (updateError) {
-            console.error(`Failed to update goal ${expense.financial_goal_id} after expense deletion:`, updateError);
-            // Don't throw - expense is already deleted, just log the error
-          }
-        }
+        // Use the FinancialGoalService to recalculate properly (base_amount + expenses)
+        const { FinancialGoalService } = await import('./financial-goal.service');
+        const goalService = new FinancialGoalService(this.supabase);
+        await goalService.recalculateCurrentAmount(expense.financial_goal_id);
       } catch (err) {
         // Don't fail expense deletion if goal update fails
         console.error('Error updating goal after expense deletion:', err);

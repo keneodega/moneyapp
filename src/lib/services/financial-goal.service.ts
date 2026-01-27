@@ -73,12 +73,16 @@ export class FinancialGoalService {
     }
 
     // Create the financial goal
+    // Store the initial current_amount as base_amount, and set current_amount to the same value
+    // (expenses will be added to this later)
+    const initialAmount = data.current_amount || 0;
     const { data: goal, error } = await this.supabase
       .from('financial_goals')
       .insert({
         ...data,
         user_id: userId,
-        current_amount: data.current_amount || 0,
+        current_amount: initialAmount,
+        base_amount: initialAmount, // Store initial amount as base
       })
       .select()
       .single();
@@ -132,11 +136,23 @@ export class FinancialGoalService {
   }
 
   /**
-   * Recalculate and update the goal's current_amount based on linked expenses
+   * Recalculate and update the goal's current_amount based on base_amount + linked expenses
    * @param id - Financial goal ID
    */
   async recalculateCurrentAmount(id: string): Promise<void> {
     await this.getUserId();
+
+    // Get the current goal to get base_amount
+    const { data: goal, error: goalError } = await this.supabase
+      .from('financial_goals')
+      .select('base_amount, current_amount')
+      .eq('id', id)
+      .single();
+
+    if (goalError || !goal) {
+      console.error(`Error fetching goal ${id}:`, goalError);
+      return;
+    }
 
     // Get all expenses linked to this goal
     const { data: expenses, error: expensesError } = await this.supabase
@@ -152,10 +168,19 @@ export class FinancialGoalService {
     // Calculate total from linked expenses
     const totalFromExpenses = expenses?.reduce((sum, exp) => sum + Number(exp.amount || 0), 0) || 0;
 
-    // Update the goal's current_amount
+    // Get base_amount (initial/manual amount), defaulting to current_amount if base_amount doesn't exist yet
+    const baseAmount = Number(goal.base_amount ?? goal.current_amount ?? 0);
+
+    // New current_amount = base_amount + sum of linked expenses
+    const newCurrentAmount = baseAmount + totalFromExpenses;
+
+    // Update the goal's current_amount and base_amount (in case base_amount was null)
     const { error: updateError } = await this.supabase
       .from('financial_goals')
-      .update({ current_amount: totalFromExpenses })
+      .update({ 
+        current_amount: newCurrentAmount,
+        base_amount: baseAmount // Ensure base_amount is set
+      })
       .eq('id', id);
 
     if (updateError) {
@@ -218,8 +243,8 @@ export class FinancialGoalService {
   async update(id: string, data: FinancialGoalUpdate): Promise<FinancialGoal> {
     await this.getUserId();
 
-    // Get existing goal to validate dates
-    const existingGoal = await this.getById(id);
+    // Get existing goal to validate dates and get current expenses
+    const existingGoal = await this.getById(id, false); // Don't recalculate yet
 
     // Validate date range if dates are provided
     const startDate = data.start_date || existingGoal.start_date;
@@ -230,6 +255,27 @@ export class FinancialGoalService {
     // Validate target amount if provided
     if (data.target_amount !== undefined && data.target_amount <= 0) {
       throw new ValidationError('Target amount must be greater than zero', 'target_amount');
+    }
+
+    // If current_amount is being updated manually, we need to update base_amount
+    // Get sum of linked expenses to calculate the new base_amount
+    if (data.current_amount !== undefined) {
+      const { data: expenses } = await this.supabase
+        .from('expenses')
+        .select('amount')
+        .eq('financial_goal_id', id);
+
+      const totalFromExpenses = expenses?.reduce((sum, exp) => sum + Number(exp.amount || 0), 0) || 0;
+      
+      // When user manually sets current_amount, the base_amount = current_amount - expenses
+      // This ensures that when we recalculate, we get: base_amount + expenses = current_amount
+      const newBaseAmount = Math.max(0, data.current_amount - totalFromExpenses);
+      
+      // Update both current_amount and base_amount
+      data = {
+        ...data,
+        base_amount: newBaseAmount,
+      } as any; // Type assertion needed because base_amount might not be in FinancialGoalUpdate type
     }
 
     const { data: updated, error } = await this.supabase

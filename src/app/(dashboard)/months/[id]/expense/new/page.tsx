@@ -153,19 +153,15 @@ export default function NewExpensePage({
           financial_goal_id: formData.financial_goal_id || null,
         });
 
-      // If expense is linked to a goal, update the goal's current_amount
+      // If expense is linked to a goal, recalculate the goal's current_amount
       if ( !insertError && formData.financial_goal_id) {
-        const { data: goal } = await supabase
-          .from('financial_goals')
-          .select('current_amount')
-          .eq('id', formData.financial_goal_id)
-          .single();
-
-        if (goal) {
-          await supabase
-            .from('financial_goals')
-            .update({ current_amount: (goal.current_amount || 0) + expenseAmount })
-            .eq('id', formData.financial_goal_id);
+        try {
+          const { FinancialGoalService } = await import('@/lib/services');
+          const goalService = new FinancialGoalService(supabase);
+          await goalService.recalculateCurrentAmount(formData.financial_goal_id);
+        } catch (err) {
+          console.error('Error updating goal after expense creation:', err);
+          // Don't fail expense creation if goal update fails
         }
       }
 
