@@ -96,12 +96,21 @@ export async function LinkedExpenses({ goalId }: { goalId: string }) {
           const budget = expense.budgets as any;
           const monthlyOverview = budget?.monthly_overviews as any;
           const monthId = budget?.monthly_overview_id || monthlyOverview?.id || '';
+          const budgetId = expense.budget_id || '';
           const budgetName = budget?.name || 'Unknown';
+          
+          // Link to budget detail page: /months/{monthId}/budgets/{budgetId}
+          // This will take the user directly to the budget category where the expense is located
+          const budgetDetailUrl = (monthId && budgetId) 
+            ? `/months/${monthId}/budgets/${budgetId}`
+            : monthId 
+            ? `/months/${monthId}` 
+            : '#';
           
           return (
             <Link
               key={expense.id}
-              href={monthId ? `/months/${monthId}` : '#'}
+              href={budgetDetailUrl}
               className="block p-3 rounded-[var(--radius-md)] border border-[var(--color-border)] hover:border-[var(--color-primary)] hover:bg-[var(--color-primary)]/5 transition-colors"
             >
               <div className="flex items-start justify-between mb-1">
