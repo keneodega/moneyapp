@@ -42,15 +42,6 @@ export type {
   TimePeriod,
   DateRange,
 } from './reports.service';
-export { SavingsService } from './savings.service';
-export type {
-  SavingsBucket,
-  SavingsBucketInsert,
-  SavingsBucketUpdate,
-  SavingsTransaction,
-  SavingsTransactionInsert,
-  SavingsBucketWithGoal,
-} from './savings.service';
 
 // Export error types for handling
 export {
@@ -92,7 +83,6 @@ import { FinancialGoalService } from './financial-goal.service';
 import { SubscriptionService } from './subscription.service';
 import { SettingsService } from './settings.service';
 import { ReportsService } from './reports.service';
-import { SavingsService } from './savings.service';
 
 export interface Services {
   monthlyOverview: MonthlyOverviewService;
@@ -104,7 +94,6 @@ export interface Services {
   subscription: SubscriptionService;
   settings: SettingsService;
   reports: ReportsService;
-  savings: SavingsService;
 }
 
 export function createServices(supabase: SupabaseClient): Services {
@@ -118,6 +107,5 @@ export function createServices(supabase: SupabaseClient): Services {
     subscription: new SubscriptionService(supabase),
     settings: new SettingsService(supabase),
     reports: new ReportsService(supabase),
-    savings: new SavingsService(supabase),
   };
 }
