@@ -138,6 +138,103 @@ export class IncomeSourceService {
       }
     }
 
+    // If tithe/offering is selected, ensure Tithe and Offering budgets exist
+    if (incomeSource.tithe_deduction) {
+      try {
+        const budgetService = new BudgetService(this.supabase);
+        const masterBudgetService = new MasterBudgetService(this.supabase);
+
+        // Check for Tithe budget
+        const { data: titheBudget } = await this.supabase
+          .from('budgets')
+          .select('id')
+          .eq('monthly_overview_id', incomeSource.monthly_overview_id)
+          .eq('name', 'Tithe')
+          .maybeSingle();
+
+        if (!titheBudget) {
+          // Try to find Tithe master budget first
+          const masterBudgets = await masterBudgetService.getAll(true);
+          const titheMaster = masterBudgets.find(mb => mb.name.toLowerCase() === 'tithe');
+          
+          if (titheMaster) {
+            // Create from master budget
+            try {
+              await budgetService.create({
+                monthly_overview_id: incomeSource.monthly_overview_id,
+                name: titheMaster.name,
+                budget_amount: titheMaster.budget_amount,
+                master_budget_id: titheMaster.id,
+                description: titheMaster.description || null,
+              });
+            } catch (err) {
+              console.warn('Failed to create Tithe budget from master:', err);
+            }
+          } else {
+            // Create standalone Tithe budget with default amount
+            // Default to 10% of the income amount, or a reasonable minimum
+            const titheAmount = Math.max(incomeSource.amount * 0.1, 100);
+            try {
+              await budgetService.create({
+                monthly_overview_id: incomeSource.monthly_overview_id,
+                name: 'Tithe',
+                budget_amount: titheAmount,
+                description: '10% of all income - giving back to God',
+              });
+            } catch (err) {
+              console.warn('Failed to create Tithe budget:', err);
+            }
+          }
+        }
+
+        // Check for Offering budget
+        const { data: offeringBudget } = await this.supabase
+          .from('budgets')
+          .select('id')
+          .eq('monthly_overview_id', incomeSource.monthly_overview_id)
+          .eq('name', 'Offering')
+          .maybeSingle();
+
+        if (!offeringBudget) {
+          // Try to find Offering master budget first
+          const masterBudgets = await masterBudgetService.getAll(true);
+          const offeringMaster = masterBudgets.find(mb => mb.name.toLowerCase() === 'offering');
+          
+          if (offeringMaster) {
+            // Create from master budget
+            try {
+              await budgetService.create({
+                monthly_overview_id: incomeSource.monthly_overview_id,
+                name: offeringMaster.name,
+                budget_amount: offeringMaster.budget_amount,
+                master_budget_id: offeringMaster.id,
+                description: offeringMaster.description || null,
+              });
+            } catch (err) {
+              console.warn('Failed to create Offering budget from master:', err);
+            }
+          } else {
+            // Create standalone Offering budget with default amount
+            // Default to 5% of the income amount, or a reasonable minimum
+            const offeringAmount = Math.max(incomeSource.amount * 0.05, 50);
+            try {
+              await budgetService.create({
+                monthly_overview_id: incomeSource.monthly_overview_id,
+                name: 'Offering',
+                budget_amount: offeringAmount,
+                description: '5% of main income - additional giving',
+              });
+            } catch (err) {
+              console.warn('Failed to create Offering budget:', err);
+            }
+          }
+        }
+      } catch (err) {
+        // Don't fail income creation if budget creation fails
+        console.error('Failed to create Tithe/Offering budgets:', err);
+      }
+    }
+
     return incomeSource;
   }
 
