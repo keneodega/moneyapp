@@ -42,6 +42,15 @@ export type {
   TimePeriod,
   DateRange,
 } from './reports.service';
+export { SavingsService } from './savings.service';
+export type {
+  SavingsBucket,
+  SavingsBucketInsert,
+  SavingsBucketUpdate,
+  SavingsTransaction,
+  SavingsTransactionInsert,
+  SavingsBucketWithGoal,
+} from './savings.service';
 
 // Export error types for handling
 export {
