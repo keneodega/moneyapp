@@ -20,9 +20,7 @@ function AddSubscriptionsToBudgetComponent({
   endDate,
   onSuccess,
 }: AddSubscriptionsToBudgetProps) {
-  // Always call hooks unconditionally - React rules
-  const toast = useToast();
-
+  const [mounted, setMounted] = useState(false);
   const [subscriptions, setSubscriptions] = useState<Subscription[]>([]);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [loading, setLoading] = useState(true);
@@ -31,7 +29,16 @@ function AddSubscriptionsToBudgetComponent({
   const [error, setError] = useState<string | null>(null);
   const [componentError, setComponentError] = useState<string | null>(null);
 
+  // Always call hooks unconditionally - React rules
+  const toast = useToast();
+
   useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  useEffect(() => {
+    if (!mounted) return;
+    
     try {
       loadSubscriptions();
     } catch (err) {
@@ -40,7 +47,7 @@ function AddSubscriptionsToBudgetComponent({
       setLoading(false);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [startDate, endDate]);
+  }, [mounted, startDate, endDate]);
 
   const loadSubscriptions = async () => {
     try {
@@ -177,6 +184,16 @@ function AddSubscriptionsToBudgetComponent({
     .reduce((sum, sub) => {
       return sum + SubscriptionService.calculateMonthlyCost(sub.amount, sub.frequency);
     }, 0);
+
+  if (!mounted) {
+    return (
+      <Card variant="outlined" padding="lg">
+        <div className="text-center py-8">
+          <p className="text-body text-[var(--color-text-muted)]">Loading...</p>
+        </div>
+      </Card>
+    );
+  }
 
   if (loading) {
     return (
