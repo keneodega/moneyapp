@@ -370,20 +370,19 @@ export default async function MonthDetailPage({
         </Card>
       </div>
 
-      {/* Add Subscriptions to Budget */}
-      <div className="w-full">
+      {/* Add Subscriptions to Budget - Temporarily disabled to debug page error */}
+      {/* <div className="w-full">
         <AddSubscriptionsToBudget
           monthId={id}
           startDate={month.start_date}
           endDate={month.end_date}
           onSuccess={() => {
-            // Refresh the page to show new budgets
             if (typeof window !== 'undefined') {
               window.location.reload();
             }
           }}
         />
-      </div>
+      </div> */}
 
       {/* Main Content Grid */}
       <div className="grid gap-6 lg:grid-cols-3">
