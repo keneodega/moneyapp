@@ -125,17 +125,15 @@ export class MonthlyOverviewService {
     } catch (error) {
       // Don't fail month creation if subscription conversion fails
       console.warn('Failed to automatically add subscriptions as budgets:', error);
-      logError(
-        error instanceof Error ? error : new Error(String(error)),
-        {
-          event: 'subscription.budget_conversion_failed',
-          metadata: {
-            monthlyOverviewId: monthlyOverview.id,
-            startDate: monthlyOverview.start_date,
-            endDate: monthlyOverview.end_date,
-          },
-        }
-      );
+      logError({
+        message: 'Failed to add subscriptions as budgets when creating month',
+        error: error instanceof Error ? error : new Error(String(error)),
+        context: {
+          monthlyOverviewId: monthlyOverview.id,
+          startDate: monthlyOverview.start_date,
+          endDate: monthlyOverview.end_date,
+        },
+      });
     }
 
     // Log successful month creation
