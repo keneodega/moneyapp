@@ -197,6 +197,7 @@ function AddSubscriptionsToBudgetComponent({
       }
     }, 0);
 
+  // Early return if not mounted - prevents any rendering issues
   if (!mounted) {
     return (
       <Card variant="outlined" padding="lg">
@@ -393,24 +394,20 @@ function AddSubscriptionsToBudgetComponent({
 
 // Export wrapped in error boundary with additional safety
 export function AddSubscriptionsToBudget(props: AddSubscriptionsToBudgetProps) {
-  // Ensure we're in browser environment
+  // Ensure we're in browser environment - return null during SSR
   if (typeof window === 'undefined') {
     return null;
   }
 
+  // Wrap entire render in try-catch to catch any errors
   try {
     return <AddSubscriptionsToBudgetComponent {...props} />;
   } catch (error) {
+    // Log error for debugging
     console.error('Error rendering AddSubscriptionsToBudget:', error);
-    // Return a simple fallback that won't crash
-    return (
-      <Card variant="outlined" padding="lg">
-        <div className="text-center py-8">
-          <p className="text-body text-[var(--color-text-muted)]">
-            Unable to load subscription conversion feature.
-          </p>
-        </div>
-      </Card>
-    );
+    
+    // Return null instead of a Card to minimize potential issues
+    // The dynamic import's catch handler will show the loading state
+    return null;
   }
 }
