@@ -38,6 +38,31 @@ export interface MasterBudgetUpdate {
   display_order?: number;
 }
 
+/** Snapshot of a master budget row as stored in history (JSONB) */
+export interface MasterBudgetHistorySnapshot {
+  id: string;
+  user_id: string;
+  name: string;
+  budget_amount: number;
+  description?: string | null;
+  is_active: boolean;
+  display_order: number;
+  created_at: string;
+  updated_at: string;
+}
+
+export type MasterBudgetHistoryAction = 'created' | 'updated' | 'deleted';
+
+export interface MasterBudgetHistoryEntry {
+  id: string;
+  master_budget_id: string | null;
+  user_id: string;
+  action: MasterBudgetHistoryAction;
+  old_data: MasterBudgetHistorySnapshot | null;
+  new_data: MasterBudgetHistorySnapshot | null;
+  changed_at: string;
+}
+
 export class MasterBudgetService {
   constructor(private supabase: SupabaseClient) {}
 
@@ -263,5 +288,37 @@ export class MasterBudgetService {
   async getTotal(): Promise<number> {
     const budgets = await this.getAll(true);
     return budgets.reduce((sum, b) => sum + Number(b.budget_amount || 0), 0);
+  }
+
+  /**
+   * Get history of changes to master budgets (create/update/delete).
+   * @param options.limit - Max number of entries (default 50)
+   * @param options.masterBudgetId - If set, only entries for this budget
+   */
+  async getHistory(options?: {
+    limit?: number;
+    masterBudgetId?: string;
+  }): Promise<MasterBudgetHistoryEntry[]> {
+    const userId = await this.getUserId();
+    const limit = Math.min(Math.max(options?.limit ?? 50, 1), 200);
+
+    let query = this.supabase
+      .from('master_budget_history')
+      .select('*')
+      .eq('user_id', userId)
+      .order('changed_at', { ascending: false })
+      .limit(limit);
+
+    if (options?.masterBudgetId) {
+      query = query.eq('master_budget_id', options.masterBudgetId);
+    }
+
+    const { data, error } = await query;
+
+    if (error) {
+      throw new Error(`Failed to fetch master budget history: ${error.message}`);
+    }
+
+    return (data || []) as MasterBudgetHistoryEntry[];
   }
 }

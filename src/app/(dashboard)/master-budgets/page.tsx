@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import { Card, Button, Input, Skeleton, SkeletonList, useToast, useConfirmDialog } from '@/components/ui';
 import { createSupabaseBrowserClient } from '@/lib/supabase/client';
 import { MasterBudgetService } from '@/lib/services';
-import type { MasterBudget } from '@/lib/services/master-budget.service';
+import type { MasterBudget, MasterBudgetHistoryEntry } from '@/lib/services/master-budget.service';
 
 export default function MasterBudgetsPage() {
   const router = useRouter();
@@ -21,6 +21,8 @@ export default function MasterBudgetsPage() {
     description: '',
   });
   const [saving, setSaving] = useState(false);
+  const [history, setHistory] = useState<MasterBudgetHistoryEntry[]>([]);
+  const [historyLoading, setHistoryLoading] = useState(true);
 
   const loadBudgets = useCallback(async () => {
     try {
@@ -46,9 +48,29 @@ export default function MasterBudgetsPage() {
     }
   }, [toast]);
 
+  const loadHistory = useCallback(async () => {
+    try {
+      const supabase = createSupabaseBrowserClient();
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
+      const masterBudgetService = new MasterBudgetService(supabase);
+      const data = await masterBudgetService.getHistory({ limit: 50 });
+      setHistory(data);
+    } catch (err) {
+      console.error('Failed to load master budget history:', err);
+    } finally {
+      setHistoryLoading(false);
+    }
+  }, []);
+
   useEffect(() => {
     loadBudgets();
   }, [loadBudgets]);
+
+  useEffect(() => {
+    loadHistory();
+  }, [loadHistory]);
 
   const handleAdd = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -67,6 +89,7 @@ export default function MasterBudgetsPage() {
       setFormData({ name: '', budget_amount: '', description: '' });
       setShowAddForm(false);
       await loadBudgets();
+      await loadHistory();
       toast.showToast('Master budget created successfully', 'success');
     } catch (err) {
       toast.showToast(
@@ -88,6 +111,7 @@ export default function MasterBudgetsPage() {
       await masterBudgetService.update(id, updates);
       setEditingId(null);
       await loadBudgets();
+      await loadHistory();
       toast.showToast('Master budget updated successfully', 'success');
     } catch (err) {
       toast.showToast(
@@ -114,6 +138,7 @@ export default function MasterBudgetsPage() {
 
           await masterBudgetService.delete(id, true);
           await loadBudgets();
+          await loadHistory();
           toast.showToast('Master budget deleted successfully', 'success');
         } catch (err) {
           toast.showToast(
@@ -281,8 +306,88 @@ export default function MasterBudgetsPage() {
           ))}
         </div>
       )}
+
+      {/* History */}
+      <Card variant="raised" padding="lg">
+        <h2 className="text-headline text-[var(--color-text)] mb-4">History</h2>
+        <p className="text-small text-[var(--color-text-muted)] mb-4">
+          Recent changes to master budgets: when categories were added, updated, or removed.
+        </p>
+        {historyLoading ? (
+          <SkeletonList items={3} />
+        ) : history.length === 0 ? (
+          <p className="text-body text-[var(--color-text-muted)] py-4">
+            No changes recorded yet. Add, edit, or delete a budget to see history here.
+          </p>
+        ) : (
+          <ul className="space-y-3" role="list">
+            {history.map((entry) => (
+              <HistoryEntryRow key={entry.id} entry={entry} />
+            ))}
+          </ul>
+        )}
+      </Card>
     </div>
   );
+}
+
+function HistoryEntryRow({ entry }: { entry: MasterBudgetHistoryEntry }) {
+  const name = entry.new_data?.name ?? entry.old_data?.name ?? 'Unknown';
+  const detail = formatHistoryDetail(entry);
+  const when = new Date(entry.changed_at).toLocaleString('en-IE', {
+    dateStyle: 'medium',
+    timeStyle: 'short',
+  });
+  const actionLabel = entry.action === 'created' ? 'Created' : entry.action === 'updated' ? 'Updated' : 'Deleted';
+  const actionVariant = entry.action === 'created' ? 'success' : entry.action === 'updated' ? 'default' : 'danger';
+
+  return (
+    <li className="flex items-baseline justify-between gap-4 py-3 border-b border-[var(--color-border)] last:border-0 text-body text-[var(--color-text)]">
+      <div className="flex flex-wrap items-baseline gap-2 min-w-0">
+        <span
+          className={`inline-flex items-center rounded-md px-2 py-0.5 text-small font-medium ${
+            actionVariant === 'success'
+              ? 'bg-emerald-500/15 text-emerald-600 dark:text-emerald-400'
+              : actionVariant === 'danger'
+                ? 'bg-red-500/15 text-red-600 dark:text-red-400'
+                : 'bg-[var(--color-surface-elevated)] text-[var(--color-text-muted)]'
+          }`}
+        >
+          {actionLabel}
+        </span>
+        <span className="font-medium">{name}</span>
+        {detail && <span className="text-[var(--color-text-muted)]">{detail}</span>}
+      </div>
+      <span className="text-small text-[var(--color-text-muted)] shrink-0">{when}</span>
+    </li>
+  );
+}
+
+function formatHistoryDetail(entry: MasterBudgetHistoryEntry): string {
+  if (entry.action === 'created' && entry.new_data) {
+    const amt = Number(entry.new_data.budget_amount);
+    return `€${amt.toLocaleString('en-IE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+  }
+  if (entry.action === 'deleted' && entry.old_data) {
+    const amt = Number(entry.old_data.budget_amount);
+    return `was €${amt.toLocaleString('en-IE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+  }
+  if (entry.action === 'updated' && entry.old_data && entry.new_data) {
+    const parts: string[] = [];
+    if (entry.old_data.name !== entry.new_data.name) {
+      parts.push(`name: "${entry.old_data.name}" → "${entry.new_data.name}"`);
+    }
+    if (Number(entry.old_data.budget_amount) !== Number(entry.new_data.budget_amount)) {
+      const o = Number(entry.old_data.budget_amount);
+      const n = Number(entry.new_data.budget_amount);
+      parts.push(`amount: €${o.toLocaleString('en-IE', { minimumFractionDigits: 2 })} → €${n.toLocaleString('en-IE', { minimumFractionDigits: 2 })}`);
+    }
+    if ((entry.old_data.description ?? '') !== (entry.new_data.description ?? '')) {
+      parts.push('description changed');
+    }
+    return parts.length ? parts.join('; ') : 'details updated';
+  }
+  return '';
 }
 
 function EditForm({
