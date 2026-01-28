@@ -13,17 +13,18 @@ const MonthActions = dynamic(() => import('./MonthActions').then(mod => ({ defau
   loading: () => <div className="text-small text-[var(--color-text-muted)]">Loading actions...</div>,
 });
 
-const AddSubscriptionsToBudget = dynamic(
-  () => import('./AddSubscriptionsToBudget')
-    .then(mod => ({ default: mod.AddSubscriptionsToBudget }))
-    .catch((err) => {
-      console.error('Failed to load AddSubscriptionsToBudget:', err);
-      return { default: () => null };
-    }),
-  {
-    loading: () => <div className="p-8 text-center text-small text-[var(--color-text-muted)]">Loading subscriptions...</div>,
-  }
-);
+// Temporarily disabled to debug page error
+// const AddSubscriptionsToBudget = dynamic(
+//   () => import('./AddSubscriptionsToBudget')
+//     .then(mod => ({ default: mod.AddSubscriptionsToBudget }))
+//     .catch((err) => {
+//       console.error('Failed to load AddSubscriptionsToBudget:', err);
+//       return { default: () => null };
+//     }),
+//   {
+//     loading: () => <div className="p-8 text-center text-small text-[var(--color-text-muted)]">Loading subscriptions...</div>,
+//   }
+// );
 
 interface MonthData {
   id: string;
@@ -271,7 +272,7 @@ export default async function MonthDetailPage({
   const unallocated = month.amount_unallocated || 0;
   
   // Calculate spent from budgets (view provides this per budget)
-  const totalSpent = budgets.reduce((sum, b) => sum + Number(b.amount_spent || 0), 0);
+  const totalSpent = (budgets || []).reduce((sum, b) => sum + Number(b?.amount_spent || 0), 0);
   const spentPercent = totalBudgeted > 0 ? (totalSpent / totalBudgeted) * 100 : 0;
 
   return (
@@ -413,7 +414,7 @@ export default async function MonthDetailPage({
             </div>
           </div>
           
-          {budgets.length > 0 ? (
+          {budgets && budgets.length > 0 ? (
             <div className="grid gap-3">
               {budgets.map((budget: any, index) => {
                 const percent = budget.budget_amount > 0 
@@ -522,7 +523,7 @@ export default async function MonthDetailPage({
               <div className="flex justify-between">
                 <span className="text-small text-[var(--color-text-muted)]">Budgets on track</span>
                 <span className="text-small font-medium text-[var(--color-success)]">
-                  {budgets.filter(b => b.amount_left >= 0).length} / {budgets.length}
+                  {(budgets || []).filter((b: any) => (b?.amount_left || 0) >= 0).length} / {budgets?.length || 0}
                 </span>
               </div>
               <div className="flex justify-between">
