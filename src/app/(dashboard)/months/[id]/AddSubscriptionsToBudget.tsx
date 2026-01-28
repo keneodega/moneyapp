@@ -20,22 +20,8 @@ function AddSubscriptionsToBudgetComponent({
   endDate,
   onSuccess,
 }: AddSubscriptionsToBudgetProps) {
-  // Safely get toast hook
-  let toast: { showToast: (msg: string, type: 'success' | 'error' | 'info') => void };
-  try {
-    toast = useToast();
-  } catch (e) {
-    // Fallback if toast is not available
-    toast = {
-      showToast: (msg: string, type: 'success' | 'error' | 'info') => {
-        console.log(`[${type}] ${msg}`);
-        if (type === 'error' && typeof window !== 'undefined') {
-          // Only alert on errors to avoid annoying users
-          console.error(msg);
-        }
-      },
-    };
-  }
+  // Always call hooks unconditionally - React rules
+  const toast = useToast();
 
   const [subscriptions, setSubscriptions] = useState<Subscription[]>([]);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
@@ -90,12 +76,11 @@ function AddSubscriptionsToBudgetComponent({
       console.error('Failed to load subscriptions:', error);
       const errorMessage = error instanceof Error ? error.message : 'Failed to load subscriptions';
       setError(errorMessage);
-      if (toast && toast.showToast) {
-        try {
-          toast.showToast(errorMessage, 'error');
-        } catch {
-          // Toast might not be available
-        }
+      try {
+        toast.showToast(errorMessage, 'error');
+      } catch (e) {
+        // Toast might fail, but don't crash the component
+        console.error('Failed to show toast:', e);
       }
     } finally {
       setLoading(false);
@@ -124,12 +109,10 @@ function AddSubscriptionsToBudgetComponent({
 
   const handleCreateBudgets = async () => {
     if (selectedIds.size === 0) {
-      if (toast && toast.showToast) {
-        try {
-          toast.showToast('Please select at least one subscription', 'error');
-        } catch {
-          alert('Please select at least one subscription');
-        }
+      try {
+        toast.showToast('Please select at least one subscription', 'error');
+      } catch {
+        alert('Please select at least one subscription');
       }
       return;
     }
@@ -151,22 +134,20 @@ function AddSubscriptionsToBudgetComponent({
         Array.from(selectedIds)
       );
 
-      if (toast && toast.showToast) {
-        try {
-          if (result.errors.length > 0) {
-            toast.showToast(
-              `Created ${result.created} budgets. ${result.skipped} skipped. Some errors occurred.`,
-              'error'
-            );
-          } else {
-            toast.showToast(
-              `Successfully created ${result.created} budget${result.created !== 1 ? 's' : ''} from subscriptions`,
-              'success'
-            );
-          }
-        } catch {
-          // Toast failed, continue anyway
+      try {
+        if (result.errors.length > 0) {
+          toast.showToast(
+            `Created ${result.created} budgets. ${result.skipped} skipped. Some errors occurred.`,
+            'error'
+          );
+        } else {
+          toast.showToast(
+            `Successfully created ${result.created} budget${result.created !== 1 ? 's' : ''} from subscriptions`,
+            'success'
+          );
         }
+      } catch {
+        // Toast failed, continue anyway
       }
 
       if (onSuccess) {
@@ -178,15 +159,13 @@ function AddSubscriptionsToBudgetComponent({
       }
     } catch (error) {
       console.error('Failed to create budgets:', error);
-      if (toast && toast.showToast) {
-        try {
-          toast.showToast(
-            error instanceof Error ? error.message : 'Failed to create budgets from subscriptions',
-            'error'
-          );
-        } catch {
-          alert(error instanceof Error ? error.message : 'Failed to create budgets from subscriptions');
-        }
+      try {
+        toast.showToast(
+          error instanceof Error ? error.message : 'Failed to create budgets from subscriptions',
+          'error'
+        );
+      } catch {
+        alert(error instanceof Error ? error.message : 'Failed to create budgets from subscriptions');
       }
     } finally {
       setCreating(false);
