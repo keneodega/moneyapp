@@ -241,8 +241,6 @@ export default function MasterBudgetDetailPage({
           </div>
         </Card>
       )}
-        </div>
-      </Card>
 
       {/* Trends Section */}
       <Card variant="raised" padding="lg">
