@@ -65,7 +65,10 @@ export function AddSubscriptionsToBudget({
       // Check if getByDateRange method exists
       const service = new SubscriptionService(supabase);
       if (typeof (service as any).getByDateRange !== 'function') {
-        throw new Error('Subscription service method not available');
+        // Method not available - feature not deployed yet
+        setError('Feature not available yet. Please refresh the page after deployment completes.');
+        setLoading(false);
+        return;
       }
       
       const subs = await (service as any).getByDateRange(startDate, endDate, 'Active');
