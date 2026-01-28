@@ -355,10 +355,11 @@ export default function MasterBudgetsPage() {
                 value={formData.budget_type}
                 onChange={(e) => setFormData({ ...formData, budget_type: e.target.value as BudgetType })}
                 required
-              >
-                <option value="Fixed">Fixed (rarely changes)</option>
-                <option value="Variable">Variable (changes month-to-month)</option>
-              </Select>
+                options={[
+                  { value: 'Fixed', label: 'Fixed (rarely changes)' },
+                  { value: 'Variable', label: 'Variable (changes month-to-month)' },
+                ]}
+              />
               <Input
                 label="Description (Optional)"
                 name="description"
@@ -612,10 +613,11 @@ function EditForm({
           value={formData.budget_type}
           onChange={(e) => setFormData({ ...formData, budget_type: e.target.value as BudgetType })}
           required
-        >
-          <option value="Fixed">Fixed (rarely changes)</option>
-          <option value="Variable">Variable (changes month-to-month)</option>
-        </Select>
+          options={[
+            { value: 'Fixed', label: 'Fixed (rarely changes)' },
+            { value: 'Variable', label: 'Variable (changes month-to-month)' },
+          ]}
+        />
         <Input
           label="Description (Optional)"
           name="description"
