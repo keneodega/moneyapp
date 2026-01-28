@@ -3,13 +3,19 @@
  * Provides functions to export data in various formats (CSV, JSON, PDF)
  */
 
+import type { ExportOptions } from '@/components/ui/ExportOptionsDialog';
+
 export interface ExportableData {
+  months?: Array<Record<string, any>>;
+  masterBudgets?: Array<Record<string, any>>;
   expenses?: Array<Record<string, any>>;
   budgets?: Array<Record<string, any>>;
   goals?: Array<Record<string, any>>;
   income?: Array<Record<string, any>>;
   subscriptions?: Array<Record<string, any>>;
 }
+
+export type { ExportOptions };
 
 /**
  * Convert data to CSV format
@@ -197,6 +203,53 @@ export function exportToPDF(data: ExportableData, title: string): void {
     html += '</table>';
   }
 
+  // Add subscriptions section
+  if (data.subscriptions && data.subscriptions.length > 0) {
+    html += '<h2>Subscriptions</h2><table>';
+    html += '<tr><th>Name</th><th>Amount</th><th>Frequency</th><th>Status</th><th>Next Payment</th></tr>';
+    data.subscriptions.forEach((sub: any) => {
+      html += `<tr>
+        <td>${sub.name || ''}</td>
+        <td>${formatCurrency(Number(sub.amount || 0))}</td>
+        <td>${sub.frequency || ''}</td>
+        <td>${sub.status || ''}</td>
+        <td>${sub.next_collection_date ? formatDate(sub.next_collection_date) : '-'}</td>
+      </tr>`;
+    });
+    html += '</table>';
+  }
+
+  // Add master budgets section
+  if (data.masterBudgets && data.masterBudgets.length > 0) {
+    html += '<h2>Master Budgets</h2><table>';
+    html += '<tr><th>Category</th><th>Amount</th><th>Description</th><th>Status</th></tr>';
+    data.masterBudgets.forEach((mb: any) => {
+      html += `<tr>
+        <td>${mb.name || ''}</td>
+        <td>${formatCurrency(Number(mb.budget_amount || 0))}</td>
+        <td>${mb.description || ''}</td>
+        <td>${mb.is_active ? 'Active' : 'Inactive'}</td>
+      </tr>`;
+    });
+    html += '</table>';
+  }
+
+  // Add months section
+  if (data.months && data.months.length > 0) {
+    html += '<h2>Monthly Overviews</h2><table>';
+    html += '<tr><th>Name</th><th>Start Date</th><th>End Date</th><th>Total Budget</th><th>Total Income</th></tr>';
+    data.months.forEach((month: any) => {
+      html += `<tr>
+        <td>${month.name || ''}</td>
+        <td>${formatDate(month.start_date)}</td>
+        <td>${formatDate(month.end_date)}</td>
+        <td>${formatCurrency(Number(month.total_budget || 0))}</td>
+        <td>${formatCurrency(Number(month.total_income || 0))}</td>
+      </tr>`;
+    });
+    html += '</table>';
+  }
+
   html += '</body></html>';
 
   printWindow.document.write(html);
@@ -209,30 +262,68 @@ export function exportToPDF(data: ExportableData, title: string): void {
 }
 
 /**
- * Export all user data
+ * Export user data based on selected options
  */
 export async function exportAllData(
   supabase: any,
   userId: string,
-  format: 'csv' | 'json' | 'pdf'
+  format: 'csv' | 'json' | 'pdf',
+  options?: ExportOptions
 ): Promise<void> {
   try {
-    // Fetch all data
-    const [expensesResult, incomeResult, budgetsResult, goalsResult, subscriptionsResult] = await Promise.all([
-      supabase.from('expenses').select('*, budgets(name)').eq('user_id', userId),
-      supabase.from('income_sources').select('*').eq('user_id', userId),
-      supabase.from('budgets').select('*, monthly_overviews(name)').eq('monthly_overviews.user_id', userId),
-      supabase.from('financial_goals').select('*').eq('user_id', userId),
-      supabase.from('subscriptions').select('*').eq('user_id', userId),
-    ]);
-
-    const data: ExportableData = {
-      expenses: expensesResult.data || [],
-      income: incomeResult.data || [],
-      budgets: budgetsResult.data || [],
-      goals: goalsResult.data || [],
-      subscriptions: subscriptionsResult.data || [],
+    // Default to all if no options provided
+    const exportOptions: ExportOptions = options || {
+      months: true,
+      masterBudgets: true,
+      goals: true,
+      subscriptions: true,
+      expenses: true,
+      income: true,
+      budgets: true,
     };
+
+    // Build queries based on selected options
+    const queries: Promise<any>[] = [];
+    const queryKeys: string[] = [];
+
+    if (exportOptions.expenses) {
+      queries.push(supabase.from('expenses').select('*, budgets(name)').eq('user_id', userId));
+      queryKeys.push('expenses');
+    }
+    if (exportOptions.income) {
+      queries.push(supabase.from('income_sources').select('*').eq('user_id', userId));
+      queryKeys.push('income');
+    }
+    if (exportOptions.budgets) {
+      queries.push(supabase.from('budgets').select('*, monthly_overviews(name)').eq('monthly_overviews.user_id', userId));
+      queryKeys.push('budgets');
+    }
+    if (exportOptions.goals) {
+      queries.push(supabase.from('financial_goals').select('*').eq('user_id', userId));
+      queryKeys.push('goals');
+    }
+    if (exportOptions.subscriptions) {
+      queries.push(supabase.from('subscriptions').select('*').eq('user_id', userId));
+      queryKeys.push('subscriptions');
+    }
+    if (exportOptions.masterBudgets) {
+      queries.push(supabase.from('master_budgets').select('*').eq('user_id', userId));
+      queryKeys.push('masterBudgets');
+    }
+    if (exportOptions.months) {
+      queries.push(supabase.from('monthly_overviews').select('*').eq('user_id', userId));
+      queryKeys.push('months');
+    }
+
+    // Execute all queries
+    const results = await Promise.all(queries);
+
+    // Build data object
+    const data: ExportableData = {};
+    results.forEach((result, index) => {
+      const key = queryKeys[index] as keyof ExportableData;
+      data[key] = result.data || [];
+    });
 
     const timestamp = new Date().toISOString().split('T')[0];
     const filename = `family-money-export-${timestamp}`;
@@ -245,6 +336,8 @@ export async function exportAllData(
         if (data.budgets?.length) exportToCSV(data.budgets, `${filename}-budgets`);
         if (data.goals?.length) exportToCSV(data.goals, `${filename}-goals`);
         if (data.subscriptions?.length) exportToCSV(data.subscriptions, `${filename}-subscriptions`);
+        if (data.masterBudgets?.length) exportToCSV(data.masterBudgets, `${filename}-master-budgets`);
+        if (data.months?.length) exportToCSV(data.months, `${filename}-months`);
         break;
       case 'json':
         exportToJSON(data, filename);

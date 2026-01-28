@@ -7,3 +7,5 @@ export { DeleteButton } from './DeleteButton';
 export { ToastProvider, useToast } from './Toast';
 export { Skeleton, SkeletonText, SkeletonCard, SkeletonList, SkeletonTable } from './Skeleton';
 export { ConfirmDialogProvider, useConfirmDialog } from './ConfirmDialog';
+export { ExportOptionsDialogProvider, useExportOptionsDialog } from './ExportOptionsDialog';
+export type { ExportOptions } from './ExportOptionsDialog';
