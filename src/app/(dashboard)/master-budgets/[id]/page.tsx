@@ -98,7 +98,8 @@ export default function MasterBudgetDetailPage({
       setTrends(trendsData);
     } catch (err) {
       console.error('Failed to load trends:', err);
-      toast.showToast('Failed to load trends', 'error');
+      const errorMessage = err instanceof Error ? err.message : 'Failed to load trends';
+      toast.showToast(errorMessage, 'error');
     } finally {
       setTrendsLoading(false);
     }

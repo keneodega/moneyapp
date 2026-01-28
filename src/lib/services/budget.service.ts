@@ -405,22 +405,11 @@ export class BudgetService {
   ): Promise<BudgetTrend[]> {
     await this.getUserId();
 
-    // Get all budgets for this master budget with their monthly overview dates
+    // Get all budgets for this master budget
     const { data: budgets, error: budgetsError } = await this.supabase
       .from('budgets')
-      .select(`
-        id,
-        budget_amount,
-        monthly_overview_id,
-        monthly_overviews!inner (
-          id,
-          start_date,
-          end_date,
-          name
-        )
-      `)
-      .eq('master_budget_id', masterBudgetId)
-      .order('monthly_overviews.start_date', { ascending: true });
+      .select('id, budget_amount, monthly_overview_id')
+      .eq('master_budget_id', masterBudgetId);
 
     if (budgetsError) {
       throw new Error(`Failed to fetch budgets: ${budgetsError.message}`);
@@ -429,6 +418,23 @@ export class BudgetService {
     if (!budgets || budgets.length === 0) {
       return [];
     }
+
+    // Get monthly overviews for these budgets
+    const monthlyOverviewIds = [...new Set(budgets.map((b) => b.monthly_overview_id))];
+    const { data: monthlyOverviews, error: monthlyError } = await this.supabase
+      .from('monthly_overviews')
+      .select('id, start_date, end_date, name')
+      .in('id', monthlyOverviewIds)
+      .order('start_date', { ascending: true });
+
+    if (monthlyError) {
+      throw new Error(`Failed to fetch monthly overviews: ${monthlyError.message}`);
+    }
+
+    // Create a map of monthly overview ID to monthly overview data
+    const monthlyMap = new Map(
+      (monthlyOverviews || []).map((mo) => [mo.id, mo])
+    );
 
     // Get spending data for each budget
     const budgetIds = budgets.map((b) => b.id);
@@ -445,7 +451,13 @@ export class BudgetService {
     const trendsMap = new Map<string, { budgeted: number; spent: number; period: string }>();
 
     for (const budget of budgets) {
-      const monthlyOverview = budget.monthly_overviews as any;
+      const monthlyOverview = monthlyMap.get(budget.monthly_overview_id);
+      
+      if (!monthlyOverview) {
+        // Skip budgets without valid monthly overview
+        continue;
+      }
+
       const startDate = new Date(monthlyOverview.start_date);
       let periodKey: string;
 
