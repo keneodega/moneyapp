@@ -76,6 +76,7 @@ function AddSubscriptionsToBudgetComponent({
       // Calculate total monthly cost
       const total = (subs || []).reduce((sum: number, sub: Subscription) => {
         try {
+          if (!sub.amount || !sub.frequency) return sum;
           return sum + SubscriptionService.calculateMonthlyCost(sub.amount, sub.frequency);
         } catch {
           return sum;
@@ -113,7 +114,7 @@ function AddSubscriptionsToBudgetComponent({
   };
 
   const selectAll = () => {
-    setSelectedIds(new Set(subscriptions.map(s => s.id)));
+    setSelectedIds(new Set(subscriptions.filter(s => s?.id).map(s => s.id)));
   };
 
   const deselectAll = () => {
@@ -188,7 +189,12 @@ function AddSubscriptionsToBudgetComponent({
   const selectedTotal = subscriptions
     .filter(s => selectedIds.has(s.id))
     .reduce((sum, sub) => {
-      return sum + SubscriptionService.calculateMonthlyCost(sub.amount, sub.frequency);
+      try {
+        if (!sub.amount || !sub.frequency) return sum;
+        return sum + SubscriptionService.calculateMonthlyCost(sub.amount, sub.frequency);
+      } catch {
+        return sum;
+      }
     }, 0);
 
   if (!mounted) {
@@ -302,11 +308,21 @@ function AddSubscriptionsToBudgetComponent({
         {/* Subscription List */}
         <div className="space-y-2 max-h-64 overflow-y-auto">
           {subscriptions.map((subscription) => {
-            const monthlyCost = SubscriptionService.calculateMonthlyCost(
-              subscription.amount,
-              subscription.frequency
-            );
+            let monthlyCost = 0;
+            try {
+              if (subscription.amount && subscription.frequency) {
+                monthlyCost = SubscriptionService.calculateMonthlyCost(
+                  subscription.amount,
+                  subscription.frequency
+                );
+              }
+            } catch (e) {
+              console.error('Error calculating monthly cost for subscription:', subscription.id, e);
+            }
+            
             const isSelected = selectedIds.has(subscription.id);
+            const frequency = subscription.frequency || 'N/A';
+            const amount = subscription.amount || 0;
 
             return (
               <label
@@ -327,10 +343,10 @@ function AddSubscriptionsToBudgetComponent({
                   <div className="flex items-center justify-between gap-2">
                     <div className="flex-1 min-w-0">
                       <div className="text-small font-medium text-[var(--color-text)]">
-                        {subscription.name}
+                        {subscription.name || 'Unnamed Subscription'}
                       </div>
                       <div className="text-caption text-[var(--color-text-muted)]">
-                        {subscription.frequency} · Due: {subscription.next_collection_date ? new Date(subscription.next_collection_date).toLocaleDateString('en-IE', { dateStyle: 'short' }) : 'N/A'}
+                        {frequency} · Due: {subscription.next_collection_date ? new Date(subscription.next_collection_date).toLocaleDateString('en-IE', { dateStyle: 'short' }) : 'N/A'}
                         {(subscription as any).is_essential !== undefined && (
                           <span className={`ml-2 px-1.5 py-0.5 rounded text-caption ${
                             (subscription as any).is_essential
@@ -344,7 +360,7 @@ function AddSubscriptionsToBudgetComponent({
                     </div>
                     <div className="text-right shrink-0">
                       <div className="text-small font-medium text-[var(--color-text)]">
-                        <Currency amount={subscription.amount} />/{subscription.frequency.toLowerCase()}
+                        <Currency amount={amount} />/{typeof frequency === 'string' ? frequency.toLowerCase() : frequency}
                       </div>
                       <div className="text-caption text-[var(--color-text-muted)]">
                         → <Currency amount={monthlyCost} />/month

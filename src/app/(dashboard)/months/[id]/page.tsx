@@ -370,8 +370,8 @@ export default async function MonthDetailPage({
         </Card>
       </div>
 
-      {/* Add Subscriptions to Budget - Temporarily disabled to isolate error */}
-      {/* <div className="w-full">
+      {/* Add Subscriptions to Budget */}
+      <div className="w-full">
         <AddSubscriptionsToBudget
           monthId={id}
           startDate={month.start_date}
@@ -382,7 +382,7 @@ export default async function MonthDetailPage({
             }
           }}
         />
-      </div> */}
+      </div>
 
       {/* Main Content Grid */}
       <div className="grid gap-6 lg:grid-cols-3">
