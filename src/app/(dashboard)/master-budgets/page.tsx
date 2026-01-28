@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
+import Link from 'next/link';
 import { Card, Button, Input, Skeleton, SkeletonList, useToast, useConfirmDialog } from '@/components/ui';
 import { createSupabaseBrowserClient } from '@/lib/supabase/client';
 import { MasterBudgetService } from '@/lib/services';
@@ -271,7 +272,12 @@ export default function MasterBudgetsPage() {
                 <div className="flex items-start justify-between">
                   <div className="flex-1">
                     <div className="flex items-center gap-3">
-                      <h3 className="text-headline text-[var(--color-text)]">{budget.name}</h3>
+                      <Link
+                        href={`/master-budgets/${budget.id}`}
+                        className="text-headline text-[var(--color-text)] hover:text-[var(--color-primary)] transition-colors cursor-pointer"
+                      >
+                        {budget.name}
+                      </Link>
                       <span className="text-body font-medium text-[var(--color-text)]">
                         €{Number(budget.budget_amount).toLocaleString('en-IE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                       </span>

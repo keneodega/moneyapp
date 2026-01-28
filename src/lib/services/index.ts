@@ -28,8 +28,8 @@
 // Export services
 export { MonthlyOverviewService, DEFAULT_BUDGET_CATEGORIES } from './monthly-overview.service';
 export { ExpenseService } from './expense.service';
-export { BudgetService } from './budget.service';
-export { MasterBudgetService } from './master-budget.service';
+export { BudgetService, type BudgetHistoryEntry, type BudgetTrend } from './budget.service';
+export { MasterBudgetService, type MasterBudget, type MasterBudgetHistoryEntry } from './master-budget.service';
 export { IncomeSourceService } from './income-source.service';
 export { FinancialGoalService } from './financial-goal.service';
 export { SubscriptionService } from './subscription.service';

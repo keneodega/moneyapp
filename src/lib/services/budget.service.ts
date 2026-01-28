@@ -325,4 +325,193 @@ export class BudgetService {
       percentUsed,
     };
   }
+
+  /**
+   * Get history for a specific budget
+   */
+  async getHistory(budgetId: string, options?: { limit?: number }): Promise<BudgetHistoryEntry[]> {
+    await this.getUserId();
+
+    let query = this.supabase
+      .from('budget_history')
+      .select('*')
+      .eq('budget_id', budgetId)
+      .order('changed_at', { ascending: false });
+
+    if (options?.limit) {
+      query = query.limit(options.limit);
+    }
+
+    const { data, error } = await query;
+
+    if (error) {
+      throw new Error(`Failed to fetch budget history: ${error.message}`);
+    }
+
+    return (data || []).map((entry) => ({
+      id: entry.id,
+      budget_id: entry.budget_id,
+      master_budget_id: entry.master_budget_id,
+      monthly_overview_id: entry.monthly_overview_id,
+      user_id: entry.user_id,
+      action: entry.action as 'created' | 'updated' | 'deleted',
+      old_data: entry.old_data,
+      new_data: entry.new_data,
+      changed_at: entry.changed_at,
+    }));
+  }
+
+  /**
+   * Get history for all budgets belonging to a master budget
+   */
+  async getHistoryByMasterBudget(masterBudgetId: string, options?: { limit?: number }): Promise<BudgetHistoryEntry[]> {
+    await this.getUserId();
+
+    let query = this.supabase
+      .from('budget_history')
+      .select('*')
+      .eq('master_budget_id', masterBudgetId)
+      .order('changed_at', { ascending: false });
+
+    if (options?.limit) {
+      query = query.limit(options.limit);
+    }
+
+    const { data, error } = await query;
+
+    if (error) {
+      throw new Error(`Failed to fetch budget history: ${error.message}`);
+    }
+
+    return (data || []).map((entry) => ({
+      id: entry.id,
+      budget_id: entry.budget_id,
+      master_budget_id: entry.master_budget_id,
+      monthly_overview_id: entry.monthly_overview_id,
+      user_id: entry.user_id,
+      action: entry.action as 'created' | 'updated' | 'deleted',
+      old_data: entry.old_data,
+      new_data: entry.new_data,
+      changed_at: entry.changed_at,
+    }));
+  }
+
+  /**
+   * Get trends for a master budget across time periods
+   */
+  async getTrendsByMasterBudget(
+    masterBudgetId: string,
+    period: 'week' | 'month' | 'year'
+  ): Promise<BudgetTrend[]> {
+    await this.getUserId();
+
+    // Get all budgets for this master budget with their monthly overview dates
+    const { data: budgets, error: budgetsError } = await this.supabase
+      .from('budgets')
+      .select(`
+        id,
+        budget_amount,
+        monthly_overview_id,
+        monthly_overviews!inner (
+          id,
+          start_date,
+          end_date,
+          name
+        )
+      `)
+      .eq('master_budget_id', masterBudgetId)
+      .order('monthly_overviews.start_date', { ascending: true });
+
+    if (budgetsError) {
+      throw new Error(`Failed to fetch budgets: ${budgetsError.message}`);
+    }
+
+    if (!budgets || budgets.length === 0) {
+      return [];
+    }
+
+    // Get spending data for each budget
+    const budgetIds = budgets.map((b) => b.id);
+    const { data: expenses, error: expensesError } = await this.supabase
+      .from('expenses')
+      .select('budget_id, amount, date')
+      .in('budget_id', budgetIds);
+
+    if (expensesError) {
+      throw new Error(`Failed to fetch expenses: ${expensesError.message}`);
+    }
+
+    // Group by period and aggregate
+    const trendsMap = new Map<string, { budgeted: number; spent: number; period: string }>();
+
+    for (const budget of budgets) {
+      const monthlyOverview = budget.monthly_overviews as any;
+      const startDate = new Date(monthlyOverview.start_date);
+      let periodKey: string;
+
+      if (period === 'week') {
+        const weekStart = new Date(startDate);
+        weekStart.setDate(startDate.getDate() - startDate.getDay()); // Start of week (Sunday)
+        periodKey = `${weekStart.getFullYear()}-W${getWeekNumber(weekStart)}`;
+      } else if (period === 'month') {
+        periodKey = `${startDate.getFullYear()}-${String(startDate.getMonth() + 1).padStart(2, '0')}`;
+      } else {
+        periodKey = String(startDate.getFullYear());
+      }
+
+      const existing = trendsMap.get(periodKey) || { budgeted: 0, spent: 0, period: periodKey };
+      existing.budgeted += Number(budget.budget_amount || 0);
+
+      // Add expenses for this budget
+      const budgetExpenses = expenses?.filter((e) => e.budget_id === budget.id) || [];
+      const totalSpent = budgetExpenses.reduce((sum, e) => sum + Number(e.amount || 0), 0);
+      existing.spent += totalSpent;
+
+      trendsMap.set(periodKey, existing);
+    }
+
+    // Convert to array and sort
+    const trends: BudgetTrend[] = Array.from(trendsMap.values())
+      .map((t) => ({
+        period: t.period,
+        budgeted: t.budgeted,
+        spent: t.spent,
+        remaining: t.budgeted - t.spent,
+        utilization: t.budgeted > 0 ? (t.spent / t.budgeted) * 100 : 0,
+      }))
+      .sort((a, b) => a.period.localeCompare(b.period));
+
+    return trends;
+  }
+}
+
+// Helper function to get week number
+function getWeekNumber(date: Date): string {
+  const d = new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()));
+  const dayNum = d.getUTCDay() || 7;
+  d.setUTCDate(d.getUTCDate() + 4 - dayNum);
+  const yearStart = new Date(Date.UTC(d.getUTCFullYear(), 0, 1));
+  const weekNo = Math.ceil(((d.getTime() - yearStart.getTime()) / 86400000 + 1) / 7);
+  return String(weekNo).padStart(2, '0');
+}
+
+// Types for budget history
+export interface BudgetHistoryEntry {
+  id: string;
+  budget_id: string | null;
+  master_budget_id: string | null;
+  monthly_overview_id: string | null;
+  user_id: string;
+  action: 'created' | 'updated' | 'deleted';
+  old_data: any | null;
+  new_data: any | null;
+  changed_at: string;
+}
+
+export interface BudgetTrend {
+  period: string; // e.g., "2026-01", "2026-W03", "2026"
+  budgeted: number;
+  spent: number;
+  remaining: number;
+  utilization: number; // percentage
 }
