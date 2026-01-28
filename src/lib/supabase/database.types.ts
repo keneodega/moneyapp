@@ -362,6 +362,7 @@ export interface Subscription {
   person?: string | null;
   bank?: string | null;
   subscription_type?: SubscriptionType | null;
+  is_essential: boolean;
   start_date?: string | null;
   end_date?: string | null;
   collection_day?: number | null;
@@ -383,6 +384,7 @@ export interface SubscriptionInsert {
   person?: string | null;
   bank?: string | null;
   subscription_type?: SubscriptionType | null;
+  is_essential?: boolean;
   start_date?: string | null;
   end_date?: string | null;
   collection_day?: number | null;
@@ -400,6 +402,7 @@ export interface SubscriptionUpdate {
   person?: string | null;
   bank?: string | null;
   subscription_type?: SubscriptionType | null;
+  is_essential?: boolean;
   start_date?: string | null;
   end_date?: string | null;
   collection_day?: number | null;

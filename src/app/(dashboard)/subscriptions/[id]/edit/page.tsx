@@ -65,6 +65,7 @@ export default function EditSubscriptionPage() {
     status: 'Active' as SubscriptionStatusType,
     bank: '',
     person: '',
+    is_essential: true,
     collection_day: '',
     start_date: '',
     end_date: '',
@@ -98,6 +99,7 @@ export default function EditSubscriptionPage() {
           status: data.status,
           bank: data.bank || '',
           person: data.person || '',
+          is_essential: data.is_essential ?? true,
           collection_day: data.collection_day?.toString() || '',
           start_date: data.start_date || '',
           end_date: data.end_date || '',
@@ -128,6 +130,7 @@ export default function EditSubscriptionPage() {
         status: formData.status,
         bank: formData.bank || null,
         person: formData.person || null,
+        is_essential: formData.is_essential,
         collection_day: formData.collection_day ? parseInt(formData.collection_day) : null,
         start_date: formData.start_date || null,
         end_date: formData.end_date || null,
@@ -306,6 +309,26 @@ export default function EditSubscriptionPage() {
                 ))}
               </select>
             </div>
+          </div>
+
+          {/* Essential/Non-Essential */}
+          <div>
+            <label className="flex items-center gap-3 p-3 rounded-[var(--radius-md)] hover:bg-[var(--color-surface-sunken)] cursor-pointer transition-colors">
+              <input
+                type="checkbox"
+                checked={formData.is_essential}
+                onChange={(e) => setFormData({ ...formData, is_essential: e.target.checked })}
+                className="w-4 h-4 rounded border-[var(--color-border)] text-[var(--color-primary)] focus:ring-[var(--color-primary)] focus:ring-offset-0"
+              />
+              <div>
+                <div className="text-small font-medium text-[var(--color-text)]">
+                  Essential Subscription
+                </div>
+                <div className="text-caption text-[var(--color-text-muted)]">
+                  Uncheck if this is a non-essential subscription (e.g., entertainment, optional services)
+                </div>
+              </div>
+            </label>
           </div>
 
           {/* Dates */}

@@ -198,7 +198,7 @@ export class SubscriptionService {
   /**
    * Get all subscriptions for the current user
    */
-  async getAll(status?: string): Promise<Subscription[]> {
+  async getAll(status?: string, isEssential?: boolean): Promise<Subscription[]> {
     await this.getUserId();
 
     let query = this.supabase
@@ -210,6 +210,10 @@ export class SubscriptionService {
       query = query.eq('status', status);
     }
 
+    if (isEssential !== undefined) {
+      query = query.eq('is_essential', isEssential);
+    }
+
     const { data, error } = await query;
 
     if (error) {
@@ -217,6 +221,20 @@ export class SubscriptionService {
     }
 
     return data || [];
+  }
+
+  /**
+   * Get essential subscriptions only
+   */
+  async getEssential(): Promise<Subscription[]> {
+    return this.getAll('Active', true);
+  }
+
+  /**
+   * Get non-essential subscriptions only
+   */
+  async getNonEssential(): Promise<Subscription[]> {
+    return this.getAll('Active', false);
   }
 
   /**

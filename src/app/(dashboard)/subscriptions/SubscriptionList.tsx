@@ -34,13 +34,19 @@ const typeIcons: Record<string, string> = {
 
 export function SubscriptionList({ subscriptions }: SubscriptionListProps) {
   const [filter, setFilter] = useState<'all' | SubscriptionStatusType>('all');
+  const [essentialFilter, setEssentialFilter] = useState<'all' | 'essential' | 'non-essential'>('all');
   const [loading, setLoading] = useState<string | null>(null);
   const router = useRouter();
   const supabase = createSupabaseBrowserClient();
 
-  const filteredSubscriptions = filter === 'all'
-    ? subscriptions
-    : subscriptions.filter(s => s.status === filter);
+  const filteredSubscriptions = subscriptions.filter(s => {
+    // Status filter
+    if (filter !== 'all' && s.status !== filter) return false;
+    // Essential filter
+    if (essentialFilter === 'essential' && !s.is_essential) return false;
+    if (essentialFilter === 'non-essential' && s.is_essential) return false;
+    return true;
+  });
 
   const handleStatusChange = async (id: string, action: 'pause' | 'resume' | 'cancel') => {
     setLoading(id);
@@ -92,23 +98,51 @@ export function SubscriptionList({ subscriptions }: SubscriptionListProps) {
   return (
     <div className="space-y-4">
       {/* Filter Tabs */}
-      <div className="flex gap-2">
-        {(['all', 'Active', 'Paused', 'Cancelled'] as const).map((status) => (
-          <button
-            key={status}
-            onClick={() => setFilter(status)}
-            className={`px-4 py-2 rounded-[var(--radius-md)] text-small font-medium transition-colors ${
-              filter === status
-                ? 'bg-[var(--color-primary)] text-white'
-                : 'bg-[var(--color-surface-sunken)] text-[var(--color-text-muted)] hover:text-[var(--color-text)]'
-            }`}
-          >
-            {status === 'all' ? 'All' : status}
-            <span className="ml-1 opacity-60">
-              ({status === 'all' ? subscriptions.length : subscriptions.filter(s => s.status === status).length})
-            </span>
-          </button>
-        ))}
+      <div className="space-y-3">
+        {/* Status Filter */}
+        <div className="flex gap-2 flex-wrap">
+          {(['all', 'Active', 'Paused', 'Cancelled'] as const).map((status) => (
+            <button
+              key={status}
+              onClick={() => setFilter(status)}
+              className={`px-4 py-2 rounded-[var(--radius-md)] text-small font-medium transition-colors ${
+                filter === status
+                  ? 'bg-[var(--color-primary)] text-white'
+                  : 'bg-[var(--color-surface-sunken)] text-[var(--color-text-muted)] hover:text-[var(--color-text)]'
+              }`}
+            >
+              {status === 'all' ? 'All' : status}
+              <span className="ml-1 opacity-60">
+                ({status === 'all' ? subscriptions.length : subscriptions.filter(s => s.status === status).length})
+              </span>
+            </button>
+          ))}
+        </div>
+        
+        {/* Essential Filter */}
+        <div className="flex gap-2 flex-wrap">
+          {(['all', 'essential', 'non-essential'] as const).map((filterType) => (
+            <button
+              key={filterType}
+              onClick={() => setEssentialFilter(filterType)}
+              className={`px-4 py-2 rounded-[var(--radius-md)] text-small font-medium transition-colors ${
+                essentialFilter === filterType
+                  ? 'bg-blue-500 text-white'
+                  : 'bg-[var(--color-surface-sunken)] text-[var(--color-text-muted)] hover:text-[var(--color-text)]'
+              }`}
+            >
+              {filterType === 'all' ? 'All Types' : filterType === 'essential' ? 'Essential' : 'Non-Essential'}
+              <span className="ml-1 opacity-60">
+                ({filterType === 'all' 
+                  ? subscriptions.length 
+                  : filterType === 'essential'
+                    ? subscriptions.filter(s => s.is_essential).length
+                    : subscriptions.filter(s => !s.is_essential).length
+                })
+              </span>
+            </button>
+          ))}
+        </div>
       </div>
 
       {/* Subscription Cards */}
@@ -127,7 +161,18 @@ export function SubscriptionList({ subscriptions }: SubscriptionListProps) {
                   {typeIcons[subscription.subscription_type || 'Other']}
                 </div>
                 <div>
-                  <h3 className="text-title text-[var(--color-text)]">{subscription.name}</h3>
+                  <div className="flex items-center gap-2">
+                    <h3 className="text-title text-[var(--color-text)]">{subscription.name}</h3>
+                    {subscription.is_essential ? (
+                      <span className="px-2 py-0.5 rounded-full text-caption bg-green-500/15 text-green-600 dark:text-green-400 font-medium">
+                        Essential
+                      </span>
+                    ) : (
+                      <span className="px-2 py-0.5 rounded-full text-caption bg-orange-500/15 text-orange-600 dark:text-orange-400 font-medium">
+                        Non-Essential
+                      </span>
+                    )}
+                  </div>
                   <p className="text-small text-[var(--color-text-muted)]">
                     {subscription.subscription_type || 'Other'}
                     {subscription.person && ` · ${subscription.person}`}
