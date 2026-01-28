@@ -242,7 +242,8 @@ export default function MasterBudgetsPage() {
 
       {/* Pie Charts */}
       {breakdown && (breakdown.fixed.budgets.length > 0 || breakdown.variable.budgets.length > 0) && (
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div className="space-y-6">
+          {/* Fixed Budgets - Large Chart */}
           {breakdown.fixed.budgets.length > 0 && (
             <Card variant="raised" padding="lg">
               <h3 className="text-headline text-[var(--color-text)] mb-4">Fixed Budgets</h3>
@@ -250,42 +251,47 @@ export default function MasterBudgetsPage() {
                 data={fixedChartData}
                 showLegend={true}
                 showLabels={false}
-                innerRadius={40}
-                height={250}
+                innerRadius={80}
+                outerRadius={150}
+                height={400}
               />
-              <p className="text-center text-small text-[var(--color-text-muted)] mt-2">
-                Total: €{breakdown.fixed.total.toLocaleString('en-IE', { minimumFractionDigits: 2 })}
+              <p className="text-center text-body font-medium text-[var(--color-text)] mt-4">
+                Total: €{breakdown.fixed.total.toLocaleString('en-IE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
               </p>
             </Card>
           )}
-          {breakdown.variable.budgets.length > 0 && (
+          
+          {/* Variable and Combined - Side by Side */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {breakdown.variable.budgets.length > 0 && (
+              <Card variant="raised" padding="lg">
+                <h3 className="text-headline text-[var(--color-text)] mb-4">Variable Budgets</h3>
+                <PieChart
+                  data={variableChartData}
+                  showLegend={true}
+                  showLabels={false}
+                  innerRadius={40}
+                  height={300}
+                />
+                <p className="text-center text-small text-[var(--color-text-muted)] mt-2">
+                  Total: €{breakdown.variable.total.toLocaleString('en-IE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                </p>
+              </Card>
+            )}
             <Card variant="raised" padding="lg">
-              <h3 className="text-headline text-[var(--color-text)] mb-4">Variable Budgets</h3>
+              <h3 className="text-headline text-[var(--color-text)] mb-4">Combined</h3>
               <PieChart
-                data={variableChartData}
+                data={combinedChartData}
                 showLegend={true}
                 showLabels={false}
                 innerRadius={40}
-                height={250}
+                height={300}
               />
               <p className="text-center text-small text-[var(--color-text-muted)] mt-2">
-                Total: €{breakdown.variable.total.toLocaleString('en-IE', { minimumFractionDigits: 2 })}
+                Total: €{breakdown.grandTotal.toLocaleString('en-IE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
               </p>
             </Card>
-          )}
-          <Card variant="raised" padding="lg">
-            <h3 className="text-headline text-[var(--color-text)] mb-4">Combined</h3>
-            <PieChart
-              data={combinedChartData}
-              showLegend={true}
-              showLabels={false}
-              innerRadius={40}
-              height={250}
-            />
-            <p className="text-center text-small text-[var(--color-text-muted)] mt-2">
-              Total: €{breakdown.grandTotal.toLocaleString('en-IE', { minimumFractionDigits: 2 })}
-            </p>
-          </Card>
+          </div>
         </div>
       )}
 
