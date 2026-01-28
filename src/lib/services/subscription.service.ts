@@ -415,6 +415,7 @@ export class SubscriptionService {
     let query = this.supabase
       .from('subscriptions')
       .select('*')
+      .not('next_collection_date', 'is', null)
       .gte('next_collection_date', startDate)
       .lte('next_collection_date', endDate)
       .order('next_collection_date', { ascending: true });

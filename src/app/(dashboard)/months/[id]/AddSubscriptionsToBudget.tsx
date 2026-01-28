@@ -26,14 +26,17 @@ export function AddSubscriptionsToBudget({
   const [loading, setLoading] = useState(true);
   const [creating, setCreating] = useState(false);
   const [totalMonthlyCost, setTotalMonthlyCost] = useState(0);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     loadSubscriptions();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [startDate, endDate]);
 
   const loadSubscriptions = async () => {
     try {
       setLoading(true);
+      setError(null);
       const supabase = createSupabaseBrowserClient();
       const service = new SubscriptionService(supabase);
       
@@ -50,7 +53,13 @@ export function AddSubscriptionsToBudget({
       setSelectedIds(new Set(subs.map(s => s.id)));
     } catch (error) {
       console.error('Failed to load subscriptions:', error);
-      toast.showToast('Failed to load subscriptions', 'error');
+      const errorMessage = error instanceof Error ? error.message : 'Failed to load subscriptions';
+      setError(errorMessage);
+      try {
+        toast.showToast(errorMessage, 'error');
+      } catch {
+        // Toast might not be available
+      }
     } finally {
       setLoading(false);
     }
@@ -78,7 +87,9 @@ export function AddSubscriptionsToBudget({
 
   const handleCreateBudgets = async () => {
     if (selectedIds.size === 0) {
-      toast.showToast('Please select at least one subscription', 'error');
+      if (toast && toast.showToast) {
+        toast.showToast('Please select at least one subscription', 'error');
+      }
       return;
     }
 
@@ -94,16 +105,18 @@ export function AddSubscriptionsToBudget({
         Array.from(selectedIds)
       );
 
-      if (result.errors.length > 0) {
-        toast.showToast(
-          `Created ${result.created} budgets. ${result.skipped} skipped. Some errors occurred.`,
-          'error'
-        );
-      } else {
-        toast.showToast(
-          `Successfully created ${result.created} budget${result.created !== 1 ? 's' : ''} from subscriptions`,
-          'success'
-        );
+      if (toast && toast.showToast) {
+        if (result.errors.length > 0) {
+          toast.showToast(
+            `Created ${result.created} budgets. ${result.skipped} skipped. Some errors occurred.`,
+            'error'
+          );
+        } else {
+          toast.showToast(
+            `Successfully created ${result.created} budget${result.created !== 1 ? 's' : ''} from subscriptions`,
+            'success'
+          );
+        }
       }
 
       if (onSuccess) {
@@ -111,10 +124,12 @@ export function AddSubscriptionsToBudget({
       }
     } catch (error) {
       console.error('Failed to create budgets:', error);
-      toast.showToast(
-        error instanceof Error ? error.message : 'Failed to create budgets from subscriptions',
-        'error'
-      );
+      if (toast && toast.showToast) {
+        toast.showToast(
+          error instanceof Error ? error.message : 'Failed to create budgets from subscriptions',
+          'error'
+        );
+      }
     } finally {
       setCreating(false);
     }
@@ -132,6 +147,21 @@ export function AddSubscriptionsToBudget({
         <div className="text-center py-8">
           <div className="w-8 h-8 border-2 border-[var(--color-primary)] border-t-transparent rounded-full animate-spin mx-auto mb-4" />
           <p className="text-body text-[var(--color-text-muted)]">Loading subscriptions...</p>
+        </div>
+      </Card>
+    );
+  }
+
+  if (error) {
+    return (
+      <Card variant="outlined" padding="lg">
+        <div className="text-center py-8">
+          <p className="text-body text-[var(--color-text-muted)] mb-2">
+            Unable to load subscriptions: {error}
+          </p>
+          <Button onClick={loadSubscriptions} variant="secondary" size="sm">
+            Retry
+          </Button>
         </div>
       </Card>
     );
@@ -229,13 +259,13 @@ export function AddSubscriptionsToBudget({
                       </div>
                       <div className="text-caption text-[var(--color-text-muted)]">
                         {subscription.frequency} · Due: {subscription.next_collection_date ? new Date(subscription.next_collection_date).toLocaleDateString('en-IE', { dateStyle: 'short' }) : 'N/A'}
-                        {subscription.is_essential !== undefined && (
+                        {(subscription as any).is_essential !== undefined && (
                           <span className={`ml-2 px-1.5 py-0.5 rounded text-caption ${
-                            subscription.is_essential
+                            (subscription as any).is_essential
                               ? 'bg-green-500/15 text-green-600 dark:text-green-400'
                               : 'bg-orange-500/15 text-orange-600 dark:text-orange-400'
                           }`}>
-                            {subscription.is_essential ? 'Essential' : 'Non-Essential'}
+                            {(subscription as any).is_essential ? 'Essential' : 'Non-Essential'}
                           </span>
                         )}
                       </div>
