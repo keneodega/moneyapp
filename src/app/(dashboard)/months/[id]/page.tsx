@@ -21,6 +21,7 @@ const AddSubscriptionsToBudget = dynamic(
       return { default: () => null };
     }),
   {
+    ssr: false,
     loading: () => <div className="p-8 text-center text-small text-[var(--color-text-muted)]">Loading subscriptions...</div>,
   }
 );

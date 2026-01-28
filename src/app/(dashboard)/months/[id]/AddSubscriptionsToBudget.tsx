@@ -30,7 +30,7 @@ function AddSubscriptionsToBudgetComponent({
   const [error, setError] = useState<string | null>(null);
   const [componentError, setComponentError] = useState<string | null>(null);
 
-  // Safely get toast context - won't throw if not available
+  // Safely get toast context - useContext returns undefined if not available, doesn't throw
   const toastContext = useContext(ToastContext);
   const toast = toastContext || {
     showToast: (message: string, type?: 'success' | 'error' | 'info' | 'warning') => {
@@ -391,12 +391,18 @@ function AddSubscriptionsToBudgetComponent({
   );
 }
 
-// Export wrapped in error boundary
+// Export wrapped in error boundary with additional safety
 export function AddSubscriptionsToBudget(props: AddSubscriptionsToBudgetProps) {
+  // Ensure we're in browser environment
+  if (typeof window === 'undefined') {
+    return null;
+  }
+
   try {
     return <AddSubscriptionsToBudgetComponent {...props} />;
   } catch (error) {
     console.error('Error rendering AddSubscriptionsToBudget:', error);
+    // Return a simple fallback that won't crash
     return (
       <Card variant="outlined" padding="lg">
         <div className="text-center py-8">
