@@ -20,16 +20,39 @@ export function AddSubscriptionsToBudget({
   endDate,
   onSuccess,
 }: AddSubscriptionsToBudgetProps) {
-  const toast = useToast();
+  // Safely get toast hook
+  let toast: { showToast: (msg: string, type: 'success' | 'error' | 'info') => void };
+  try {
+    toast = useToast();
+  } catch (e) {
+    // Fallback if toast is not available
+    toast = {
+      showToast: (msg: string, type: 'success' | 'error' | 'info') => {
+        console.log(`[${type}] ${msg}`);
+        if (type === 'error' && typeof window !== 'undefined') {
+          // Only alert on errors to avoid annoying users
+          console.error(msg);
+        }
+      },
+    };
+  }
+
   const [subscriptions, setSubscriptions] = useState<Subscription[]>([]);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [loading, setLoading] = useState(true);
   const [creating, setCreating] = useState(false);
   const [totalMonthlyCost, setTotalMonthlyCost] = useState(0);
   const [error, setError] = useState<string | null>(null);
+  const [componentError, setComponentError] = useState<string | null>(null);
 
   useEffect(() => {
-    loadSubscriptions();
+    try {
+      loadSubscriptions();
+    } catch (err) {
+      console.error('Error in useEffect:', err);
+      setComponentError('Failed to initialize component');
+      setLoading(false);
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [startDate, endDate]);
 
@@ -38,27 +61,38 @@ export function AddSubscriptionsToBudget({
       setLoading(true);
       setError(null);
       const supabase = createSupabaseBrowserClient();
-      const service = new SubscriptionService(supabase);
       
-      const subs = await service.getByDateRange(startDate, endDate, 'Active');
-      setSubscriptions(subs);
+      // Check if getByDateRange method exists
+      const service = new SubscriptionService(supabase);
+      if (typeof (service as any).getByDateRange !== 'function') {
+        throw new Error('Subscription service method not available');
+      }
+      
+      const subs = await (service as any).getByDateRange(startDate, endDate, 'Active');
+      setSubscriptions(subs || []);
       
       // Calculate total monthly cost
-      const total = subs.reduce((sum, sub) => {
-        return sum + SubscriptionService.calculateMonthlyCost(sub.amount, sub.frequency);
+      const total = (subs || []).reduce((sum: number, sub: Subscription) => {
+        try {
+          return sum + SubscriptionService.calculateMonthlyCost(sub.amount, sub.frequency);
+        } catch {
+          return sum;
+        }
       }, 0);
       setTotalMonthlyCost(total);
       
       // Pre-select all subscriptions
-      setSelectedIds(new Set(subs.map(s => s.id)));
+      setSelectedIds(new Set((subs || []).map((s: Subscription) => s.id)));
     } catch (error) {
       console.error('Failed to load subscriptions:', error);
       const errorMessage = error instanceof Error ? error.message : 'Failed to load subscriptions';
       setError(errorMessage);
-      try {
-        toast.showToast(errorMessage, 'error');
-      } catch {
-        // Toast might not be available
+      if (toast && toast.showToast) {
+        try {
+          toast.showToast(errorMessage, 'error');
+        } catch {
+          // Toast might not be available
+        }
       }
     } finally {
       setLoading(false);
@@ -88,7 +122,11 @@ export function AddSubscriptionsToBudget({
   const handleCreateBudgets = async () => {
     if (selectedIds.size === 0) {
       if (toast && toast.showToast) {
-        toast.showToast('Please select at least one subscription', 'error');
+        try {
+          toast.showToast('Please select at least one subscription', 'error');
+        } catch {
+          alert('Please select at least one subscription');
+        }
       }
       return;
     }
@@ -98,7 +136,12 @@ export function AddSubscriptionsToBudget({
       const supabase = createSupabaseBrowserClient();
       const service = new SubscriptionService(supabase);
       
-      const result = await service.createBudgetsFromSubscriptions(
+      // Check if method exists
+      if (typeof (service as any).createBudgetsFromSubscriptions !== 'function') {
+        throw new Error('Feature not available. Please update your deployment.');
+      }
+      
+      const result = await (service as any).createBudgetsFromSubscriptions(
         monthId,
         startDate,
         endDate,
@@ -106,29 +149,41 @@ export function AddSubscriptionsToBudget({
       );
 
       if (toast && toast.showToast) {
-        if (result.errors.length > 0) {
-          toast.showToast(
-            `Created ${result.created} budgets. ${result.skipped} skipped. Some errors occurred.`,
-            'error'
-          );
-        } else {
-          toast.showToast(
-            `Successfully created ${result.created} budget${result.created !== 1 ? 's' : ''} from subscriptions`,
-            'success'
-          );
+        try {
+          if (result.errors.length > 0) {
+            toast.showToast(
+              `Created ${result.created} budgets. ${result.skipped} skipped. Some errors occurred.`,
+              'error'
+            );
+          } else {
+            toast.showToast(
+              `Successfully created ${result.created} budget${result.created !== 1 ? 's' : ''} from subscriptions`,
+              'success'
+            );
+          }
+        } catch {
+          // Toast failed, continue anyway
         }
       }
 
       if (onSuccess) {
-        onSuccess();
+        try {
+          onSuccess();
+        } catch {
+          // onSuccess failed, continue
+        }
       }
     } catch (error) {
       console.error('Failed to create budgets:', error);
       if (toast && toast.showToast) {
-        toast.showToast(
-          error instanceof Error ? error.message : 'Failed to create budgets from subscriptions',
-          'error'
-        );
+        try {
+          toast.showToast(
+            error instanceof Error ? error.message : 'Failed to create budgets from subscriptions',
+            'error'
+          );
+        } catch {
+          alert(error instanceof Error ? error.message : 'Failed to create budgets from subscriptions');
+        }
       }
     } finally {
       setCreating(false);
@@ -147,6 +202,18 @@ export function AddSubscriptionsToBudget({
         <div className="text-center py-8">
           <div className="w-8 h-8 border-2 border-[var(--color-primary)] border-t-transparent rounded-full animate-spin mx-auto mb-4" />
           <p className="text-body text-[var(--color-text-muted)]">Loading subscriptions...</p>
+        </div>
+      </Card>
+    );
+  }
+
+  if (componentError) {
+    return (
+      <Card variant="outlined" padding="lg">
+        <div className="text-center py-8">
+          <p className="text-body text-[var(--color-text-muted)]">
+            {componentError}
+          </p>
         </div>
       </Card>
     );
