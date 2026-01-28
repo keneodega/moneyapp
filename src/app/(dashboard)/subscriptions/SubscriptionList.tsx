@@ -130,6 +130,7 @@ export function SubscriptionList({ subscriptions }: SubscriptionListProps) {
                   <h3 className="text-title text-[var(--color-text)]">{subscription.name}</h3>
                   <p className="text-small text-[var(--color-text-muted)]">
                     {subscription.subscription_type || 'Other'}
+                    {subscription.person && ` · ${subscription.person}`}
                   </p>
                 </div>
               </div>
@@ -166,6 +167,14 @@ export function SubscriptionList({ subscriptions }: SubscriptionListProps) {
                   {subscription.bank || '-'}
                 </p>
               </div>
+              {subscription.person && (
+                <div>
+                  <p className="text-small text-[var(--color-text-muted)]">Person</p>
+                  <p className="text-body text-[var(--color-text)]">
+                    {subscription.person}
+                  </p>
+                </div>
+              )}
             </div>
 
             {subscription.description && (
