@@ -33,6 +33,7 @@ export { MasterBudgetService } from './master-budget.service';
 export { IncomeSourceService } from './income-source.service';
 export { FinancialGoalService } from './financial-goal.service';
 export { SubscriptionService } from './subscription.service';
+export { LoanService } from './loan.service';
 export { SettingsService, type AppSetting, type SettingType } from './settings.service';
 
 // Export error types for handling
@@ -73,6 +74,7 @@ import { MasterBudgetService } from './master-budget.service';
 import { IncomeSourceService } from './income-source.service';
 import { FinancialGoalService } from './financial-goal.service';
 import { SubscriptionService } from './subscription.service';
+import { LoanService } from './loan.service';
 import { SettingsService } from './settings.service';
 
 export interface Services {
@@ -83,6 +85,7 @@ export interface Services {
   incomeSource: IncomeSourceService;
   financialGoal: FinancialGoalService;
   subscription: SubscriptionService;
+  loan: LoanService;
   settings: SettingsService;
 }
 
@@ -95,6 +98,7 @@ export function createServices(supabase: SupabaseClient): Services {
     incomeSource: new IncomeSourceService(supabase),
     financialGoal: new FinancialGoalService(supabase),
     subscription: new SubscriptionService(supabase),
+    loan: new LoanService(supabase),
     settings: new SettingsService(supabase),
   };
 }

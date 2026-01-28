@@ -22,6 +22,12 @@ export type StatusType =
 export type SubscriptionStatusType = 
   | 'Active' | 'Paused' | 'Cancelled' | 'Ended';
 
+export type LoanStatusType = 
+  | 'Active' | 'Paid Off' | 'Defaulted' | 'Refinanced' | 'Closed';
+
+export type LoanType = 
+  | 'Mortgage' | 'Car Loan' | 'Personal Loan' | 'Student Loan' | 'Credit Card' | 'Other';
+
 export type PriorityType = 
   | 'Low' | 'Medium' | 'High' | 'Critical';
 
@@ -412,6 +418,110 @@ export interface SubscriptionUpdate {
   description?: string | null;
 }
 
+export interface Loan {
+  id: string;
+  user_id: string;
+  name: string;
+  loan_type: LoanType;
+  original_amount: number;
+  current_balance: number;
+  interest_rate: number;
+  monthly_payment: number;
+  payment_frequency: FrequencyType;
+  status: LoanStatusType;
+  person?: string | null;
+  bank?: string | null;
+  lender_name?: string | null;
+  start_date: string;
+  end_date?: string | null;
+  next_payment_date?: string | null;
+  last_payment_date?: string | null;
+  payment_method?: string | null;
+  description?: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface LoanInsert {
+  id?: string;
+  user_id: string;
+  name: string;
+  loan_type: LoanType;
+  original_amount: number;
+  current_balance: number;
+  interest_rate?: number;
+  monthly_payment: number;
+  payment_frequency?: FrequencyType;
+  status?: LoanStatusType;
+  person?: string | null;
+  bank?: string | null;
+  lender_name?: string | null;
+  start_date: string;
+  end_date?: string | null;
+  next_payment_date?: string | null;
+  last_payment_date?: string | null;
+  payment_method?: string | null;
+  description?: string | null;
+}
+
+export interface LoanUpdate {
+  name?: string;
+  loan_type?: LoanType;
+  original_amount?: number;
+  current_balance?: number;
+  interest_rate?: number;
+  monthly_payment?: number;
+  payment_frequency?: FrequencyType;
+  status?: LoanStatusType;
+  person?: string | null;
+  bank?: string | null;
+  lender_name?: string | null;
+  start_date?: string;
+  end_date?: string | null;
+  next_payment_date?: string | null;
+  last_payment_date?: string | null;
+  payment_method?: string | null;
+  description?: string | null;
+}
+
+export interface LoanPayment {
+  id: string;
+  loan_id: string;
+  user_id: string;
+  payment_amount: number;
+  principal_amount: number;
+  interest_amount: number;
+  payment_date: string;
+  payment_method?: string | null;
+  linked_expense_id?: string | null;
+  notes?: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface LoanPaymentInsert {
+  id?: string;
+  loan_id: string;
+  user_id: string;
+  payment_amount: number;
+  principal_amount: number;
+  interest_amount: number;
+  payment_date: string;
+  payment_method?: string | null;
+  linked_expense_id?: string | null;
+  notes?: string | null;
+}
+
+export interface LoanPaymentUpdate {
+  payment_amount?: number;
+  principal_amount?: number;
+  interest_amount?: number;
+  payment_date?: string;
+  payment_method?: string | null;
+  linked_expense_id?: string | null;
+  notes?: string | null;
+}
+
 export interface InvestmentHolding {
   id: string;
   user_id: string;
@@ -530,6 +640,16 @@ export interface Database {
         Insert: SubscriptionInsert;
         Update: SubscriptionUpdate;
       };
+      loans: {
+        Row: Loan;
+        Insert: LoanInsert;
+        Update: LoanUpdate;
+      };
+      loan_payments: {
+        Row: LoanPayment;
+        Insert: LoanPaymentInsert;
+        Update: LoanPaymentUpdate;
+      };
       investment_holdings: {
         Row: InvestmentHolding;
         Insert: InvestmentHoldingInsert;
@@ -558,6 +678,8 @@ export interface Database {
       frequency_type: FrequencyType;
       status_type: StatusType;
       subscription_status_type: SubscriptionStatusType;
+      loan_status_type: LoanStatusType;
+      loan_type: LoanType;
       priority_type: PriorityType;
       goal_type: GoalType;
       income_source_type: IncomeSourceType;
