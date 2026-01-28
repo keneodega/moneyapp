@@ -15,7 +15,6 @@ const MonthActions = dynamic(() => import('./MonthActions').then(mod => ({ defau
 
 const AddSubscriptionsToBudget = dynamic(() => import('./AddSubscriptionsToBudget').then(mod => ({ default: mod.AddSubscriptionsToBudget })).catch(() => ({ default: () => null })), {
   loading: () => <div className="p-8 text-center text-small text-[var(--color-text-muted)]">Loading subscriptions...</div>,
-  ssr: false,
 });
 
 interface MonthData {
