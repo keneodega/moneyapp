@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { Card, Button, Input, Textarea } from '@/components/ui';
 import { createSupabaseBrowserClient } from '@/lib/supabase/client';
+import { MonthlyOverviewService } from '@/lib/services';
 
 function getDefaultDates() {
   const now = new Date();
@@ -59,32 +60,14 @@ export default function NewMonthPage() {
         return;
       }
 
-      const { data, error: insertError } = await supabase
-        .from('monthly_overviews')
-        .insert({
-          user_id: user.id,
-          name: formData.name,
-          start_date: formData.start_date,
-          end_date: formData.end_date,
-          notes: formData.notes || null,
-        })
-        .select()
-        .single();
-
-      if (insertError) {
-        // Check if error is due to missing budgets table (more specific check)
-        const errorMsg = insertError.message.toLowerCase();
-        if (errorMsg.includes('relation') && 
-            (errorMsg.includes('"budgets"') || errorMsg.includes('does not exist'))) {
-          throw new Error(
-            'Database setup incomplete. The budgets table does not exist. ' +
-            'Please run the database schema migration in Supabase SQL Editor. ' +
-            'See: supabase/schema.sql'
-          );
-        }
-        // For other errors, show the actual error message
-        throw new Error(insertError.message || 'Failed to create month');
-      }
+      // Use the service to create the month (which will auto-add subscriptions as budgets)
+      const service = new MonthlyOverviewService(supabase);
+      const data = await service.create({
+        name: formData.name,
+        start_date: formData.start_date,
+        end_date: formData.end_date,
+        notes: formData.notes || null,
+      });
 
       // Redirect to the new month
       router.push(`/months/${data.id}`);
