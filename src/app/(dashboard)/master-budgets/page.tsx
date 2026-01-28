@@ -3,16 +3,22 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { Card, Button, Input, Skeleton, SkeletonList, useToast, useConfirmDialog } from '@/components/ui';
+import { Card, Button, Input, Select, Skeleton, SkeletonList, useToast, useConfirmDialog, PieChart, type PieChartData } from '@/components/ui';
 import { createSupabaseBrowserClient } from '@/lib/supabase/client';
 import { MasterBudgetService } from '@/lib/services';
-import type { MasterBudget, MasterBudgetHistoryEntry } from '@/lib/services/master-budget.service';
+import type { MasterBudget, MasterBudgetHistoryEntry, BudgetType } from '@/lib/services/master-budget.service';
 
 export default function MasterBudgetsPage() {
   const router = useRouter();
   const toast = useToast();
   const confirmDialog = useConfirmDialog();
   const [budgets, setBudgets] = useState<MasterBudget[]>([]);
+  const [breakdown, setBreakdown] = useState<{
+    fixed: { total: number; budgets: MasterBudget[] };
+    variable: { total: number; budgets: MasterBudget[] };
+    grandTotal: number;
+  } | null>(null);
+  const [filterType, setFilterType] = useState<'All' | 'Fixed' | 'Variable'>('All');
   const [isLoading, setIsLoading] = useState(true);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [showAddForm, setShowAddForm] = useState(false);
@@ -20,6 +26,7 @@ export default function MasterBudgetsPage() {
     name: '',
     budget_amount: '',
     description: '',
+    budget_type: 'Fixed' as BudgetType,
   });
   const [saving, setSaving] = useState(false);
   const [history, setHistory] = useState<MasterBudgetHistoryEntry[]>([]);
@@ -38,6 +45,10 @@ export default function MasterBudgetsPage() {
       const masterBudgetService = new MasterBudgetService(supabase);
       const data = await masterBudgetService.getAll(true);
       setBudgets(data);
+      
+      // Load breakdown for pie charts
+      const breakdownData = await masterBudgetService.getBudgetBreakdown(true);
+      setBreakdown(breakdownData);
     } catch (err) {
       console.error('Failed to load master budgets:', err);
       toast.showToast(
@@ -85,9 +96,10 @@ export default function MasterBudgetsPage() {
         name: formData.name.trim(),
         budget_amount: parseFloat(formData.budget_amount) || 0,
         description: formData.description.trim() || null,
+        budget_type: formData.budget_type,
       });
 
-      setFormData({ name: '', budget_amount: '', description: '' });
+      setFormData({ name: '', budget_amount: '', description: '', budget_type: 'Fixed' });
       setShowAddForm(false);
       await loadBudgets();
       await loadHistory();
@@ -102,7 +114,7 @@ export default function MasterBudgetsPage() {
     }
   };
 
-  const handleEdit = async (id: string, updates: { name?: string; budget_amount?: number; description?: string | null }) => {
+  const handleEdit = async (id: string, updates: { name?: string; budget_amount?: number; description?: string | null; budget_type?: BudgetType }) => {
     setSaving(true);
 
     try {
@@ -153,7 +165,32 @@ export default function MasterBudgetsPage() {
     });
   };
 
-  const totalAmount = budgets.reduce((sum, b) => sum + Number(b.budget_amount || 0), 0);
+  const totalAmount = breakdown?.grandTotal ?? budgets.reduce((sum, b) => sum + Number(b.budget_amount || 0), 0);
+  
+  // Filter budgets based on selected type
+  const filteredBudgets = filterType === 'All' 
+    ? budgets 
+    : budgets.filter(b => b.budget_type === filterType);
+  
+  // Group budgets by type
+  const fixedBudgets = budgets.filter(b => b.budget_type === 'Fixed');
+  const variableBudgets = budgets.filter(b => b.budget_type === 'Variable');
+  
+  // Prepare pie chart data
+  const fixedChartData: PieChartData[] = fixedBudgets.map(b => ({
+    name: b.name,
+    value: Number(b.budget_amount),
+  }));
+  
+  const variableChartData: PieChartData[] = variableBudgets.map(b => ({
+    name: b.name,
+    value: Number(b.budget_amount),
+  }));
+  
+  const combinedChartData: PieChartData[] = [
+    { name: 'Fixed Budgets', value: breakdown?.fixed.total ?? 0 },
+    { name: 'Variable Budgets', value: breakdown?.variable.total ?? 0 },
+  ];
 
   if (isLoading) {
     return (
@@ -186,6 +223,12 @@ export default function MasterBudgetsPage() {
           <div>
             <p className="text-small text-[var(--color-text-muted)]">Total Master Budget</p>
             <p className="text-display text-[var(--color-text)] mt-1">€{totalAmount.toLocaleString('en-IE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
+            {breakdown && (
+              <div className="flex gap-4 mt-2 text-small text-[var(--color-text-muted)]">
+                <span>Fixed: €{breakdown.fixed.total.toLocaleString('en-IE', { minimumFractionDigits: 2 })}</span>
+                <span>Variable: €{breakdown.variable.total.toLocaleString('en-IE', { minimumFractionDigits: 2 })}</span>
+              </div>
+            )}
           </div>
           <Button
             onClick={() => setShowAddForm(!showAddForm)}
@@ -196,6 +239,89 @@ export default function MasterBudgetsPage() {
           </Button>
         </div>
       </Card>
+
+      {/* Pie Charts */}
+      {breakdown && (breakdown.fixed.budgets.length > 0 || breakdown.variable.budgets.length > 0) && (
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          {breakdown.fixed.budgets.length > 0 && (
+            <Card variant="raised" padding="lg">
+              <h3 className="text-headline text-[var(--color-text)] mb-4">Fixed Budgets</h3>
+              <PieChart
+                data={fixedChartData}
+                showLegend={true}
+                showLabels={false}
+                innerRadius={40}
+                height={250}
+              />
+              <p className="text-center text-small text-[var(--color-text-muted)] mt-2">
+                Total: €{breakdown.fixed.total.toLocaleString('en-IE', { minimumFractionDigits: 2 })}
+              </p>
+            </Card>
+          )}
+          {breakdown.variable.budgets.length > 0 && (
+            <Card variant="raised" padding="lg">
+              <h3 className="text-headline text-[var(--color-text)] mb-4">Variable Budgets</h3>
+              <PieChart
+                data={variableChartData}
+                showLegend={true}
+                showLabels={false}
+                innerRadius={40}
+                height={250}
+              />
+              <p className="text-center text-small text-[var(--color-text-muted)] mt-2">
+                Total: €{breakdown.variable.total.toLocaleString('en-IE', { minimumFractionDigits: 2 })}
+              </p>
+            </Card>
+          )}
+          <Card variant="raised" padding="lg">
+            <h3 className="text-headline text-[var(--color-text)] mb-4">Combined</h3>
+            <PieChart
+              data={combinedChartData}
+              showLegend={true}
+              showLabels={false}
+              innerRadius={40}
+              height={250}
+            />
+            <p className="text-center text-small text-[var(--color-text-muted)] mt-2">
+              Total: €{breakdown.grandTotal.toLocaleString('en-IE', { minimumFractionDigits: 2 })}
+            </p>
+          </Card>
+        </div>
+      )}
+
+      {/* Filter Tabs */}
+      <div className="flex gap-2 border-b border-[var(--color-border)]">
+        <button
+          onClick={() => setFilterType('All')}
+          className={`px-4 py-2 text-body font-medium transition-colors ${
+            filterType === 'All'
+              ? 'text-[var(--color-primary)] border-b-2 border-[var(--color-primary)]'
+              : 'text-[var(--color-text-muted)] hover:text-[var(--color-text)]'
+          }`}
+        >
+          All ({budgets.length})
+        </button>
+        <button
+          onClick={() => setFilterType('Fixed')}
+          className={`px-4 py-2 text-body font-medium transition-colors ${
+            filterType === 'Fixed'
+              ? 'text-[var(--color-primary)] border-b-2 border-[var(--color-primary)]'
+              : 'text-[var(--color-text-muted)] hover:text-[var(--color-text)]'
+          }`}
+        >
+          Fixed ({fixedBudgets.length})
+        </button>
+        <button
+          onClick={() => setFilterType('Variable')}
+          className={`px-4 py-2 text-body font-medium transition-colors ${
+            filterType === 'Variable'
+              ? 'text-[var(--color-primary)] border-b-2 border-[var(--color-primary)]'
+              : 'text-[var(--color-text-muted)] hover:text-[var(--color-text)]'
+          }`}
+        >
+          Variable ({variableBudgets.length})
+        </button>
+      </div>
 
       {/* Add Form */}
       {showAddForm && (
@@ -222,20 +348,32 @@ export default function MasterBudgetsPage() {
                 required
               />
             </div>
-            <Input
-              label="Description (Optional)"
-              name="description"
-              placeholder="Brief description of this budget category"
-              value={formData.description}
-              onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-            />
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <Select
+                label="Budget Type"
+                name="budget_type"
+                value={formData.budget_type}
+                onChange={(e) => setFormData({ ...formData, budget_type: e.target.value as BudgetType })}
+                required
+              >
+                <option value="Fixed">Fixed (rarely changes)</option>
+                <option value="Variable">Variable (changes month-to-month)</option>
+              </Select>
+              <Input
+                label="Description (Optional)"
+                name="description"
+                placeholder="Brief description of this budget category"
+                value={formData.description}
+                onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+              />
+            </div>
             <div className="flex gap-3">
               <Button
                 type="button"
                 variant="secondary"
                 onClick={() => {
                   setShowAddForm(false);
-                  setFormData({ name: '', budget_amount: '', description: '' });
+                  setFormData({ name: '', budget_amount: '', description: '', budget_type: 'Fixed' });
                 }}
               >
                 Cancel
@@ -249,15 +387,17 @@ export default function MasterBudgetsPage() {
       )}
 
       {/* Budgets List */}
-      {budgets.length === 0 ? (
+      {filteredBudgets.length === 0 ? (
         <Card variant="raised" padding="lg">
           <p className="text-body text-[var(--color-text-muted)] text-center py-8">
-            No master budgets yet. Click "Add Budget Category" to create your first one.
+            {budgets.length === 0
+              ? 'No master budgets yet. Click "Add Budget Category" to create your first one.'
+              : `No ${filterType.toLowerCase()} budgets found.`}
           </p>
         </Card>
       ) : (
         <div className="space-y-3">
-          {budgets.map((budget) => (
+          {filteredBudgets.map((budget) => (
             <Card key={budget.id} variant="raised" padding="md">
               {editingId === budget.id ? (
                 <EditForm
@@ -271,13 +411,14 @@ export default function MasterBudgetsPage() {
               ) : (
                 <div className="flex items-start justify-between">
                   <div className="flex-1">
-                    <div className="flex items-center gap-3">
+                    <div className="flex items-center gap-3 flex-wrap">
                       <Link
                         href={`/master-budgets/${budget.id}`}
                         className="text-headline text-[var(--color-text)] hover:text-[var(--color-primary)] transition-colors cursor-pointer"
                       >
                         {budget.name}
                       </Link>
+                      <BudgetTypeBadge type={budget.budget_type} />
                       <span className="text-body font-medium text-[var(--color-text)]">
                         €{Number(budget.budget_amount).toLocaleString('en-IE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                       </span>
@@ -391,9 +532,28 @@ function formatHistoryDetail(entry: MasterBudgetHistoryEntry): string {
     if ((entry.old_data.description ?? '') !== (entry.new_data.description ?? '')) {
       parts.push('description changed');
     }
+    if (entry.old_data.budget_type !== entry.new_data.budget_type) {
+      parts.push(`type: ${entry.old_data.budget_type} → ${entry.new_data.budget_type}`);
+    }
     return parts.length ? parts.join('; ') : 'details updated';
   }
   return '';
+}
+
+function BudgetTypeBadge({ type }: { type: BudgetType }) {
+  const isFixed = type === 'Fixed';
+  return (
+    <span
+      className={`inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-small font-medium ${
+        isFixed
+          ? 'bg-blue-500/15 text-blue-600 dark:text-blue-400'
+          : 'bg-orange-500/15 text-orange-600 dark:text-orange-400'
+      }`}
+    >
+      {isFixed ? <LockIcon className="w-3 h-3" /> : <VariableIcon className="w-3 h-3" />}
+      {type}
+    </span>
+  );
 }
 
 function EditForm({
@@ -403,7 +563,7 @@ function EditForm({
   saving,
 }: {
   budget: MasterBudget;
-  onSave: (updates: { name?: string; budget_amount?: number; description?: string | null }) => void;
+  onSave: (updates: { name?: string; budget_amount?: number; description?: string | null; budget_type?: BudgetType }) => void;
   onCancel: () => void;
   saving: boolean;
 }) {
@@ -411,6 +571,7 @@ function EditForm({
     name: budget.name,
     budget_amount: budget.budget_amount.toString(),
     description: budget.description || '',
+    budget_type: budget.budget_type,
   });
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -419,6 +580,7 @@ function EditForm({
       name: formData.name.trim(),
       budget_amount: parseFloat(formData.budget_amount) || 0,
       description: formData.description.trim() || null,
+      budget_type: formData.budget_type,
     });
   };
 
@@ -443,12 +605,24 @@ function EditForm({
           required
         />
       </div>
-      <Input
-        label="Description (Optional)"
-        name="description"
-        value={formData.description}
-        onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-      />
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <Select
+          label="Budget Type"
+          name="budget_type"
+          value={formData.budget_type}
+          onChange={(e) => setFormData({ ...formData, budget_type: e.target.value as BudgetType })}
+          required
+        >
+          <option value="Fixed">Fixed (rarely changes)</option>
+          <option value="Variable">Variable (changes month-to-month)</option>
+        </Select>
+        <Input
+          label="Description (Optional)"
+          name="description"
+          value={formData.description}
+          onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+        />
+      </div>
       <div className="flex gap-3">
         <Button type="button" variant="secondary" onClick={onCancel} disabled={saving}>
           Cancel
@@ -465,6 +639,22 @@ function PlusIcon({ className }: { className?: string }) {
   return (
     <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
       <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
+    </svg>
+  );
+}
+
+function LockIcon({ className }: { className?: string }) {
+  return (
+    <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+      <path strokeLinecap="round" strokeLinejoin="round" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+    </svg>
+  );
+}
+
+function VariableIcon({ className }: { className?: string }) {
+  return (
+    <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+      <path strokeLinecap="round" strokeLinejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
     </svg>
   );
 }

@@ -137,6 +137,8 @@ export interface BudgetSummary extends Budget {
 }
 
 // Master Budget types
+export type BudgetType = 'Fixed' | 'Variable';
+
 export interface MasterBudget {
   id: string;
   user_id: string;
@@ -145,6 +147,7 @@ export interface MasterBudget {
   description?: string | null;
   is_active: boolean;
   display_order: number;
+  budget_type: BudgetType;
   created_at: string;
   updated_at: string;
 }
@@ -157,6 +160,7 @@ export interface MasterBudgetInsert {
   description?: string | null;
   is_active?: boolean;
   display_order?: number;
+  budget_type?: BudgetType;
 }
 
 export interface MasterBudgetUpdate {
@@ -165,6 +169,7 @@ export interface MasterBudgetUpdate {
   description?: string | null;
   is_active?: boolean;
   display_order?: number;
+  budget_type?: BudgetType;
 }
 
 export interface Expense {

@@ -3,11 +3,11 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { Card, Button, Skeleton, SkeletonList, useToast } from '@/components/ui';
+import { Card, Button, Skeleton, SkeletonList, useToast, PieChart, type PieChartData } from '@/components/ui';
 import { createSupabaseBrowserClient } from '@/lib/supabase/client';
 import { MasterBudgetService } from '@/lib/services/master-budget.service';
 import { BudgetService, BudgetHistoryEntry, BudgetTrend } from '@/lib/services/budget.service';
-import type { MasterBudget, MasterBudgetHistoryEntry } from '@/lib/services/master-budget.service';
+import type { MasterBudget, MasterBudgetHistoryEntry, BudgetType } from '@/lib/services/master-budget.service';
 
 export default function MasterBudgetDetailPage({
   params,
@@ -17,6 +17,7 @@ export default function MasterBudgetDetailPage({
   const router = useRouter();
   const toast = useToast();
   const [masterBudget, setMasterBudget] = useState<MasterBudget | null>(null);
+  const [similarBudgets, setSimilarBudgets] = useState<MasterBudget[]>([]);
   const [masterBudgetHistory, setMasterBudgetHistory] = useState<MasterBudgetHistoryEntry[]>([]);
   const [budgetHistory, setBudgetHistory] = useState<BudgetHistoryEntry[]>([]);
   const [trends, setTrends] = useState<BudgetTrend[]>([]);
@@ -45,6 +46,12 @@ export default function MasterBudgetDetailPage({
       const masterBudgetService = new MasterBudgetService(supabase);
       const data = await masterBudgetService.getById(masterBudgetId);
       setMasterBudget(data);
+      
+      // Load similar budgets (same type, excluding current)
+      if (data) {
+        const similar = await masterBudgetService.getByType(data.budget_type, true);
+        setSimilarBudgets(similar.filter(b => b.id !== data.id));
+      }
     } catch (err) {
       console.error('Failed to load master budget:', err);
       toast.showToast(
@@ -144,8 +151,11 @@ export default function MasterBudgetDetailPage({
         >
           <ChevronLeftIcon className="w-5 h-5 text-[var(--color-text)]" />
         </Link>
-        <div>
-          <h1 className="text-display text-[var(--color-text)]">{masterBudget.name}</h1>
+        <div className="flex-1">
+          <div className="flex items-center gap-3 flex-wrap">
+            <h1 className="text-display text-[var(--color-text)]">{masterBudget.name}</h1>
+            <BudgetTypeBadge type={masterBudget.budget_type} />
+          </div>
           <p className="text-body text-[var(--color-text-muted)] mt-1">
             €{Number(masterBudget.budget_amount).toLocaleString('en-IE', { 
               minimumFractionDigits: 2, 
@@ -164,7 +174,13 @@ export default function MasterBudgetDetailPage({
               <p className="text-body text-[var(--color-text-muted)]">{masterBudget.description}</p>
             )}
           </div>
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+            <div>
+              <p className="text-small text-[var(--color-text-muted)]">Type</p>
+              <p className="text-body text-[var(--color-text)] mt-1">
+                <BudgetTypeBadge type={masterBudget.budget_type} />
+              </p>
+            </div>
             <div>
               <p className="text-small text-[var(--color-text-muted)]">Status</p>
               <p className="text-body text-[var(--color-text)] mt-1">
@@ -180,6 +196,51 @@ export default function MasterBudgetDetailPage({
               </p>
             </div>
           </div>
+        </div>
+      </Card>
+
+      {/* Budget Type Breakdown */}
+      {similarBudgets.length > 0 && (
+        <Card variant="raised" padding="lg">
+          <h2 className="text-headline text-[var(--color-text)] mb-4">
+            {masterBudget.budget_type} Budgets Breakdown
+          </h2>
+          <p className="text-small text-[var(--color-text-muted)] mb-4">
+            This budget's share compared to other {masterBudget.budget_type.toLowerCase()} budgets.
+          </p>
+          <BudgetTypePieChart 
+            currentBudget={masterBudget} 
+            similarBudgets={similarBudgets} 
+          />
+        </Card>
+      )}
+
+      {/* Similar Budgets */}
+      {similarBudgets.length > 0 && (
+        <Card variant="raised" padding="lg">
+          <h2 className="text-headline text-[var(--color-text)] mb-4">Similar Budgets</h2>
+          <p className="text-small text-[var(--color-text-muted)] mb-4">
+            Other {masterBudget.budget_type.toLowerCase()} budgets in your master budget.
+          </p>
+          <div className="space-y-2">
+            {similarBudgets.map((budget) => (
+              <Link
+                key={budget.id}
+                href={`/master-budgets/${budget.id}`}
+                className="flex items-center justify-between p-3 rounded-[var(--radius-md)] bg-[var(--color-surface-sunken)] hover:bg-[var(--color-border)] transition-colors"
+              >
+                <div className="flex items-center gap-3">
+                  <span className="text-body font-medium text-[var(--color-text)]">{budget.name}</span>
+                  <BudgetTypeBadge type={budget.budget_type} />
+                </div>
+                <span className="text-body text-[var(--color-text)]">
+                  €{Number(budget.budget_amount).toLocaleString('en-IE', { minimumFractionDigits: 2 })}
+                </span>
+              </Link>
+            ))}
+          </div>
+        </Card>
+      )}
         </div>
       </Card>
 
@@ -488,6 +549,78 @@ function formatPeriodLabel(period: string, type: 'week' | 'month' | 'year'): str
     // Format: "2026" -> "2026"
     return period;
   }
+}
+
+function BudgetTypeBadge({ type }: { type: BudgetType }) {
+  const isFixed = type === 'Fixed';
+  return (
+    <span
+      className={`inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-small font-medium ${
+        isFixed
+          ? 'bg-blue-500/15 text-blue-600 dark:text-blue-400'
+          : 'bg-orange-500/15 text-orange-600 dark:text-orange-400'
+      }`}
+    >
+      {isFixed ? <LockIcon className="w-3 h-3" /> : <VariableIcon className="w-3 h-3" />}
+      {type}
+    </span>
+  );
+}
+
+function BudgetTypePieChart({ 
+  currentBudget, 
+  similarBudgets 
+}: { 
+  currentBudget: MasterBudget; 
+  similarBudgets: MasterBudget[] 
+}) {
+  const allBudgets = [currentBudget, ...similarBudgets];
+  const total = allBudgets.reduce((sum, b) => sum + Number(b.budget_amount), 0);
+  
+  const chartData: PieChartData[] = allBudgets.map((budget) => ({
+    name: budget.name,
+    value: Number(budget.budget_amount),
+    color: budget.id === currentBudget.id 
+      ? 'var(--color-primary)' 
+      : undefined,
+  }));
+  
+  return (
+    <div>
+      <PieChart
+        data={chartData}
+        showLegend={true}
+        showLabels={false}
+        innerRadius={50}
+        height={300}
+      />
+      <div className="mt-4 text-center">
+        <p className="text-body text-[var(--color-text)]">
+          <span className="font-medium">{currentBudget.name}</span> represents{' '}
+          <span className="font-medium">
+            {total > 0 ? ((Number(currentBudget.budget_amount) / total) * 100).toFixed(1) : 0}%
+          </span>{' '}
+          of all {currentBudget.budget_type.toLowerCase()} budgets
+        </p>
+      </div>
+    </div>
+  );
+}
+
+function LockIcon({ className }: { className?: string }) {
+  return (
+    <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+      <path strokeLinecap="round" strokeLinejoin="round" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+    </svg>
+  );
+}
+
+function VariableIcon({ className }: { className?: string }) {
+  return (
+    <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+      <path strokeLinecap="round" strokeLinejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+    </svg>
+  );
 }
 
 function ChevronLeftIcon({ className }: { className?: string }) {

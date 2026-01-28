@@ -8,6 +8,8 @@
 import { SupabaseClient } from '@supabase/supabase-js';
 import { NotFoundError, UnauthorizedError, ValidationError } from './errors';
 
+export type BudgetType = 'Fixed' | 'Variable';
+
 export interface MasterBudget {
   id: string;
   user_id: string;
@@ -16,6 +18,7 @@ export interface MasterBudget {
   description?: string | null;
   is_active: boolean;
   display_order: number;
+  budget_type: BudgetType;
   created_at: string;
   updated_at: string;
 }
@@ -28,6 +31,7 @@ export interface MasterBudgetInsert {
   description?: string | null;
   is_active?: boolean;
   display_order?: number;
+  budget_type?: BudgetType;
 }
 
 export interface MasterBudgetUpdate {
@@ -36,6 +40,7 @@ export interface MasterBudgetUpdate {
   description?: string | null;
   is_active?: boolean;
   display_order?: number;
+  budget_type?: BudgetType;
 }
 
 /** Snapshot of a master budget row as stored in history (JSONB) */
@@ -47,6 +52,7 @@ export interface MasterBudgetHistorySnapshot {
   description?: string | null;
   is_active: boolean;
   display_order: number;
+  budget_type: BudgetType;
   created_at: string;
   updated_at: string;
 }
@@ -168,6 +174,7 @@ export class MasterBudgetService {
         name: data.name.trim(),
         display_order: data.display_order ?? ((maxOrder?.display_order ?? 0) + 1),
         is_active: data.is_active ?? true,
+        budget_type: data.budget_type ?? 'Fixed',
       })
       .select()
       .single();
@@ -226,6 +233,7 @@ export class MasterBudgetService {
     if (data.description !== undefined) updateData.description = data.description;
     if (data.is_active !== undefined) updateData.is_active = data.is_active;
     if (data.display_order !== undefined) updateData.display_order = data.display_order;
+    if (data.budget_type !== undefined) updateData.budget_type = data.budget_type;
 
     const { data: budget, error } = await this.supabase
       .from('master_budgets')
@@ -288,6 +296,75 @@ export class MasterBudgetService {
   async getTotal(): Promise<number> {
     const budgets = await this.getAll(true);
     return budgets.reduce((sum, b) => sum + Number(b.budget_amount || 0), 0);
+  }
+
+  /**
+   * Get master budgets filtered by type
+   * @param type - Budget type to filter by
+   * @param activeOnly - If true, only return active budgets
+   */
+  async getByType(type: BudgetType, activeOnly: boolean = false): Promise<MasterBudget[]> {
+    const userId = await this.getUserId();
+
+    let query = this.supabase
+      .from('master_budgets')
+      .select('*')
+      .eq('user_id', userId)
+      .eq('budget_type', type)
+      .order('display_order', { ascending: true })
+      .order('name', { ascending: true });
+
+    if (activeOnly) {
+      query = query.eq('is_active', true);
+    }
+
+    const { data, error } = await query;
+
+    if (error) {
+      throw new Error(`Failed to fetch ${type} budgets: ${error.message}`);
+    }
+
+    return data || [];
+  }
+
+  /**
+   * Get total amount for budgets of a specific type
+   * @param type - Budget type to calculate total for
+   * @param activeOnly - If true, only count active budgets
+   */
+  async getTotalByType(type: BudgetType, activeOnly: boolean = false): Promise<number> {
+    const budgets = await this.getByType(type, activeOnly);
+    return budgets.reduce((sum, b) => sum + Number(b.budget_amount || 0), 0);
+  }
+
+  /**
+   * Get breakdown of budgets by type
+   * Returns totals and lists for both Fixed and Variable budgets
+   */
+  async getBudgetBreakdown(activeOnly: boolean = false): Promise<{
+    fixed: { total: number; budgets: MasterBudget[] };
+    variable: { total: number; budgets: MasterBudget[] };
+    grandTotal: number;
+  }> {
+    const [fixedBudgets, variableBudgets] = await Promise.all([
+      this.getByType('Fixed', activeOnly),
+      this.getByType('Variable', activeOnly),
+    ]);
+
+    const fixedTotal = fixedBudgets.reduce((sum, b) => sum + Number(b.budget_amount || 0), 0);
+    const variableTotal = variableBudgets.reduce((sum, b) => sum + Number(b.budget_amount || 0), 0);
+
+    return {
+      fixed: {
+        total: fixedTotal,
+        budgets: fixedBudgets,
+      },
+      variable: {
+        total: variableTotal,
+        budgets: variableBudgets,
+      },
+      grandTotal: fixedTotal + variableTotal,
+    };
   }
 
   /**
