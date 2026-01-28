@@ -13,18 +13,17 @@ const MonthActions = dynamic(() => import('./MonthActions').then(mod => ({ defau
   loading: () => <div className="text-small text-[var(--color-text-muted)]">Loading actions...</div>,
 });
 
-// Temporarily disabled to debug page error
-// const AddSubscriptionsToBudget = dynamic(
-//   () => import('./AddSubscriptionsToBudget')
-//     .then(mod => ({ default: mod.AddSubscriptionsToBudget }))
-//     .catch((err) => {
-//       console.error('Failed to load AddSubscriptionsToBudget:', err);
-//       return { default: () => null };
-//     }),
-//   {
-//     loading: () => <div className="p-8 text-center text-small text-[var(--color-text-muted)]">Loading subscriptions...</div>,
-//   }
-// );
+const AddSubscriptionsToBudget = dynamic(
+  () => import('./AddSubscriptionsToBudget')
+    .then(mod => ({ default: mod.AddSubscriptionsToBudget }))
+    .catch((err) => {
+      console.error('Failed to load AddSubscriptionsToBudget:', err);
+      return { default: () => null };
+    }),
+  {
+    loading: () => <div className="p-8 text-center text-small text-[var(--color-text-muted)]">Loading subscriptions...</div>,
+  }
+);
 
 interface MonthData {
   id: string;
@@ -371,8 +370,8 @@ export default async function MonthDetailPage({
         </Card>
       </div>
 
-      {/* Add Subscriptions to Budget - Temporarily disabled to debug page error */}
-      {/* <div className="w-full">
+      {/* Add Subscriptions to Budget */}
+      <div className="w-full">
         <AddSubscriptionsToBudget
           monthId={id}
           startDate={month.start_date}
@@ -383,7 +382,7 @@ export default async function MonthDetailPage({
             }
           }}
         />
-      </div> */}
+      </div>
 
       {/* Main Content Grid */}
       <div className="grid gap-6 lg:grid-cols-3">
