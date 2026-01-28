@@ -1,11 +1,12 @@
 'use client';
 
-import { useState, useEffect } from 'react';
-import { Card, Button, useToast } from '@/components/ui';
+import { useState, useEffect, useContext } from 'react';
+import { Card, Button } from '@/components/ui';
 import { Currency } from '@/components/ui/Currency';
 import { createSupabaseBrowserClient } from '@/lib/supabase/client';
 import { SubscriptionService } from '@/lib/services';
 import type { Subscription } from '@/lib/supabase/database.types';
+import { ToastContext } from '@/components/ui/Toast';
 
 interface AddSubscriptionsToBudgetProps {
   monthId: string;
@@ -29,8 +30,13 @@ function AddSubscriptionsToBudgetComponent({
   const [error, setError] = useState<string | null>(null);
   const [componentError, setComponentError] = useState<string | null>(null);
 
-  // Always call hooks unconditionally - React rules
-  const toast = useToast();
+  // Safely get toast context - won't throw if not available
+  const toastContext = useContext(ToastContext);
+  const toast = toastContext || {
+    showToast: (message: string, type?: 'success' | 'error' | 'info' | 'warning') => {
+      console.log(`[${type || 'info'}] ${message}`);
+    },
+  };
 
   useEffect(() => {
     setMounted(true);
