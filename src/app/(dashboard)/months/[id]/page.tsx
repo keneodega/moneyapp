@@ -13,9 +13,17 @@ const MonthActions = dynamic(() => import('./MonthActions').then(mod => ({ defau
   loading: () => <div className="text-small text-[var(--color-text-muted)]">Loading actions...</div>,
 });
 
-const AddSubscriptionsToBudget = dynamic(() => import('./AddSubscriptionsToBudget').then(mod => ({ default: mod.AddSubscriptionsToBudget })).catch(() => ({ default: () => null })), {
-  loading: () => <div className="p-8 text-center text-small text-[var(--color-text-muted)]">Loading subscriptions...</div>,
-});
+const AddSubscriptionsToBudget = dynamic(
+  () => import('./AddSubscriptionsToBudget')
+    .then(mod => ({ default: mod.AddSubscriptionsToBudget }))
+    .catch((err) => {
+      console.error('Failed to load AddSubscriptionsToBudget:', err);
+      return { default: () => null };
+    }),
+  {
+    loading: () => <div className="p-8 text-center text-small text-[var(--color-text-muted)]">Loading subscriptions...</div>,
+  }
+);
 
 interface MonthData {
   id: string;
