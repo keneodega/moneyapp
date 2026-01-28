@@ -14,7 +14,7 @@ interface AddSubscriptionsToBudgetProps {
   onSuccess?: () => void;
 }
 
-export function AddSubscriptionsToBudget({
+function AddSubscriptionsToBudgetComponent({
   monthId,
   startDate,
   endDate,
@@ -371,4 +371,22 @@ export function AddSubscriptionsToBudget({
       </div>
     </Card>
   );
+}
+
+// Export wrapped in error boundary
+export function AddSubscriptionsToBudget(props: AddSubscriptionsToBudgetProps) {
+  try {
+    return <AddSubscriptionsToBudgetComponent {...props} />;
+  } catch (error) {
+    console.error('Error rendering AddSubscriptionsToBudget:', error);
+    return (
+      <Card variant="outlined" padding="lg">
+        <div className="text-center py-8">
+          <p className="text-body text-[var(--color-text-muted)]">
+            Unable to load subscription conversion feature.
+          </p>
+        </div>
+      </Card>
+    );
+  }
 }
