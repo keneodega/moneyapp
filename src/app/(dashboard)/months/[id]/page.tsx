@@ -13,6 +13,10 @@ const MonthActions = dynamic(() => import('./MonthActions').then(mod => ({ defau
   loading: () => <div className="text-small text-[var(--color-text-muted)]">Loading actions...</div>,
 });
 
+const AddSubscriptionsToBudget = dynamic(() => import('./AddSubscriptionsToBudget').then(mod => ({ default: mod.AddSubscriptionsToBudget })), {
+  loading: () => <div className="p-8 text-center text-small text-[var(--color-text-muted)]">Loading subscriptions...</div>,
+});
+
 interface MonthData {
   id: string;
   name: string;
@@ -357,6 +361,17 @@ export default async function MonthDetailPage({
           </div>
         </Card>
       </div>
+
+      {/* Add Subscriptions to Budget */}
+      <AddSubscriptionsToBudget
+        monthId={id}
+        startDate={month.start_date}
+        endDate={month.end_date}
+        onSuccess={() => {
+          // Refresh the page to show new budgets
+          window.location.reload();
+        }}
+      />
 
       {/* Main Content Grid */}
       <div className="grid gap-6 lg:grid-cols-3">
