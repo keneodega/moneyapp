@@ -167,9 +167,25 @@ export function GlobalSearch({ onResultClick }: GlobalSearchProps) {
           value={query}
           onChange={handleInputChange}
           onFocus={() => query && setShowResults(true)}
-          className="w-full h-12 pl-12 pr-4 rounded-[var(--radius-md)] bg-[var(--color-surface-raised)] border border-[var(--color-border)] text-[var(--color-text)] text-body placeholder:text-[var(--color-text-subtle)] focus:outline-none focus:border-[var(--color-primary)] focus:ring-2 focus:ring-[var(--color-primary)]/20 transition-all"
+          className="w-full h-12 pl-12 pr-10 rounded-[var(--radius-md)] bg-[var(--color-surface-raised)] border border-[var(--color-border)] text-[var(--color-text)] text-body placeholder:text-[var(--color-text-subtle)] focus:outline-none focus:border-[var(--color-primary)] focus:ring-2 focus:ring-[var(--color-primary)]/20 transition-all"
+          style={{ fontSize: '15px' }}
         />
-        <SearchIcon className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-[var(--color-text-muted)]" />
+        <SearchIcon className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-[var(--color-text-muted)] pointer-events-none" />
+        {query && !isSearching && (
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              setQuery('');
+              setResults([]);
+              setShowResults(false);
+            }}
+            className="absolute right-3 top-1/2 -translate-y-1/2 w-6 h-6 flex items-center justify-center rounded-full hover:bg-[var(--color-surface-sunken)] transition-colors"
+            aria-label="Clear search"
+          >
+            <XIcon className="w-4 h-4 text-[var(--color-text-muted)]" />
+          </button>
+        )}
         {isSearching && (
           <div className="absolute right-3 top-1/2 -translate-y-1/2">
             <div className="w-4 h-4 border-2 border-[var(--color-primary)] border-t-transparent rounded-full animate-spin" />
@@ -199,35 +215,35 @@ export function GlobalSearch({ onResultClick }: GlobalSearchProps) {
                   <button
                     key={`${result.type}-${result.id}`}
                     onClick={() => handleResultClick(result.href)}
-                    className="w-full text-left p-4 hover:bg-[var(--color-surface-sunken)] transition-colors min-h-[44px]"
+                    className="w-full text-left p-4 hover:bg-[var(--color-surface-sunken)] transition-colors min-h-[64px] flex items-center"
                   >
-                    <div className="flex items-start justify-between gap-2">
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2 mb-1">
-                          <span className={`text-caption px-2 py-0.5 rounded-full ${
+                    <div className="flex items-start justify-between gap-4 w-full">
+                      <div className="flex-1 min-w-0 space-y-1.5">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <span className={`text-caption px-2 py-1 rounded-full flex-shrink-0 ${
                             result.type === 'expense' ? 'bg-[var(--color-danger)]/10 text-[var(--color-danger)]' :
                             result.type === 'budget' ? 'bg-[var(--color-primary)]/10 text-[var(--color-primary)]' :
                             'bg-[var(--color-success)]/10 text-[var(--color-success)]'
                           }`}>
                             {result.type}
                           </span>
-                          <p className="text-body font-medium text-[var(--color-text)] truncate">
+                          <p className="text-body font-medium text-[var(--color-text)] break-words">
                             {result.title}
                           </p>
                         </div>
                         {result.subtitle && (
-                          <p className="text-small text-[var(--color-text-muted)] truncate">
+                          <p className="text-small text-[var(--color-text-muted)] break-words">
                             {result.subtitle}
                           </p>
                         )}
                         {result.date && (
-                          <p className="text-caption text-[var(--color-text-subtle)] mt-1">
+                          <p className="text-caption text-[var(--color-text-subtle)]">
                             {new Date(result.date).toLocaleDateString()}
                           </p>
                         )}
                       </div>
                       {result.amount !== undefined && (
-                        <span className="text-body font-medium text-[var(--color-text)] tabular-nums flex-shrink-0">
+                        <span className="text-body font-medium text-[var(--color-text)] tabular-nums flex-shrink-0 whitespace-nowrap">
                           {formatCurrency(result.amount)}
                         </span>
                       )}
@@ -247,6 +263,14 @@ function SearchIcon({ className }: { className?: string }) {
   return (
     <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
       <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z" />
+    </svg>
+  );
+}
+
+function XIcon({ className }: { className?: string }) {
+  return (
+    <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+      <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
     </svg>
   );
 }
