@@ -11,7 +11,6 @@ import dynamic from 'next/dynamic';
 // Load DrawdownButton dynamically (client component)
 const DrawdownButton = dynamic(() => import('./DrawdownButton').then(mod => ({ default: mod.DrawdownButton })), {
   loading: () => <div className="text-small text-[var(--color-text-muted)]">Loading...</div>,
-  ssr: false,
 });
 
 function formatCurrency(amount: number): string {
