@@ -8,7 +8,7 @@ import { Currency } from './Currency';
 import { createSupabaseBrowserClient } from '@/lib/supabase/client';
 import { GoalDrawdownService } from '@/lib/services';
 import { SettingsService } from '@/lib/services';
-import { filterValidPaymentMethods, DEFAULT_PAYMENT_METHODS } from '@/lib/utils/payment-methods';
+import { filterValidPaymentMethods, DEFAULT_PAYMENT_METHODS, validateBankType } from '@/lib/utils/payment-methods';
 
 interface DrawdownGoalDialogOptions {
   goalId: string;
@@ -87,9 +87,9 @@ export function DrawdownGoalDialogProvider({ children }: { children: ReactNode }
           : DEFAULT_PAYMENT_METHODS;
         setPaymentMethods(validMethods);
         
-        // Set default bank if available
-        if (methods.length > 0 && !formData.bank) {
-          setFormData(prev => ({ ...prev, bank: methods[0].value }));
+        // Set default bank if available (use filtered valid methods)
+        if (validMethods.length > 0 && !formData.bank) {
+          setFormData(prev => ({ ...prev, bank: validMethods[0].value }));
         } else if (!formData.bank) {
           setFormData(prev => ({ ...prev, bank: 'Revolut' }));
         }
@@ -140,7 +140,7 @@ export function DrawdownGoalDialogProvider({ children }: { children: ReactNode }
         amount,
         date: formData.date,
         description: formData.description || undefined,
-        bank: formData.bank || undefined,
+        bank: validateBankType(formData.bank),
         notes: formData.notes || undefined,
       });
 

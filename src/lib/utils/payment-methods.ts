@@ -61,6 +61,50 @@ export function filterValidPaymentMethods(methods: PaymentMethod[]): PaymentMeth
 }
 
 /**
+ * Validate and map a bank value to a valid bank_type enum value
+ * 
+ * @param bankValue - The bank value to validate/map
+ * @returns A valid bank_type enum value
+ */
+export function validateBankType(bankValue: string | null | undefined): string | undefined {
+  if (!bankValue) {
+    return undefined;
+  }
+
+  // If value is exactly a valid enum, return it
+  if (VALID_BANK_TYPES.includes(bankValue)) {
+    return bankValue;
+  }
+
+  // Try to map similar values
+  const upperValue = bankValue.toUpperCase();
+  if (upperValue.startsWith('AIB')) {
+    return 'AIB';
+  }
+  if (upperValue.includes('REVOLUT')) {
+    return 'Revolut';
+  }
+  if (upperValue.includes('N26')) {
+    return 'N26';
+  }
+  if (upperValue.includes('WISE')) {
+    return 'Wise';
+  }
+  if (upperValue.includes('BANK OF IRELAND') || upperValue.includes('BOI')) {
+    return 'Bank of Ireland';
+  }
+  if (upperValue.includes('ULSTER')) {
+    return 'Ulster Bank';
+  }
+  if (upperValue.includes('CASH')) {
+    return 'Cash';
+  }
+  
+  // Default to "Other" for unrecognized values
+  return 'Other';
+}
+
+/**
  * Default payment methods (valid enum values)
  */
 export const DEFAULT_PAYMENT_METHODS: PaymentMethod[] = [
