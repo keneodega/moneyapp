@@ -47,25 +47,25 @@ export function Navigation() {
 
   return (
     <header className="sticky top-0 z-50 bg-[var(--color-surface)]/80 backdrop-blur-lg border-b border-[var(--color-border)]">
-      <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex items-center justify-between h-16">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="flex items-center justify-between h-20">
           {/* Logo */}
-          <Link href="/" className="flex items-center gap-3 group min-h-[44px]">
-            <div className="w-10 h-10 rounded-[var(--radius-md)] bg-[var(--color-primary)] flex items-center justify-center shadow-[var(--shadow-sm)] group-hover:shadow-[var(--shadow-md)] transition-shadow flex-shrink-0">
-              <WalletIcon className="w-5 h-5 text-white" />
+          <Link href="/" className="flex items-center gap-3 group min-h-[44px] flex-shrink-0">
+            <div className="w-11 h-11 rounded-[var(--radius-md)] bg-[var(--color-primary)] flex items-center justify-center shadow-[var(--shadow-sm)] group-hover:shadow-[var(--shadow-md)] transition-shadow">
+              <WalletIcon className="w-6 h-6 text-white" />
             </div>
-            <span className="text-title text-[var(--color-text)] hidden sm:block whitespace-nowrap leading-normal">
+            <span className="text-title text-[var(--color-text)] hidden sm:block whitespace-nowrap leading-normal font-semibold">
               Family Money
             </span>
           </Link>
 
           {/* Global Search - Desktop */}
-          <div className="hidden md:block flex-1 max-w-md mx-4">
+          <div className="hidden lg:block flex-1 max-w-md mx-6">
             <GlobalSearch />
           </div>
 
           {/* Desktop Nav Links */}
-          <nav className="hidden md:flex items-center gap-1">
+          <nav className="hidden md:flex items-center gap-2">
             {navItems.map((item) => {
               const isActive = pathname.startsWith(item.href);
               return (
@@ -73,16 +73,16 @@ export function Navigation() {
                   key={item.href}
                   href={item.href}
                   className={`
-                    flex items-center gap-2 px-4 py-2 rounded-[var(--radius-md)]
-                    text-small font-medium transition-colors duration-200 min-h-[44px]
+                    flex items-center gap-2 px-4 py-2.5 rounded-[var(--radius-md)]
+                    text-small font-medium transition-all duration-200 min-h-[44px] whitespace-nowrap
                     ${isActive
-                      ? 'bg-[var(--color-primary)]/10 text-[var(--color-primary)]'
+                      ? 'bg-[var(--color-primary)]/10 text-[var(--color-primary)] shadow-sm'
                       : 'text-[var(--color-text-muted)] hover:bg-[var(--color-surface-sunken)] hover:text-[var(--color-text)]'
                     }
                   `}
                 >
-                  <item.icon className="w-4 h-4" />
-                  <span>{item.label}</span>
+                  <item.icon className={`w-[18px] h-[18px] flex-shrink-0 ${isActive ? 'text-[var(--color-primary)]' : ''}`} />
+                  <span className="whitespace-nowrap">{item.label}</span>
                 </Link>
               );
             })}
@@ -90,10 +90,10 @@ export function Navigation() {
             {/* Sign Out Button */}
             <button
               onClick={handleSignOut}
-              className="flex items-center gap-2 px-4 py-2 rounded-[var(--radius-md)] text-small font-medium transition-colors duration-200 text-[var(--color-text-muted)] hover:bg-red-500/10 hover:text-red-400 ml-2 min-h-[44px]"
+              className="flex items-center gap-2 px-4 py-2.5 rounded-[var(--radius-md)] text-small font-medium transition-all duration-200 text-[var(--color-text-muted)] hover:bg-red-500/10 hover:text-red-400 ml-2 min-h-[44px] whitespace-nowrap"
               title="Sign Out"
             >
-              <LogoutIcon className="w-4 h-4" />
+              <LogoutIcon className="w-[18px] h-[18px] flex-shrink-0" />
               <span>Sign Out</span>
             </button>
           </nav>
@@ -122,8 +122,8 @@ export function Navigation() {
               onClick={() => setIsMobileMenuOpen(false)}
             />
             {/* Menu Panel */}
-            <nav className="md:hidden absolute top-16 left-0 right-0 bg-[var(--color-surface-raised)] border-b border-[var(--color-border)] shadow-lg z-50">
-              <div className="px-4 py-2 space-y-1">
+            <nav className="md:hidden absolute top-20 left-0 right-0 bg-[var(--color-surface-raised)] border-b border-[var(--color-border)] shadow-lg z-50">
+              <div className="px-4 py-3 space-y-1">
                 {/* Mobile Search */}
                 <div className="mb-4">
                   <GlobalSearch onResultClick={() => setIsMobileMenuOpen(false)} />
@@ -136,16 +136,16 @@ export function Navigation() {
                       href={item.href}
                       onClick={() => setIsMobileMenuOpen(false)}
                       className={`
-                        flex items-center gap-3 px-4 py-3 rounded-[var(--radius-md)]
-                        text-body font-medium transition-colors duration-200 min-h-[44px]
+                        flex items-center gap-3 px-4 py-3.5 rounded-[var(--radius-md)]
+                        text-body font-medium transition-colors duration-200 min-h-[48px]
                         ${isActive
                           ? 'bg-[var(--color-primary)]/10 text-[var(--color-primary)]'
                           : 'text-[var(--color-text)] hover:bg-[var(--color-surface-sunken)]'
                         }
                       `}
                     >
-                      <item.icon className="w-5 h-5" />
-                      <span>{item.label}</span>
+                      <item.icon className="w-5 h-5 flex-shrink-0" />
+                      <span className="whitespace-nowrap">{item.label}</span>
                     </Link>
                   );
                 })}
@@ -153,9 +153,9 @@ export function Navigation() {
                 {/* Sign Out Button */}
                 <button
                   onClick={handleSignOut}
-                  className="w-full flex items-center gap-3 px-4 py-3 rounded-[var(--radius-md)] text-body font-medium transition-colors duration-200 text-red-400 hover:bg-red-500/10 min-h-[44px]"
+                  className="w-full flex items-center gap-3 px-4 py-3.5 rounded-[var(--radius-md)] text-body font-medium transition-colors duration-200 text-red-400 hover:bg-red-500/10 min-h-[48px]"
                 >
-                  <LogoutIcon className="w-5 h-5" />
+                  <LogoutIcon className="w-5 h-5 flex-shrink-0" />
                   <span>Sign Out</span>
                 </button>
               </div>
