@@ -55,7 +55,6 @@ export default function NewExpensePage({
     description: '',
     is_recurring: false,
     recurring_frequency: 'Monthly',
-    financial_goal_id: '',
   });
 
   const FREQUENCY_OPTIONS = [
