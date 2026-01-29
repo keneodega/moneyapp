@@ -13,6 +13,10 @@ const MonthActions = dynamic(() => import('./MonthActions').then(mod => ({ defau
   loading: () => <div className="text-small text-[var(--color-text-muted)]">Loading actions...</div>,
 });
 
+const FundGoalButton = dynamic(() => import('./FundGoalButton').then(mod => ({ default: mod.FundGoalButton })), {
+  loading: () => <div className="text-small text-[var(--color-text-muted)]">Loading...</div>,
+});
+
 interface MonthData {
   id: string;
   name: string;
@@ -468,13 +472,16 @@ export default async function MonthDetailPage({
         <div className="space-y-4">
           <div className="flex items-center justify-between">
             <h2 className="text-title text-[var(--color-text)]">Income</h2>
-            <Link
-              href={`/months/${id}/income/new`}
-              className="inline-flex items-center gap-2 h-9 px-4 rounded-[var(--radius-md)] bg-[var(--color-accent)] text-white text-small font-medium hover:bg-[var(--color-accent-dark)] transition-colors"
-            >
-              <PlusIcon className="w-4 h-4" />
-              Add Income
-            </Link>
+            <div className="flex items-center gap-2">
+              {totalIncome > 0 && <FundGoalButton monthId={id} />}
+              <Link
+                href={`/months/${id}/income/new`}
+                className="inline-flex items-center gap-2 h-9 px-4 rounded-[var(--radius-md)] bg-[var(--color-accent)] text-white text-small font-medium hover:bg-[var(--color-accent-dark)] transition-colors"
+              >
+                <PlusIcon className="w-4 h-4" />
+                Add Income
+              </Link>
+            </div>
           </div>
           
           <Card variant="outlined" padding="none">

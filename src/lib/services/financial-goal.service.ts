@@ -167,7 +167,8 @@ export class FinancialGoalService {
   }
 
   /**
-   * Recalculate and update the goal's current_amount based on base_amount + linked expenses
+   * Recalculate and update the goal's current_amount based on base_amount + contributions
+   * Note: This is now primarily handled by database triggers, but kept for manual recalculation if needed
    * @param id - Financial goal ID
    */
   async recalculateCurrentAmount(id: string): Promise<void> {
@@ -210,39 +211,39 @@ export class FinancialGoalService {
       return;
     }
 
-    // Get all expenses linked to this goal
-    const { data: expenses, error: expensesError } = await this.supabase
-      .from('expenses')
+    // Get all contributions for this goal
+    const { data: contributions, error: contributionsError } = await this.supabase
+      .from('goal_contributions')
       .select('amount')
       .eq('financial_goal_id', id);
 
-    if (expensesError) {
-      console.error(`Error fetching expenses for goal ${id}:`, expensesError);
+    if (contributionsError) {
+      console.error(`Error fetching contributions for goal ${id}:`, contributionsError);
       return;
     }
 
-    // Calculate total from linked expenses
-    const totalFromExpenses = expenses?.reduce((sum, exp) => sum + Number(exp.amount || 0), 0) || 0;
+    // Calculate total from contributions
+    const totalContributions = contributions?.reduce((sum, contrib) => sum + Number(contrib.amount || 0), 0) || 0;
 
     // Get base_amount (initial/manual amount)
-    // If base_amount doesn't exist (migration not run), calculate it from current_amount - expenses
+    // If base_amount doesn't exist (migration not run), calculate it from current_amount - contributions
     let baseAmount: number;
     if (goal.base_amount !== null && goal.base_amount !== undefined) {
       // base_amount exists, use it
       baseAmount = Number(goal.base_amount);
     } else {
-      // base_amount doesn't exist yet, calculate it from current_amount - expenses
+      // base_amount doesn't exist yet, calculate it from current_amount - contributions
       // This handles the case where migration hasn't been run
       const currentAmount = Number(goal.current_amount || 0);
-      baseAmount = Math.max(0, currentAmount - totalFromExpenses);
+      baseAmount = Math.max(0, currentAmount - totalContributions);
     }
 
-    // New current_amount = base_amount + sum of linked expenses
-    const newCurrentAmount = baseAmount + totalFromExpenses;
+    // New current_amount = base_amount + sum of contributions
+    const newCurrentAmount = baseAmount + totalContributions;
 
     console.log(`Recalculating goal ${id}:`, {
       baseAmount,
-      totalFromExpenses,
+      totalContributions,
       newCurrentAmount,
       oldCurrentAmount: goal.current_amount,
     });
@@ -268,6 +269,39 @@ export class FinancialGoalService {
     } else {
       console.log(`Successfully updated goal ${id} current_amount to ${newCurrentAmount}`);
     }
+  }
+
+  /**
+   * Get all contributions for a goal
+   * @param goalId - The goal ID
+   * @returns Array of contributions
+   */
+  async getContributions(goalId: string) {
+    await this.getUserId();
+
+    const { data, error } = await this.supabase
+      .from('goal_contributions')
+      .select(`
+        *,
+        monthly_overview:monthly_overviews(
+          id,
+          name,
+          start_date,
+          end_date
+        )
+      `)
+      .eq('financial_goal_id', goalId)
+      .order('date', { ascending: false });
+
+    if (error) {
+      logError(new Error(`Failed to fetch contributions: ${error.message}`), {
+        event: 'financial_goal.get_contributions.failed',
+        goalId,
+      });
+      throw new Error(`Failed to fetch contributions: ${error.message}`);
+    }
+
+    return data || [];
   }
 
   /**

@@ -9,5 +9,6 @@ export { Skeleton, SkeletonText, SkeletonCard, SkeletonList, SkeletonTable } fro
 export { ConfirmDialogProvider, useConfirmDialog } from './ConfirmDialog';
 export { ExportOptionsDialogProvider, useExportOptionsDialog } from './ExportOptionsDialog';
 export type { ExportOptions } from './ExportOptionsDialog';
+export { FundGoalDialogProvider, useFundGoalDialog } from './FundGoalDialog';
 export { PieChart } from './PieChart';
 export type { PieChartData } from './PieChart';

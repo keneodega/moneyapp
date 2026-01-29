@@ -183,6 +183,7 @@ export interface Expense {
   bank?: string | null;
   is_recurring: boolean;
   recurring_frequency?: FrequencyType | null;
+  /** @deprecated Goal linking has been moved to goal_contributions table. This field is kept for backward compatibility but should not be used. */
   financial_goal_id?: string | null;
   created_at: string;
   updated_at: string;
@@ -211,6 +212,7 @@ export interface ExpenseUpdate {
   bank?: string | null;
   is_recurring?: boolean;
   recurring_frequency?: FrequencyType | null;
+  /** @deprecated Goal linking has been moved to goal_contributions table. This field is kept for backward compatibility but should not be used. */
   financial_goal_id?: string | null;
 }
 
@@ -725,6 +727,42 @@ export interface FinancialGoalWithSubGoals extends FinancialGoal {
   progress_percent?: number;
   forecasted_amount?: number;
   estimated_current_amount?: number;
+}
+
+export interface GoalContribution {
+  id: string;
+  financial_goal_id: string;
+  user_id: string;
+  monthly_overview_id: string;
+  amount: number;
+  date: string;
+  description?: string | null;
+  bank?: BankType | null;
+  notes?: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface GoalContributionInsert {
+  id?: string;
+  financial_goal_id: string;
+  user_id: string;
+  monthly_overview_id: string;
+  amount: number;
+  date: string;
+  description?: string | null;
+  bank?: BankType | null;
+  notes?: string | null;
+}
+
+export interface GoalContributionUpdate {
+  financial_goal_id?: string;
+  monthly_overview_id?: string;
+  amount?: number;
+  date?: string;
+  description?: string | null;
+  bank?: BankType | null;
+  notes?: string | null;
 }
 
 // Investment holding with transactions

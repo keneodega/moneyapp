@@ -34,7 +34,6 @@ interface FormData {
   description: string;
   is_recurring: boolean;
   recurring_frequency: string;
-  financial_goal_id: string;
 }
 
 export default function NewExpensePage({
@@ -47,7 +46,6 @@ export default function NewExpensePage({
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [budgets, setBudgets] = useState<BudgetOption[]>([]);
-  const [goals, setGoals] = useState<Array<{ id: string; name: string; target_amount: number; current_amount: number }>>([]);
   const [paymentMethods, setPaymentMethods] = useState<{ value: string; label: string }[]>(DEFAULT_PAYMENT_METHODS);
   const [formData, setFormData] = useState<FormData>({
     budget_id: '',
@@ -89,17 +87,6 @@ export default function NewExpensePage({
 
         if (!budgetError && budgetData) {
           setBudgets(budgetData);
-        }
-
-        // Fetch active goals (not completed or cancelled)
-        const { data: goalData, error: goalError } = await supabase
-          .from('financial_goals')
-          .select('id, name, target_amount, current_amount')
-          .in('status', ['Not Started', 'In Progress', 'On Hold'])
-          .order('name');
-
-        if (!goalError && goalData) {
-          setGoals(goalData);
         }
 
         // Fetch payment methods from settings
@@ -162,20 +149,7 @@ export default function NewExpensePage({
           description: formData.description || null,
           is_recurring: formData.is_recurring,
           recurring_frequency: formData.is_recurring ? (formData.recurring_frequency as any) : null,
-          financial_goal_id: formData.financial_goal_id || null,
         });
-
-      // If expense is linked to a goal, recalculate the goal's current_amount
-      if ( !insertError && formData.financial_goal_id) {
-        try {
-          const { FinancialGoalService } = await import('@/lib/services');
-          const goalService = new FinancialGoalService(supabase);
-          await goalService.recalculateCurrentAmount(formData.financial_goal_id);
-        } catch (err) {
-          console.error('Error updating goal after expense creation:', err);
-          // Don't fail expense creation if goal update fails
-        }
-      }
 
       if (insertError) {
         throw new Error(insertError.message);
@@ -311,24 +285,6 @@ export default function NewExpensePage({
             onChange={handleChange}
             options={paymentMethods}
           />
-
-          {/* Financial Goal (Optional) */}
-          {goals.length > 0 && (
-            <Select
-              label="Link to Financial Goal (Optional)"
-              name="financial_goal_id"
-              value={formData.financial_goal_id}
-              onChange={handleChange}
-              options={[
-                { value: '', label: 'No goal' },
-                ...goals.map(goal => ({
-                  value: goal.id,
-                  label: `${goal.name} (${((goal.current_amount / goal.target_amount) * 100).toFixed(0)}% complete)`,
-                })),
-              ]}
-              hint="Link this expense to a financial goal to track progress"
-            />
-          )}
 
           {/* Recurring */}
           <div className="space-y-3">

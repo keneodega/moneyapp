@@ -3,7 +3,7 @@ import { Card, Button, ProgressBar, Currency } from '@/components/ui';
 import { createSupabaseServerClient } from '@/lib/supabase/server';
 import { FinancialGoalService } from '@/lib/services';
 import { NotFoundError } from '@/lib/services/errors';
-import { LinkedExpenses } from './LinkedExpenses';
+import { Contributions } from './Contributions';
 import { GoalActions } from './GoalActions';
 
 function formatCurrency(amount: number): string {
@@ -248,10 +248,10 @@ export default async function GoalDetailPage({
 
         {/* Right Column - Sub-Goals and Linked Expenses */}
         <div className="space-y-6">
-          {/* Linked Expenses */}
+          {/* Contributions */}
           <Card variant="outlined" padding="md">
-            <h3 className="text-title text-[var(--color-text)] mb-4">Linked Expenses</h3>
-            <LinkedExpenses goalId={id} />
+            <h3 className="text-title text-[var(--color-text)] mb-4">Contributions</h3>
+            <Contributions goalId={id} />
           </Card>
 
           {/* Sub-Goals */}

@@ -348,72 +348,19 @@ export class ExpenseService {
       throw new NotFoundError('Expense', id);
     }
 
-    // Handle goal updates - ALWAYS recalculate goals when expense linked to a goal is updated
-    const oldGoalId = existingExpense.financial_goal_id;
-    const newGoalId = updated.financial_goal_id;
-    const amountChanged = data.amount !== undefined && data.amount !== existingExpense.amount;
-    const goalIdChanged = oldGoalId !== newGoalId;
-    const dateChanged = data.date !== undefined && data.date !== existingExpense.date;
-    const budgetChanged = data.budget_id !== undefined && data.budget_id !== existingExpense.budget_id;
-
-    console.log('Expense update - goal recalculation check:', {
-      expenseId: id,
-      oldGoalId,
-      newGoalId,
-      amountChanged,
-      goalIdChanged,
-      dateChanged,
-      budgetChanged,
-      oldAmount: existingExpense.amount,
-      newAmount: updated.amount,
-    });
-
-    // Always recalculate goals if expense is/was linked to a goal and something changed
-    if (oldGoalId || newGoalId) {
-      try {
-        const { FinancialGoalService } = await import('./financial-goal.service');
-        const goalService = new FinancialGoalService(this.supabase);
-
-        // Recalculate old goal if link was removed or changed to a different goal
-        if (goalIdChanged && oldGoalId && oldGoalId !== newGoalId) {
-          console.log(`Recalculating old goal ${oldGoalId} after expense update (link removed/changed)`);
-          await goalService.recalculateCurrentAmount(oldGoalId);
-        }
-
-        // Recalculate new goal if:
-        // 1. Expense is linked to a goal (new or existing)
-        // 2. Any field changed that could affect the goal
-        if (newGoalId) {
-          console.log(`Recalculating goal ${newGoalId} after expense update (amountChanged: ${amountChanged}, goalIdChanged: ${goalIdChanged}, dateChanged: ${dateChanged}, budgetChanged: ${budgetChanged})`);
-          await goalService.recalculateCurrentAmount(newGoalId);
-        }
-      } catch (err) {
-        // Don't fail expense update if goal update fails, but log the error
-        console.error('Error updating goal after expense update:', err);
-        if (err instanceof Error) {
-          console.error('Error details:', err.message, err.stack);
-        }
-      }
-    } else {
-      console.log('No goal recalculation needed - expense not linked to any goal');
-    }
-
     return updated;
   }
 
   /**
    * Delete an expense
    * 
-   * If the expense is linked to a financial goal, updates the goal's current_amount
-   * by subtracting the expense amount and recalculates progress.
-   * 
    * @param id - Expense ID
    */
   async delete(id: string): Promise<void> {
     await this.getUserId();
 
-    // Get the expense before deleting to check if it's linked to a goal
-    const expense = await this.getById(id);
+    // Verify expense exists
+    await this.getById(id);
 
     // Delete the expense
     const { error } = await this.supabase
@@ -423,19 +370,6 @@ export class ExpenseService {
 
     if (error) {
       throw new Error(`Failed to delete expense: ${error.message}`);
-    }
-
-    // If expense was linked to a goal, recalculate the goal's current_amount
-    if (expense.financial_goal_id) {
-      try {
-        // Use the FinancialGoalService to recalculate properly (base_amount + expenses)
-        const { FinancialGoalService } = await import('./financial-goal.service');
-        const goalService = new FinancialGoalService(this.supabase);
-        await goalService.recalculateCurrentAmount(expense.financial_goal_id);
-      } catch (err) {
-        // Don't fail expense deletion if goal update fails
-        console.error('Error updating goal after expense deletion:', err);
-      }
     }
   }
 

@@ -286,36 +286,6 @@ export default function MasterBudgetsPage() {
         </Card>
       )}
 
-      {/* Filter Tabs */}
-      <div className="flex gap-2 border-b border-[var(--color-border)]">
-        <button
-          onClick={() => setFilterType('All')}
-          className={`px-4 py-2 text-body font-medium transition-colors ${
-            filterType === 'All'
-              ? 'text-[var(--color-primary)] border-b-2 border-[var(--color-primary)]'
-              : 'text-[var(--color-text-muted)] hover:text-[var(--color-text)]'
-          }`}
-        >
-          All ({budgets.length})
-        </button>
-        <Link
-          href="/master-budgets/fixed"
-          className={`px-4 py-2 text-body font-medium transition-colors ${
-            'text-[var(--color-text-muted)] hover:text-[var(--color-text)]'
-          }`}
-        >
-          Fixed ({fixedBudgets.length})
-        </Link>
-        <Link
-          href="/master-budgets/variable"
-          className={`px-4 py-2 text-body font-medium transition-colors ${
-            'text-[var(--color-text-muted)] hover:text-[var(--color-text)]'
-          }`}
-        >
-          Variable ({variableBudgets.length})
-        </Link>
-      </div>
-
       {/* Add Form */}
       {showAddForm && (
         <Card variant="raised" padding="lg">
