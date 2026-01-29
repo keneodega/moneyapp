@@ -222,28 +222,43 @@ export class FinancialGoalService {
       return;
     }
 
+    // Get all drawdowns for this goal
+    const { data: drawdowns, error: drawdownsError } = await this.supabase
+      .from('goal_drawdowns')
+      .select('amount')
+      .eq('financial_goal_id', id);
+
+    if (drawdownsError) {
+      console.error(`Error fetching drawdowns for goal ${id}:`, drawdownsError);
+      return;
+    }
+
     // Calculate total from contributions
     const totalContributions = contributions?.reduce((sum, contrib) => sum + Number(contrib.amount || 0), 0) || 0;
 
+    // Calculate total from drawdowns
+    const totalDrawdowns = drawdowns?.reduce((sum, drawdown) => sum + Number(drawdown.amount || 0), 0) || 0;
+
     // Get base_amount (initial/manual amount)
-    // If base_amount doesn't exist (migration not run), calculate it from current_amount - contributions
+    // If base_amount doesn't exist (migration not run), calculate it from current_amount - contributions + drawdowns
     let baseAmount: number;
     if (goal.base_amount !== null && goal.base_amount !== undefined) {
       // base_amount exists, use it
       baseAmount = Number(goal.base_amount);
     } else {
-      // base_amount doesn't exist yet, calculate it from current_amount - contributions
+      // base_amount doesn't exist yet, calculate it from current_amount - contributions + drawdowns
       // This handles the case where migration hasn't been run
       const currentAmount = Number(goal.current_amount || 0);
-      baseAmount = Math.max(0, currentAmount - totalContributions);
+      baseAmount = Math.max(0, currentAmount - totalContributions + totalDrawdowns);
     }
 
-    // New current_amount = base_amount + sum of contributions
-    const newCurrentAmount = baseAmount + totalContributions;
+    // New current_amount = base_amount + sum of contributions - sum of drawdowns
+    const newCurrentAmount = baseAmount + totalContributions - totalDrawdowns;
 
     console.log(`Recalculating goal ${id}:`, {
       baseAmount,
       totalContributions,
+      totalDrawdowns,
       newCurrentAmount,
       oldCurrentAmount: goal.current_amount,
     });
@@ -299,6 +314,39 @@ export class FinancialGoalService {
         metadata: { goalId },
       });
       throw new Error(`Failed to fetch contributions: ${error.message}`);
+    }
+
+    return data || [];
+  }
+
+  /**
+   * Get all drawdowns for a goal
+   * @param goalId - The goal ID
+   * @returns Array of drawdowns
+   */
+  async getDrawdowns(goalId: string) {
+    await this.getUserId();
+
+    const { data, error } = await this.supabase
+      .from('goal_drawdowns')
+      .select(`
+        *,
+        monthly_overview:monthly_overviews(
+          id,
+          name,
+          start_date,
+          end_date
+        )
+      `)
+      .eq('financial_goal_id', goalId)
+      .order('date', { ascending: false });
+
+    if (error) {
+      logError(new Error(`Failed to fetch drawdowns: ${error.message}`), {
+        event: 'financial_goal.get_drawdowns.failed',
+        metadata: { goalId },
+      });
+      throw new Error(`Failed to fetch drawdowns: ${error.message}`);
     }
 
     return data || [];

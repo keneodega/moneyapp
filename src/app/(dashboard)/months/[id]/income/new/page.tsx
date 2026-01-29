@@ -6,6 +6,7 @@ import Link from 'next/link';
 import { Card, Button, Input, Select, Textarea } from '@/components/ui';
 import { createSupabaseBrowserClient } from '@/lib/supabase/client';
 import { SettingsService, IncomeSourceService } from '@/lib/services';
+import { filterValidPaymentMethods, DEFAULT_PAYMENT_METHODS } from '@/lib/utils/payment-methods';
 
 const INCOME_SOURCES = [
   { value: 'Salary', label: 'Salary' },
@@ -25,16 +26,7 @@ const DEFAULT_PERSONS = [
   { value: 'Other', label: 'Other' },
 ];
 
-const DEFAULT_BANKS = [
-  { value: 'AIB', label: 'AIB' },
-  { value: 'Revolut', label: 'Revolut' },
-  { value: 'N26', label: 'N26' },
-  { value: 'Wise', label: 'Wise' },
-  { value: 'Bank of Ireland', label: 'Bank of Ireland' },
-  { value: 'Ulster Bank', label: 'Ulster Bank' },
-  { value: 'Cash', label: 'Cash' },
-  { value: 'Other', label: 'Other' },
-];
+const DEFAULT_BANKS = DEFAULT_PAYMENT_METHODS;
 
 // Percentage rates
 const TITHE_RATE = 0.10; // 10%
@@ -92,12 +84,12 @@ export default function NewIncomePage({
           setFormData(prev => ({ ...prev, person: DEFAULT_PERSONS[0].value }));
         }
 
-        if (loadedBanks.length > 0) {
-          setBanks(loadedBanks);
-          setFormData(prev => ({ ...prev, bank: loadedBanks[0].value }));
-        } else {
-          setFormData(prev => ({ ...prev, bank: DEFAULT_BANKS[0].value }));
-        }
+        // Filter to only valid bank_type enum values
+        const validBanks = loadedBanks.length > 0 
+          ? filterValidPaymentMethods(loadedBanks)
+          : DEFAULT_BANKS;
+        setBanks(validBanks);
+        setFormData(prev => ({ ...prev, bank: validBanks[0].value }));
       } catch (err) {
         console.error('Failed to load settings:', err);
         // Use defaults

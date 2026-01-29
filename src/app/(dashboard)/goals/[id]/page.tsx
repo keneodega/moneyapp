@@ -4,7 +4,15 @@ import { createSupabaseServerClient } from '@/lib/supabase/server';
 import { FinancialGoalService } from '@/lib/services';
 import { NotFoundError } from '@/lib/services/errors';
 import { Contributions } from './Contributions';
+import { Drawdowns } from './Drawdowns';
 import { GoalActions } from './GoalActions';
+import dynamic from 'next/dynamic';
+
+// Load DrawdownButton dynamically (client component)
+const DrawdownButton = dynamic(() => import('./DrawdownButton').then(mod => ({ default: mod.DrawdownButton })), {
+  loading: () => <div className="text-small text-[var(--color-text-muted)]">Loading...</div>,
+  ssr: false,
+});
 
 function formatCurrency(amount: number): string {
   return new Intl.NumberFormat('en-IE', {
@@ -119,7 +127,14 @@ export default async function GoalDetailPage({
             <p className="text-body text-[var(--color-text-muted)] mt-1">{goal.goal_type}</p>
           )}
         </div>
-        <GoalActions goalId={id} />
+        <div className="flex items-center gap-2">
+          <DrawdownButton 
+            goalId={id} 
+            goalName={goal.name}
+            currentAmount={goal.current_amount}
+          />
+          <GoalActions goalId={id} />
+        </div>
       </div>
 
       {/* Progress Overview */}
@@ -252,6 +267,12 @@ export default async function GoalDetailPage({
           <Card variant="outlined" padding="md">
             <h3 className="text-title text-[var(--color-text)] mb-4">Contributions</h3>
             <Contributions goalId={id} />
+          </Card>
+
+          {/* Drawdowns */}
+          <Card variant="outlined" padding="md">
+            <h3 className="text-title text-[var(--color-text)] mb-4">Drawdowns</h3>
+            <Drawdowns goalId={id} />
           </Card>
 
           {/* Sub-Goals */}

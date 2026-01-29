@@ -765,6 +765,42 @@ export interface GoalContributionUpdate {
   notes?: string | null;
 }
 
+export interface GoalDrawdown {
+  id: string;
+  financial_goal_id: string;
+  user_id: string;
+  monthly_overview_id: string;
+  amount: number;
+  date: string;
+  description?: string | null;
+  bank?: BankType | null;
+  notes?: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface GoalDrawdownInsert {
+  id?: string;
+  financial_goal_id: string;
+  user_id: string;
+  monthly_overview_id: string;
+  amount: number;
+  date: string;
+  description?: string | null;
+  bank?: BankType | null;
+  notes?: string | null;
+}
+
+export interface GoalDrawdownUpdate {
+  financial_goal_id?: string;
+  monthly_overview_id?: string;
+  amount?: number;
+  date?: string;
+  description?: string | null;
+  bank?: BankType | null;
+  notes?: string | null;
+}
+
 // Investment holding with transactions
 export interface InvestmentHoldingWithTransactions extends InvestmentHoldingSummary {
   transactions?: InvestmentTransaction[];

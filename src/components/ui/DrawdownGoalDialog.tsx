@@ -6,49 +6,42 @@ import { Card } from './Card';
 import { Input, Select, Textarea } from './Input';
 import { Currency } from './Currency';
 import { createSupabaseBrowserClient } from '@/lib/supabase/client';
-import { GoalContributionService } from '@/lib/services';
+import { GoalDrawdownService } from '@/lib/services';
 import { SettingsService } from '@/lib/services';
 import { filterValidPaymentMethods, DEFAULT_PAYMENT_METHODS } from '@/lib/utils/payment-methods';
 
-interface FundGoalDialogOptions {
+interface DrawdownGoalDialogOptions {
+  goalId: string;
+  goalName: string;
+  currentAmount: number;
   monthlyOverviewId: string;
   onSuccess?: () => void;
   onCancel?: () => void;
 }
 
-interface FundGoalDialogContextValue {
-  showFundGoalDialog: (options: FundGoalDialogOptions) => void;
+interface DrawdownGoalDialogContextValue {
+  showDrawdownGoalDialog: (options: DrawdownGoalDialogOptions) => void;
 }
 
-const FundGoalDialogContext = createContext<FundGoalDialogContextValue | undefined>(undefined);
+const DrawdownGoalDialogContext = createContext<DrawdownGoalDialogContextValue | undefined>(undefined);
 
-export function useFundGoalDialog() {
-  const context = useContext(FundGoalDialogContext);
+export function useDrawdownGoalDialog() {
+  const context = useContext(DrawdownGoalDialogContext);
   if (!context) {
-    throw new Error('useFundGoalDialog must be used within FundGoalDialogProvider');
+    throw new Error('useDrawdownGoalDialog must be used within DrawdownGoalDialogProvider');
   }
   return context;
 }
 
-interface GoalOption {
-  id: string;
-  name: string;
-  target_amount: number;
-  current_amount: number;
-}
-
-export function FundGoalDialogProvider({ children }: { children: ReactNode }) {
+export function DrawdownGoalDialogProvider({ children }: { children: ReactNode }) {
   const [isOpen, setIsOpen] = useState(false);
-  const [options, setOptions] = useState<FundGoalDialogOptions | null>(null);
+  const [options, setOptions] = useState<DrawdownGoalDialogOptions | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   
   // Form state
-  const [goals, setGoals] = useState<GoalOption[]>([]);
   const [paymentMethods, setPaymentMethods] = useState<{ value: string; label: string }[]>([]);
-  const [availableIncome, setAvailableIncome] = useState<number>(0);
   const [formData, setFormData] = useState({
-    goalId: '',
     amount: '',
     date: new Date().toISOString().split('T')[0],
     description: '',
@@ -57,13 +50,12 @@ export function FundGoalDialogProvider({ children }: { children: ReactNode }) {
   });
 
 
-  const showFundGoalDialog = useCallback((newOptions: FundGoalDialogOptions) => {
+  const showDrawdownGoalDialog = useCallback((newOptions: DrawdownGoalDialogOptions) => {
     setOptions(newOptions);
     setIsOpen(true);
     setError(null);
     // Reset form
     setFormData({
-      goalId: '',
       amount: '',
       date: new Date().toISOString().split('T')[0],
       description: '',
@@ -72,12 +64,9 @@ export function FundGoalDialogProvider({ children }: { children: ReactNode }) {
     });
   }, []);
 
-  // Load goals, payment methods, and available income when dialog opens
+  // Load payment methods when dialog opens
   useEffect(() => {
     if (!isOpen || !options) return;
-
-    // Capture options in a local variable for TypeScript
-    const currentOptions = options;
 
     async function loadData() {
       try {
@@ -87,17 +76,6 @@ export function FundGoalDialogProvider({ children }: { children: ReactNode }) {
         if (!user) {
           setError('You must be logged in');
           return;
-        }
-
-        // Fetch active goals
-        const { data: goalData, error: goalError } = await supabase
-          .from('financial_goals')
-          .select('id, name, target_amount, current_amount')
-          .in('status', ['Not Started', 'In Progress', 'On Hold'])
-          .order('name');
-
-        if (!goalError && goalData) {
-          setGoals(goalData);
         }
 
         // Fetch payment methods from settings
@@ -115,13 +93,8 @@ export function FundGoalDialogProvider({ children }: { children: ReactNode }) {
         } else if (!formData.bank) {
           setFormData(prev => ({ ...prev, bank: 'Revolut' }));
         }
-
-        // Get available income
-        const contributionService = new GoalContributionService(supabase);
-        const available = await contributionService.getAvailableIncome(currentOptions.monthlyOverviewId);
-        setAvailableIncome(available);
       } catch (err) {
-        console.error('Error loading fund goal dialog data:', err);
+        console.error('Error loading drawdown goal dialog data:', err);
         setError(err instanceof Error ? err.message : 'Failed to load data');
       }
     }
@@ -148,7 +121,7 @@ export function FundGoalDialogProvider({ children }: { children: ReactNode }) {
 
     try {
       const supabase = createSupabaseBrowserClient();
-      const contributionService = new GoalContributionService(supabase);
+      const drawdownService = new GoalDrawdownService(supabase);
 
       const amount = parseFloat(formData.amount);
       if (isNaN(amount) || amount <= 0) {
@@ -157,19 +130,13 @@ export function FundGoalDialogProvider({ children }: { children: ReactNode }) {
         return;
       }
 
-      if (amount > availableIncome) {
-        setError(`Amount exceeds available income of ${availableIncome.toFixed(2)}`);
+      if (amount > options.currentAmount) {
+        setError(`Amount exceeds available balance of ${options.currentAmount.toFixed(2)}`);
         setIsLoading(false);
         return;
       }
 
-      if (!formData.goalId) {
-        setError('Please select a goal');
-        setIsLoading(false);
-        return;
-      }
-
-      await contributionService.create(options.monthlyOverviewId, formData.goalId, {
+      await drawdownService.create(options.monthlyOverviewId, options.goalId, {
         amount,
         date: formData.date,
         description: formData.description || undefined,
@@ -184,8 +151,8 @@ export function FundGoalDialogProvider({ children }: { children: ReactNode }) {
         options.onSuccess();
       }
     } catch (err) {
-      console.error('Error creating goal contribution:', err);
-      setError(err instanceof Error ? err.message : 'Failed to fund goal');
+      console.error('Error creating goal drawdown:', err);
+      setError(err instanceof Error ? err.message : 'Failed to drawdown from goal');
     } finally {
       setIsLoading(false);
     }
@@ -206,20 +173,11 @@ export function FundGoalDialogProvider({ children }: { children: ReactNode }) {
     }
   };
 
-  const selectedGoal = goals.find(g => g.id === formData.goalId);
-  const contributionAmount = parseFloat(formData.amount) || 0;
-  const remainingAfterContribution = availableIncome - contributionAmount;
-  const goalProgress = selectedGoal
-    ? ((selectedGoal.current_amount + contributionAmount) / selectedGoal.target_amount) * 100
-    : 0;
-
-  const goalOptions = goals.map(g => ({
-    value: g.id,
-    label: `${g.name} (${g.current_amount.toFixed(2)} / ${g.target_amount.toFixed(2)})`,
-  }));
+  const drawdownAmount = parseFloat(formData.amount) || 0;
+  const remainingAfterDrawdown = options ? options.currentAmount - drawdownAmount : 0;
 
   return (
-    <FundGoalDialogContext.Provider value={{ showFundGoalDialog }}>
+    <DrawdownGoalDialogContext.Provider value={{ showDrawdownGoalDialog }}>
       {children}
       {isOpen && options && (
         <div
@@ -227,7 +185,7 @@ export function FundGoalDialogProvider({ children }: { children: ReactNode }) {
           onClick={handleBackdropClick}
           role="dialog"
           aria-modal="true"
-          aria-labelledby="fund-goal-dialog-title"
+          aria-labelledby="drawdown-goal-dialog-title"
         >
           <Card
             variant="raised"
@@ -236,13 +194,13 @@ export function FundGoalDialogProvider({ children }: { children: ReactNode }) {
             onClick={(e) => e.stopPropagation()}
           >
             <h2
-              id="fund-goal-dialog-title"
+              id="drawdown-goal-dialog-title"
               className="text-title text-[var(--color-text)] mb-2"
             >
-              Fund Goal
+              Drawdown from Goal
             </h2>
             <p className="text-small text-[var(--color-text-muted)] mb-6">
-              Add money to a financial goal from your available income.
+              Withdraw money from <strong>{options.goalName}</strong>.
             </p>
 
             {error && (
@@ -251,53 +209,26 @@ export function FundGoalDialogProvider({ children }: { children: ReactNode }) {
               </div>
             )}
 
-            {/* Available Income Display */}
+            {/* Current Balance Display */}
             <div className="mb-6 p-4 rounded-[var(--radius-md)] bg-[var(--color-surface-sunken)]">
               <div className="flex items-center justify-between mb-2">
-                <span className="text-small text-[var(--color-text-muted)]">Available Income</span>
-                <Currency amount={availableIncome} size="lg" showSign />
+                <span className="text-small text-[var(--color-text-muted)]">Current Balance</span>
+                <Currency amount={options.currentAmount} size="lg" showSign />
               </div>
-              {contributionAmount > 0 && (
+              {drawdownAmount > 0 && (
                 <div className="flex items-center justify-between pt-2 border-t border-[var(--color-border)]">
-                  <span className="text-small text-[var(--color-text-muted)]">Remaining After Contribution</span>
+                  <span className="text-small text-[var(--color-text-muted)]">Remaining After Drawdown</span>
                   <Currency 
-                    amount={remainingAfterContribution} 
+                    amount={remainingAfterDrawdown} 
                     size="md" 
                     showSign 
-                    colorCode={remainingAfterContribution < 0}
+                    colorCode={remainingAfterDrawdown < 0}
                   />
                 </div>
               )}
             </div>
 
             <form onSubmit={handleSubmit}>
-              {/* Goal Selection */}
-              <div className="mb-4">
-                <label htmlFor="goalId" className="block text-small font-medium text-[var(--color-text)] mb-2">
-                  Goal <span className="text-[var(--color-danger)]">*</span>
-                </label>
-                <Select
-                  id="goalId"
-                  name="goalId"
-                  value={formData.goalId}
-                  onChange={handleChange}
-                  options={goalOptions}
-                  required
-                  disabled={isLoading}
-                />
-                {selectedGoal && (
-                  <div className="mt-2 text-caption text-[var(--color-text-muted)]">
-                    Progress: {selectedGoal.current_amount.toFixed(2)} / {selectedGoal.target_amount.toFixed(2)} 
-                    {contributionAmount > 0 && (
-                      <span className="ml-2">
-                        → {(selectedGoal.current_amount + contributionAmount).toFixed(2)} 
-                        ({goalProgress.toFixed(1)}%)
-                      </span>
-                    )}
-                  </div>
-                )}
-              </div>
-
               {/* Amount */}
               <div className="mb-4">
                 <label htmlFor="amount" className="block text-small font-medium text-[var(--color-text)] mb-2">
@@ -309,13 +240,16 @@ export function FundGoalDialogProvider({ children }: { children: ReactNode }) {
                   type="number"
                   step="0.01"
                   min="0.01"
-                  max={availableIncome}
+                  max={options.currentAmount}
                   value={formData.amount}
                   onChange={handleChange}
                   required
                   disabled={isLoading}
                   placeholder="0.00"
                 />
+                <p className="mt-1 text-caption text-[var(--color-text-muted)]">
+                  Maximum: {options.currentAmount.toFixed(2)}
+                </p>
               </div>
 
               {/* Date */}
@@ -393,17 +327,17 @@ export function FundGoalDialogProvider({ children }: { children: ReactNode }) {
                 </Button>
                 <Button
                   type="submit"
-                  variant="primary"
+                  variant="danger"
                   isLoading={isLoading}
-                  disabled={!formData.goalId || !formData.amount || contributionAmount <= 0 || contributionAmount > availableIncome}
+                  disabled={!formData.amount || drawdownAmount <= 0 || drawdownAmount > options.currentAmount}
                 >
-                  Fund Goal
+                  Drawdown
                 </Button>
               </div>
             </form>
           </Card>
         </div>
       )}
-    </FundGoalDialogContext.Provider>
+    </DrawdownGoalDialogContext.Provider>
   );
 }

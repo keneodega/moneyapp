@@ -6,18 +6,7 @@ import Link from 'next/link';
 import { Card, Button, Input, Select, Textarea } from '@/components/ui';
 import { createSupabaseBrowserClient } from '@/lib/supabase/client';
 import { SettingsService } from '@/lib/services';
-
-// Fallback payment methods if settings not loaded
-const DEFAULT_PAYMENT_METHODS = [
-  { value: 'AIB', label: 'AIB' },
-  { value: 'Revolut', label: 'Revolut' },
-  { value: 'N26', label: 'N26' },
-  { value: 'Wise', label: 'Wise' },
-  { value: 'Bank of Ireland', label: 'Bank of Ireland' },
-  { value: 'Ulster Bank', label: 'Ulster Bank' },
-  { value: 'Cash', label: 'Cash' },
-  { value: 'Other', label: 'Other' },
-];
+import { filterValidPaymentMethods, DEFAULT_PAYMENT_METHODS } from '@/lib/utils/payment-methods';
 
 interface BudgetOption {
   id: string;
@@ -91,9 +80,11 @@ export default function NewExpensePage({
         // Fetch payment methods from settings
         const settingsService = new SettingsService(supabase);
         const methods = await settingsService.getPaymentMethods();
-        if (methods.length > 0) {
-          setPaymentMethods(methods);
-        }
+        // Filter to only valid bank_type enum values
+        const validMethods = methods.length > 0 
+          ? filterValidPaymentMethods(methods)
+          : DEFAULT_PAYMENT_METHODS;
+        setPaymentMethods(validMethods);
       } catch {
         // Silent fail - will use defaults
       }
