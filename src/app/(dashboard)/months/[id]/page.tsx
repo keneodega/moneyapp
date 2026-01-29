@@ -17,6 +17,10 @@ const FundGoalButton = dynamic(() => import('./FundGoalButton').then(mod => ({ d
   loading: () => <div className="text-small text-[var(--color-text-muted)]">Loading...</div>,
 });
 
+const DrawdownButton = dynamic(() => import('./DrawdownButton').then(mod => ({ default: mod.DrawdownButton })), {
+  loading: () => <div className="text-small text-[var(--color-text-muted)]">Loading...</div>,
+});
+
 interface MonthData {
   id: string;
   name: string;
@@ -474,6 +478,7 @@ export default async function MonthDetailPage({
             <h2 className="text-title text-[var(--color-text)]">Income</h2>
             <div className="flex items-center gap-2">
               {totalIncome > 0 && <FundGoalButton monthId={id} />}
+              <DrawdownButton monthId={id} />
               <Link
                 href={`/months/${id}/income/new`}
                 className="inline-flex items-center gap-2 h-9 px-4 rounded-[var(--radius-md)] bg-[var(--color-accent)] text-white text-small font-medium hover:bg-[var(--color-accent-dark)] transition-colors"
