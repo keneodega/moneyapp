@@ -120,7 +120,6 @@ export default function MasterBudgetsPage() {
       const masterBudgetService = new MasterBudgetService(supabase);
 
       await masterBudgetService.update(id, updates);
-      setEditingId(null);
       await loadBudgets();
       await loadHistory();
       toast.showToast('Master budget updated successfully', 'success');
