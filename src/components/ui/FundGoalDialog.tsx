@@ -86,6 +86,9 @@ export function FundGoalDialogProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     if (!isOpen || !options) return;
 
+    // Capture options in a local variable for TypeScript
+    const currentOptions = options;
+
     async function loadData() {
       try {
         const supabase = createSupabaseBrowserClient();
@@ -121,7 +124,7 @@ export function FundGoalDialogProvider({ children }: { children: ReactNode }) {
 
         // Get available income
         const contributionService = new GoalContributionService(supabase);
-        const available = await contributionService.getAvailableIncome(options.monthlyOverviewId);
+        const available = await contributionService.getAvailableIncome(currentOptions.monthlyOverviewId);
         setAvailableIncome(available);
       } catch (err) {
         console.error('Error loading fund goal dialog data:', err);
