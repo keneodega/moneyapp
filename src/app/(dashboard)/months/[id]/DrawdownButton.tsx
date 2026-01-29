@@ -61,7 +61,7 @@ export function DrawdownButton({ monthId, disabled }: DrawdownButtonProps) {
       variant="danger"
       onClick={handleClick}
       disabled={disabled}
-      className="inline-flex items-center gap-2"
+      className="inline-flex items-center gap-2 h-9"
     >
       <ArrowDownIcon className="w-4 h-4" />
       Drawdown from Goal

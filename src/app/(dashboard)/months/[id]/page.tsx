@@ -370,14 +370,14 @@ export default async function MonthDetailPage({
       <div className="grid gap-6 lg:grid-cols-3">
         {/* Budget Categories */}
         <div className="lg:col-span-2 space-y-4">
-          <div className="flex items-center justify-between">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
             <div>
               <h2 className="text-title text-[var(--color-text)]">Budget Categories</h2>
               <p className="text-small text-[var(--color-text-muted)] mt-1">
                 Select budgets from <Link href="/master-budgets" className="text-[var(--color-primary)] hover:underline">Master Budgets</Link>
               </p>
             </div>
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 flex-wrap">
               <Link
                 href={`/months/${id}/budgets/select`}
                 className="inline-flex items-center gap-2 h-9 px-4 rounded-[var(--radius-md)] border border-[var(--color-border)] text-[var(--color-text)] text-small font-medium hover:bg-[var(--color-surface-sunken)] transition-colors"
@@ -474,14 +474,23 @@ export default async function MonthDetailPage({
 
         {/* Income Sidebar */}
         <div className="space-y-4">
-          <div className="flex items-center justify-between">
-            <h2 className="text-title text-[var(--color-text)]">Income</h2>
-            <div className="flex items-center gap-2">
-              {totalIncome > 0 && <FundGoalButton monthId={id} />}
-              <DrawdownButton monthId={id} />
+          <div className="flex flex-col gap-4">
+            <div className="flex items-center justify-between">
+              <h2 className="text-title text-[var(--color-text)]">Income</h2>
+            </div>
+            
+            {/* Action Buttons - Grouped by category */}
+            <div className="flex flex-col gap-3">
+              {/* Goal Actions - Grouped together with visual separator */}
+              <div className="flex items-center gap-2 flex-wrap">
+                {totalIncome > 0 && <FundGoalButton monthId={id} />}
+                <DrawdownButton monthId={id} />
+              </div>
+              
+              {/* Add Income Action - Full width on mobile, auto on larger screens */}
               <Link
                 href={`/months/${id}/income/new`}
-                className="inline-flex items-center gap-2 h-9 px-4 rounded-[var(--radius-md)] bg-[var(--color-accent)] text-white text-small font-medium hover:bg-[var(--color-accent-dark)] transition-colors"
+                className="inline-flex items-center justify-center gap-2 h-9 px-4 rounded-[var(--radius-md)] bg-[var(--color-accent)] text-white text-small font-medium hover:bg-[var(--color-accent-dark)] transition-colors"
               >
                 <PlusIcon className="w-4 h-4" />
                 Add Income
