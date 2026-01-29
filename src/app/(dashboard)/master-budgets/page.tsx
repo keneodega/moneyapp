@@ -19,7 +19,6 @@ export default function MasterBudgetsPage() {
     grandTotal: number;
   } | null>(null);
   const [isLoading, setIsLoading] = useState(true);
-  const [editingId, setEditingId] = useState<string | null>(null);
   const [showAddForm, setShowAddForm] = useState(false);
   const [formData, setFormData] = useState({
     name: '',
@@ -165,10 +164,6 @@ export default function MasterBudgetsPage() {
   };
 
   const totalAmount = breakdown?.grandTotal ?? budgets.reduce((sum, b) => sum + Number(b.budget_amount || 0), 0);
-  
-  // Group budgets by type
-  const fixedBudgets = budgets.filter(b => b.budget_type === 'Fixed');
-  const variableBudgets = budgets.filter(b => b.budget_type === 'Variable');
   
   // Prepare pie chart data
   const combinedChartData: PieChartData[] = [
@@ -350,72 +345,6 @@ export default function MasterBudgetsPage() {
         </Card>
       )}
 
-      {/* Budgets List */}
-      {budgets.length === 0 ? (
-        <Card variant="raised" padding="lg">
-          <p className="text-body text-[var(--color-text-muted)] text-center py-8">
-            No master budgets yet. Click "Add Budget Category" to create your first one.
-          </p>
-        </Card>
-      ) : (
-        <div className="space-y-3">
-          {budgets.map((budget) => (
-            <Card key={budget.id} variant="raised" padding="md">
-              {editingId === budget.id ? (
-                <EditForm
-                  budget={budget}
-                  onSave={(updates) => handleEdit(budget.id, updates)}
-                  onCancel={() => {
-                    setEditingId(null);
-                  }}
-                  saving={saving}
-                />
-              ) : (
-                <div className="flex items-start justify-between">
-                  <div className="flex-1">
-                    <div className="flex items-center gap-3 flex-wrap">
-                      <Link
-                        href={`/master-budgets/${budget.id}`}
-                        className="text-headline text-[var(--color-text)] hover:text-[var(--color-primary)] transition-colors cursor-pointer"
-                      >
-                        {budget.name}
-                      </Link>
-                      <BudgetTypeBadge type={budget.budget_type} />
-                      <span className="text-body font-medium text-[var(--color-text)]">
-                        €{Number(budget.budget_amount).toLocaleString('en-IE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                      </span>
-                    </div>
-                    {budget.description && (
-                      <p className="text-small text-[var(--color-text-muted)] mt-1">
-                        {budget.description}
-                      </p>
-                    )}
-                  </div>
-                  <div className="flex gap-2">
-                    <Button
-                      variant="secondary"
-                      size="sm"
-                      onClick={() => setEditingId(budget.id)}
-                      disabled={saving}
-                    >
-                      Edit
-                    </Button>
-                    <Button
-                      variant="danger"
-                      size="sm"
-                      onClick={() => handleDelete(budget.id)}
-                      disabled={saving}
-                    >
-                      Delete
-                    </Button>
-                  </div>
-                </div>
-              )}
-            </Card>
-          ))}
-        </div>
-      )}
-
       {/* History */}
       <Card variant="raised" padding="lg">
         <h2 className="text-headline text-[var(--color-text)] mb-4">History</h2>
@@ -515,86 +444,6 @@ function BudgetTypeBadge({ type }: { type: BudgetType }) {
       {isFixed ? <LockIcon className="w-3 h-3" /> : <VariableIcon className="w-3 h-3" />}
       {type}
     </span>
-  );
-}
-
-function EditForm({
-  budget,
-  onSave,
-  onCancel,
-  saving,
-}: {
-  budget: MasterBudget;
-  onSave: (updates: { name?: string; budget_amount?: number; description?: string | null; budget_type?: BudgetType }) => void;
-  onCancel: () => void;
-  saving: boolean;
-}) {
-  const [formData, setFormData] = useState({
-    name: budget.name,
-    budget_amount: budget.budget_amount.toString(),
-    description: budget.description || '',
-    budget_type: budget.budget_type,
-  });
-
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    onSave({
-      name: formData.name.trim(),
-      budget_amount: parseFloat(formData.budget_amount) || 0,
-      description: formData.description.trim() || null,
-      budget_type: formData.budget_type,
-    });
-  };
-
-  return (
-    <form onSubmit={handleSubmit} className="space-y-4">
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <Input
-          label="Category Name"
-          name="name"
-          value={formData.name}
-          onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-          required
-        />
-        <Input
-          label="Budget Amount (€)"
-          name="budget_amount"
-          type="number"
-          step="0.01"
-          min="0"
-          value={formData.budget_amount}
-          onChange={(e) => setFormData({ ...formData, budget_amount: e.target.value })}
-          required
-        />
-      </div>
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <Select
-          label="Budget Type"
-          name="budget_type"
-          value={formData.budget_type}
-          onChange={(e) => setFormData({ ...formData, budget_type: e.target.value as BudgetType })}
-          required
-          options={[
-            { value: 'Fixed', label: 'Fixed (rarely changes)' },
-            { value: 'Variable', label: 'Variable (changes month-to-month)' },
-          ]}
-        />
-        <Input
-          label="Description (Optional)"
-          name="description"
-          value={formData.description}
-          onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-        />
-      </div>
-      <div className="flex gap-3">
-        <Button type="button" variant="secondary" onClick={onCancel} disabled={saving}>
-          Cancel
-        </Button>
-        <Button type="submit" isLoading={saving}>
-          Save Changes
-        </Button>
-      </div>
-    </form>
   );
 }
 
