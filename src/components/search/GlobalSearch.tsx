@@ -171,8 +171,12 @@ export function GlobalSearch({ onResultClick }: GlobalSearchProps) {
     if (e.relatedTarget && (e.relatedTarget as HTMLElement).closest('[data-search-results]')) {
       return;
     }
-    setIsFocused(false);
-    if (!query) {
+    // Keep search expanded and results visible if there's a query
+    if (query) {
+      setIsFocused(true);
+      setShowResults(true);
+    } else {
+      setIsFocused(false);
       setShowResults(false);
     }
   };
@@ -191,10 +195,10 @@ export function GlobalSearch({ onResultClick }: GlobalSearchProps) {
           onChange={handleInputChange}
           onFocus={handleFocus}
           onBlur={handleBlur}
-          className={`w-full h-12 pl-12 pr-10 rounded-[var(--radius-md)] bg-[var(--color-surface-raised)] border text-[var(--color-text)] text-body placeholder:text-[var(--color-text-subtle)] focus:outline-none focus:ring-2 focus:ring-[var(--color-primary)]/20 transition-all ${
+          className={`w-full h-12 pl-12 pr-10 rounded-[var(--radius-md)] border text-[var(--color-text)] text-body placeholder:text-[var(--color-text-subtle)] focus:outline-none focus:ring-2 focus:ring-[var(--color-primary)]/20 transition-all ${
             isFocused
-              ? 'border-[var(--color-primary)] shadow-lg'
-              : 'border-[var(--color-border)]'
+              ? 'bg-[var(--color-surface)] border-[var(--color-primary)] shadow-lg'
+              : 'bg-[var(--color-surface-raised)] border-[var(--color-border)]'
           }`}
           style={{ fontSize: '15px' }}
         />
@@ -225,19 +229,25 @@ export function GlobalSearch({ onResultClick }: GlobalSearchProps) {
       {showResults && (query || results.length > 0) && (
         <>
           <div
-            className={`fixed inset-0 z-40 ${
-              isFocused ? 'bg-black/50' : ''
+            className={`fixed inset-0 z-40 transition-all duration-300 ${
+              isFocused && showResults ? 'bg-black/40 backdrop-blur-sm' : ''
             }`}
             onClick={() => {
-              setShowResults(false);
-              setIsFocused(false);
+              // Only close if there's no query, otherwise keep results visible
+              if (!query) {
+                setShowResults(false);
+                setIsFocused(false);
+              } else {
+                // Just hide results overlay but keep search expanded
+                setShowResults(false);
+              }
             }}
           />
           <Card
             variant="raised"
             padding="none"
             data-search-results
-            className="absolute top-full mt-2 left-0 right-0 z-50 max-h-[400px] overflow-y-auto shadow-lg"
+            className="absolute top-full mt-2 left-0 right-0 z-50 max-h-[400px] overflow-y-auto shadow-xl border border-[var(--color-border)] bg-[var(--color-surface)]"
           >
             {results.length === 0 && query ? (
               <div className="p-4 text-center text-small text-[var(--color-text-muted)]">

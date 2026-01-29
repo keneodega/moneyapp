@@ -46,7 +46,7 @@ export function Navigation() {
   };
 
   return (
-    <header className="sticky top-0 z-50 bg-[var(--color-surface)]/80 backdrop-blur-lg border-b border-[var(--color-border)]">
+    <header className="sticky top-0 z-50 bg-[var(--color-surface)] backdrop-blur-lg border-b border-[var(--color-border)]">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between h-20">
           {/* Logo */}
