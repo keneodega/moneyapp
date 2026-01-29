@@ -25,6 +25,7 @@ export function GlobalSearch({ onResultClick }: GlobalSearchProps) {
   const [isSearching, setIsSearching] = useState(false);
   const [results, setResults] = useState<SearchResult[]>([]);
   const [showResults, setShowResults] = useState(false);
+  const [isFocused, setIsFocused] = useState(false);
 
   const search = useCallback(async (searchQuery: string) => {
     if (!searchQuery.trim()) {
@@ -158,16 +159,43 @@ export function GlobalSearch({ onResultClick }: GlobalSearchProps) {
     }).format(amount);
   }, []);
 
+  const handleFocus = () => {
+    setIsFocused(true);
+    if (query) {
+      setShowResults(true);
+    }
+  };
+
+  const handleBlur = (e: React.FocusEvent) => {
+    // Don't close if clicking on results
+    if (e.relatedTarget && (e.relatedTarget as HTMLElement).closest('[data-search-results]')) {
+      return;
+    }
+    setIsFocused(false);
+    if (!query) {
+      setShowResults(false);
+    }
+  };
+
   return (
-    <div className="relative w-full">
+    <div className={`relative transition-all duration-300 ease-in-out ${
+      isFocused 
+        ? 'w-full lg:w-[600px] xl:w-[700px]' 
+        : 'w-full max-w-md'
+    }`}>
       <div className="relative">
         <input
           type="search"
           placeholder="Search expenses, budgets, goals..."
           value={query}
           onChange={handleInputChange}
-          onFocus={() => query && setShowResults(true)}
-          className="w-full h-12 pl-12 pr-10 rounded-[var(--radius-md)] bg-[var(--color-surface-raised)] border border-[var(--color-border)] text-[var(--color-text)] text-body placeholder:text-[var(--color-text-subtle)] focus:outline-none focus:border-[var(--color-primary)] focus:ring-2 focus:ring-[var(--color-primary)]/20 transition-all"
+          onFocus={handleFocus}
+          onBlur={handleBlur}
+          className={`w-full h-12 pl-12 pr-10 rounded-[var(--radius-md)] bg-[var(--color-surface-raised)] border text-[var(--color-text)] text-body placeholder:text-[var(--color-text-subtle)] focus:outline-none focus:ring-2 focus:ring-[var(--color-primary)]/20 transition-all ${
+            isFocused
+              ? 'border-[var(--color-primary)] shadow-lg'
+              : 'border-[var(--color-border)]'
+          }`}
           style={{ fontSize: '15px' }}
         />
         <SearchIcon className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-[var(--color-text-muted)] pointer-events-none" />
@@ -197,12 +225,18 @@ export function GlobalSearch({ onResultClick }: GlobalSearchProps) {
       {showResults && (query || results.length > 0) && (
         <>
           <div
-            className="fixed inset-0 z-40"
-            onClick={() => setShowResults(false)}
+            className={`fixed inset-0 z-40 ${
+              isFocused ? 'bg-black/50' : ''
+            }`}
+            onClick={() => {
+              setShowResults(false);
+              setIsFocused(false);
+            }}
           />
           <Card
             variant="raised"
             padding="none"
+            data-search-results
             className="absolute top-full mt-2 left-0 right-0 z-50 max-h-[400px] overflow-y-auto shadow-lg"
           >
             {results.length === 0 && query ? (
@@ -214,7 +248,11 @@ export function GlobalSearch({ onResultClick }: GlobalSearchProps) {
                 {results.map((result) => (
                   <button
                     key={`${result.type}-${result.id}`}
-                    onClick={() => handleResultClick(result.href)}
+                    onClick={() => {
+                      handleResultClick(result.href);
+                      setIsFocused(false);
+                    }}
+                    onMouseDown={(e) => e.preventDefault()} // Prevent blur before click
                     className="w-full text-left p-4 hover:bg-[var(--color-surface-sunken)] transition-colors min-h-[64px] flex items-center"
                   >
                     <div className="flex items-start justify-between gap-4 w-full">

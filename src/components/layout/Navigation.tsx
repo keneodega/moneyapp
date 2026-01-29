@@ -60,7 +60,7 @@ export function Navigation() {
           </Link>
 
           {/* Global Search - Desktop */}
-          <div className="hidden lg:block flex-1 max-w-2xl mx-6">
+          <div className="hidden lg:block flex-1 mx-6 flex justify-center">
             <GlobalSearch />
           </div>
 
