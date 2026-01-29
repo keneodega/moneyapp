@@ -51,6 +51,7 @@ async function getMonthData(id: string): Promise<{
   month: MonthData;
   budgets: BudgetData[];
   income: IncomeData[];
+  totalGoalContributions: number;
 } | null> {
   try {
     const supabase = await createSupabaseServerClient();
@@ -61,7 +62,7 @@ async function getMonthData(id: string): Promise<{
     }
 
     // Parallelize independent queries for better performance
-    const [baseMonthResult, incomeResult, budgetResult] = await Promise.all([
+    const [baseMonthResult, incomeResult, budgetResult, contributionsResult] = await Promise.all([
       supabase
         .from('monthly_overviews')
         .select('*')
@@ -75,11 +76,16 @@ async function getMonthData(id: string): Promise<{
         .from('budgets')
         .select('budget_amount')
         .eq('monthly_overview_id', id),
+      supabase
+        .from('goal_contributions')
+        .select('amount')
+        .eq('monthly_overview_id', id),
     ]);
 
     const { data: baseMonth, error: baseError } = baseMonthResult;
     const { data: incomeAmounts, error: incomeError } = incomeResult;
     const { data: budgetAmounts, error: budgetsError } = budgetResult;
+    const { data: contributions, error: contributionsError } = contributionsResult;
 
     if (baseError || !baseMonth) {
       return null;
@@ -215,6 +221,18 @@ async function getMonthData(id: string): Promise<{
         }, 0)
       : 0;
 
+    // Calculate total goal contributions
+    if (contributionsError) {
+      console.error(`Error fetching goal contributions for month ${id}:`, contributionsError);
+    }
+    
+    const totalGoalContributions = contributions && !contributionsError
+      ? contributions.reduce((sum, c) => {
+          const amount = typeof c.amount === 'string' ? parseFloat(c.amount) : Number(c.amount || 0);
+          return sum + (isNaN(amount) ? 0 : amount);
+        }, 0)
+      : 0;
+
     // Update month with total_spent
     month.total_spent = totalSpent;
 
@@ -225,6 +243,7 @@ async function getMonthData(id: string): Promise<{
       month,
       budgets: budgets || [],
       income: income || [],
+      totalGoalContributions,
     };
   } catch {
     return null;
@@ -259,7 +278,7 @@ export default async function MonthDetailPage({
     notFound();
   }
 
-  const { month, budgets, income } = data;
+  const { month, budgets, income, totalGoalContributions } = data;
   
   // Use totals from view (more accurate than manual calculation)
   const totalIncome = month.total_income || 0;
@@ -292,7 +311,7 @@ export default async function MonthDetailPage({
       </div>
 
       {/* Dashboard Cards */}
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+      <div className="grid gap-4 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5">
         {/* Total Income */}
         <Card variant="raised" padding="md" className="animate-slide-up stagger-1">
           <div className="flex items-start justify-between">
@@ -361,6 +380,21 @@ export default async function MonthDetailPage({
               <BanknoteIcon className={`w-5 h-5 ${
                 unallocated >= 0 ? 'text-[var(--color-accent)]' : 'text-[var(--color-danger)]'
               }`} />
+            </div>
+          </div>
+        </Card>
+
+        {/* Goal Contributions */}
+        <Card variant="raised" padding="md" className="animate-slide-up stagger-5">
+          <div className="flex items-start justify-between">
+            <div>
+              <p className="text-small text-[var(--color-text-muted)]">Goal Contributions</p>
+              <p className="text-headline text-[var(--color-primary)] mt-1 tabular-nums">
+                {formatCurrency(totalGoalContributions)}
+              </p>
+            </div>
+            <div className="w-10 h-10 rounded-[var(--radius-md)] bg-[var(--color-primary)]/10 flex items-center justify-center">
+              <TargetIcon className="w-5 h-5 text-[var(--color-primary)]" />
             </div>
           </div>
         </Card>
@@ -580,6 +614,14 @@ function BanknoteIcon({ className }: { className?: string }) {
   return (
     <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
       <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 18.75a60.07 60.07 0 0115.797 2.101c.727.198 1.453-.342 1.453-1.096V18.75M3.75 4.5v.75A.75.75 0 013 6h-.75m0 0v-.375c0-.621.504-1.125 1.125-1.125H20.25M2.25 6v9m18-10.5v.75c0 .414.336.75.75.75h.75m-1.5-1.5h.375c.621 0 1.125.504 1.125 1.125v9.75c0 .621-.504 1.125-1.125 1.125h-.375m1.5-1.5H21a.75.75 0 00-.75.75v.75m0 0H3.75m0 0h-.375a1.125 1.125 0 01-1.125-1.125V15m1.5 1.5v-.75A.75.75 0 003 15h-.75M15 10.5a3 3 0 11-6 0 3 3 0 016 0zm3 0h.008v.008H18V10.5zm-12 0h.008v.008H6V10.5z" />
+    </svg>
+  );
+}
+
+function TargetIcon({ className }: { className?: string }) {
+  return (
+    <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+      <path strokeLinecap="round" strokeLinejoin="round" d="M12 6v12m-3-2.818l.879.659c1.171.879 3.07.879 4.242 0 1.172-.879 1.172-2.303 0-3.182C13.536 12.219 12.768 12 12 12c-.725 0-1.45-.22-2.003-.659-1.106-.879-1.106-2.303 0-3.182s2.9-.879 4.006 0l.415.33M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
     </svg>
   );
 }
