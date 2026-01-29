@@ -69,7 +69,7 @@ export class GoalContributionService {
     if (incomeError) {
       logError(new Error(`Failed to fetch income sources: ${incomeError.message}`), {
         event: 'goal_contribution.get_income.failed',
-        monthlyOverviewId,
+        metadata: { monthlyOverviewId },
       });
     }
 
@@ -87,7 +87,7 @@ export class GoalContributionService {
     if (budgetsError) {
       logError(new Error(`Failed to fetch budgets: ${budgetsError.message}`), {
         event: 'goal_contribution.get_budgets.failed',
-        monthlyOverviewId,
+        metadata: { monthlyOverviewId },
       });
     }
 
@@ -105,7 +105,7 @@ export class GoalContributionService {
     if (contributionsError) {
       logError(new Error(`Failed to fetch contributions: ${contributionsError.message}`), {
         event: 'goal_contribution.get_contributions.failed',
-        monthlyOverviewId,
+        metadata: { monthlyOverviewId },
       });
     }
 
@@ -238,9 +238,7 @@ export class GoalContributionService {
       logError(new Error(`Failed to create goal contribution: ${error.message}`), {
         event: 'goal_contribution.create.failed',
         userId,
-        monthlyOverviewId,
-        goalId,
-        amount: data.amount,
+        metadata: { monthlyOverviewId, goalId, amount: data.amount },
       });
       throw new Error(`Failed to create goal contribution: ${error.message}`);
     }
@@ -273,7 +271,7 @@ export class GoalContributionService {
     if (error) {
       logError(new Error(`Failed to fetch contributions for goal: ${error.message}`), {
         event: 'goal_contribution.get_by_goal.failed',
-        goalId,
+        metadata: { goalId },
       });
       throw new Error(`Failed to fetch contributions: ${error.message}`);
     }
@@ -307,7 +305,7 @@ export class GoalContributionService {
     if (error) {
       logError(new Error(`Failed to fetch contributions for month: ${error.message}`), {
         event: 'goal_contribution.get_by_month.failed',
-        monthlyOverviewId,
+        metadata: { monthlyOverviewId },
       });
       throw new Error(`Failed to fetch contributions: ${error.message}`);
     }
@@ -384,7 +382,7 @@ export class GoalContributionService {
       logError(new Error(`Failed to update goal contribution: ${error.message}`), {
         event: 'goal_contribution.update.failed',
         userId,
-        contributionId: id,
+        metadata: { contributionId: id },
       });
       throw new Error(`Failed to update contribution: ${error.message}`);
     }
@@ -424,7 +422,7 @@ export class GoalContributionService {
       logError(new Error(`Failed to delete goal contribution: ${error.message}`), {
         event: 'goal_contribution.delete.failed',
         userId,
-        contributionId: id,
+        metadata: { contributionId: id },
       });
       throw new Error(`Failed to delete contribution: ${error.message}`);
     }

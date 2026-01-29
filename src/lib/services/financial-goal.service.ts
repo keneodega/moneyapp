@@ -296,7 +296,7 @@ export class FinancialGoalService {
     if (error) {
       logError(new Error(`Failed to fetch contributions: ${error.message}`), {
         event: 'financial_goal.get_contributions.failed',
-        goalId,
+        metadata: { goalId },
       });
       throw new Error(`Failed to fetch contributions: ${error.message}`);
     }
