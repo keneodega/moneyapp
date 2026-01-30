@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import { createSupabaseServerClient } from '@/lib/supabase/server';
-import { GoalDrawdownService } from '@/lib/services';
+import { TransferService } from '@/lib/services';
+import type { TransferType } from '@/lib/supabase/database.types';
 
 function formatCurrency(amount: number): string {
   return new Intl.NumberFormat('en-IE', {
@@ -19,102 +20,98 @@ function formatDate(date: string): string {
   });
 }
 
-async function getDrawdowns(goalId: string) {
+function getTransferTypeLabel(transferType: TransferType): string {
+  switch (transferType) {
+    case 'budget_to_budget':
+      return 'Budget → Budget';
+    case 'goal_to_budget':
+      return 'Goal → Budget';
+    case 'goal_drawdown':
+      return 'Draw down';
+    default:
+      return 'Transfer';
+  }
+}
+
+async function getTransfers(goalId: string) {
   try {
     const supabase = await createSupabaseServerClient();
     const { data: { user } } = await supabase.auth.getUser();
-    
-    if (!user) {
-      return [];
-    }
 
-    const drawdownService = new GoalDrawdownService(supabase);
-    const drawdowns = await drawdownService.getByGoal(goalId);
-    
-    // Limit to latest 10
-    return drawdowns.slice(0, 10);
+    if (!user) return [];
+
+    const transferService = new TransferService(supabase);
+    const transfers = await transferService.getByGoal(goalId);
+    return transfers.slice(0, 10);
   } catch (error) {
-    console.error('Error fetching drawdowns:', error);
+    console.error('Error fetching transfers for goal:', error);
     return [];
   }
 }
 
 export async function Drawdowns({ goalId }: { goalId: string }) {
-  const drawdowns = await getDrawdowns(goalId);
+  const transfers = await getTransfers(goalId);
 
-  if (drawdowns.length === 0) {
+  if (transfers.length === 0) {
     return (
       <div className="text-center py-8">
         <p className="text-body text-[var(--color-text-muted)] mb-4">
-          No drawdowns from this goal yet.
+          No transfers from this goal yet.
         </p>
         <p className="text-small text-[var(--color-text-muted)]">
-          Use the "Drawdown" button to withdraw money from this goal.
+          Use the &quot;Transfer&quot; button to move money from this goal to a budget or DrawDown.
         </p>
       </div>
     );
   }
 
-  const totalDrawdowns = drawdowns.reduce((sum, drawdown) => {
-    const amount = typeof drawdown.amount === 'string' ? parseFloat(drawdown.amount) : Number(drawdown.amount || 0);
+  const totalOut = transfers.reduce((sum, t) => {
+    const amount = typeof t.amount === 'string' ? parseFloat(t.amount) : Number(t.amount || 0);
     return sum + (isNaN(amount) ? 0 : amount);
   }, 0);
 
   return (
     <div className="space-y-4">
-      {/* Summary */}
       <div className="p-3 rounded-[var(--radius-md)] bg-[var(--color-danger)]/5 border border-[var(--color-danger)]/20">
         <div className="flex justify-between items-center">
-          <span className="text-small text-[var(--color-text-muted)]">Total Drawdowns</span>
+          <span className="text-small text-[var(--color-text-muted)]">Total Transfers Out</span>
           <span className="text-body font-medium text-[var(--color-danger)] tabular-nums">
-            {formatCurrency(totalDrawdowns)}
+            {formatCurrency(totalOut)}
           </span>
         </div>
       </div>
 
-      {/* Drawdowns List */}
       <div className="space-y-2">
-        {drawdowns.map((drawdown: any) => {
-          const monthlyOverview = drawdown.monthly_overview as any;
-          const monthId = monthlyOverview?.id || '';
-          const monthName = monthlyOverview?.name || 'Unknown Month';
-          
-          // Link to month detail page
-          const monthUrl = monthId ? `/months/${monthId}` : '#';
-          
-          return (
-            <Link
-              key={drawdown.id}
-              href={monthUrl}
-              className="block p-3 rounded-[var(--radius-md)] border border-[var(--color-border)] hover:border-[var(--color-danger)] hover:bg-[var(--color-danger)]/5 transition-colors"
-            >
-              <div className="flex items-start justify-between mb-1">
-                <div className="flex-1">
-                  <p className="text-body font-medium text-[var(--color-text)]">
-                    {drawdown.description || 'Goal Drawdown'}
-                  </p>
-                  <p className="text-small text-[var(--color-text-muted)]">
-                    {monthName} • {formatDate(drawdown.date)}
-                    {drawdown.bank && ` • ${drawdown.bank}`}
-                  </p>
-                  {drawdown.notes && (
-                    <p className="text-caption text-[var(--color-text-muted)] mt-1">
-                      {drawdown.notes}
-                    </p>
-                  )}
-                </div>
-                <span className="text-body font-medium text-[var(--color-danger)] tabular-nums ml-4">
-                  {formatCurrency(typeof drawdown.amount === 'string' ? parseFloat(drawdown.amount) : Number(drawdown.amount || 0))}
-                </span>
+        {transfers.map((transfer: { id: string; amount: number | string; date: string; description?: string | null; bank?: string | null; notes?: string | null; transfer_type: TransferType; monthly_overview_id: string }) => (
+          <Link
+            key={transfer.id}
+            href={`/months/${transfer.monthly_overview_id}`}
+            className="block p-3 rounded-[var(--radius-md)] border border-[var(--color-border)] hover:border-[var(--color-danger)] hover:bg-[var(--color-danger)]/5 transition-colors"
+          >
+            <div className="flex items-start justify-between mb-1">
+              <div className="flex-1">
+                <p className="text-body font-medium text-[var(--color-text)]">
+                  {transfer.description || getTransferTypeLabel(transfer.transfer_type)}
+                </p>
+                <p className="text-small text-[var(--color-text-muted)]">
+                  {getTransferTypeLabel(transfer.transfer_type)} • {formatDate(transfer.date)}
+                  {transfer.bank && ` • ${transfer.bank}`}
+                </p>
+                {transfer.notes && (
+                  <p className="text-caption text-[var(--color-text-muted)] mt-1">{transfer.notes}</p>
+                )}
               </div>
-            </Link>
-          );
-        })}
+              <span className="text-body font-medium text-[var(--color-danger)] tabular-nums ml-4">
+                {formatCurrency(typeof transfer.amount === 'string' ? parseFloat(transfer.amount) : Number(transfer.amount || 0))}
+              </span>
+            </div>
+          </Link>
+        ))}
       </div>
 
-      {drawdowns.length >= 10 && (
+      {transfers.length >= 10 && (
         <p className="text-caption text-[var(--color-text-muted)] text-center pt-2">
-          Showing latest 10 drawdowns
+          Showing latest 10 transfers
         </p>
       )}
     </div>

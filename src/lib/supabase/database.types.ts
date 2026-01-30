@@ -667,6 +667,11 @@ export interface Database {
         Insert: InvestmentTransactionInsert;
         Update: InvestmentTransactionUpdate;
       };
+      transfers: {
+        Row: Transfer;
+        Insert: TransferInsert;
+        Update: TransferUpdate;
+      };
     };
     Views: {
       monthly_overview_summary: {
@@ -695,6 +700,7 @@ export interface Database {
       investment_type: InvestmentType;
       transaction_type: TransactionType;
       platform_type: PlatformType;
+      transfer_type: TransferType;
     };
   };
 }
@@ -799,6 +805,53 @@ export interface GoalDrawdownUpdate {
   description?: string | null;
   bank?: BankType | null;
   notes?: string | null;
+}
+
+export type TransferType = 'budget_to_budget' | 'goal_to_budget' | 'goal_drawdown';
+
+export interface Transfer {
+  id: string;
+  user_id: string;
+  monthly_overview_id: string;
+  transfer_type: TransferType;
+  amount: number;
+  date: string;
+  description?: string | null;
+  notes?: string | null;
+  bank?: BankType | null;
+  from_budget_id?: string | null;
+  to_budget_id?: string | null;
+  from_goal_id?: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface TransferInsert {
+  id?: string;
+  user_id: string;
+  monthly_overview_id: string;
+  transfer_type: TransferType;
+  amount: number;
+  date: string;
+  description?: string | null;
+  notes?: string | null;
+  bank?: BankType | null;
+  from_budget_id?: string | null;
+  to_budget_id?: string | null;
+  from_goal_id?: string | null;
+}
+
+export interface TransferUpdate {
+  monthly_overview_id?: string;
+  transfer_type?: TransferType;
+  amount?: number;
+  date?: string;
+  description?: string | null;
+  notes?: string | null;
+  bank?: BankType | null;
+  from_budget_id?: string | null;
+  to_budget_id?: string | null;
+  from_goal_id?: string | null;
 }
 
 // Investment holding with transactions

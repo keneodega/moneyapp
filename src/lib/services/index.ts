@@ -36,6 +36,7 @@ export { SubscriptionService } from './subscription.service';
 export { LoanService } from './loan.service';
 export { GoalContributionService } from './goal-contribution.service';
 export { GoalDrawdownService } from './goal-drawdown.service';
+export { TransferService } from './transfer.service';
 export { SettingsService, type AppSetting, type SettingType } from './settings.service';
 
 // Export error types for handling
@@ -79,6 +80,7 @@ import { SubscriptionService } from './subscription.service';
 import { LoanService } from './loan.service';
 import { GoalContributionService } from './goal-contribution.service';
 import { GoalDrawdownService } from './goal-drawdown.service';
+import { TransferService } from './transfer.service';
 import { SettingsService } from './settings.service';
 
 export interface Services {
@@ -92,6 +94,7 @@ export interface Services {
   loan: LoanService;
   goalContribution: GoalContributionService;
   goalDrawdown: GoalDrawdownService;
+  transfer: TransferService;
   settings: SettingsService;
 }
 
@@ -107,6 +110,7 @@ export function createServices(supabase: SupabaseClient): Services {
     loan: new LoanService(supabase),
     goalContribution: new GoalContributionService(supabase),
     goalDrawdown: new GoalDrawdownService(supabase),
+    transfer: new TransferService(supabase),
     settings: new SettingsService(supabase),
   };
 }

@@ -10,6 +10,7 @@ export { ConfirmDialogProvider, useConfirmDialog } from './ConfirmDialog';
 export { ExportOptionsDialogProvider, useExportOptionsDialog } from './ExportOptionsDialog';
 export type { ExportOptions } from './ExportOptionsDialog';
 export { FundGoalDialogProvider, useFundGoalDialog } from './FundGoalDialog';
-export { DrawdownGoalDialogProvider, useDrawdownGoalDialog } from './DrawdownGoalDialog';
+export { TransferDialogProvider, useTransferDialog } from './TransferDialog';
+export type { TransferDialogOptions } from './TransferDialog';
 export { PieChart } from './PieChart';
 export type { PieChartData } from './PieChart';

@@ -6,6 +6,15 @@ import Link from 'next/link';
 import { Card, Button, Input, DeleteButton } from '@/components/ui';
 import { createSupabaseBrowserClient } from '@/lib/supabase/client';
 import { BudgetService, MasterBudgetService } from '@/lib/services';
+import { useFormToastActions } from '@/lib/hooks/useFormToast';
+import { z } from 'zod';
+
+// Simple validation schema for budget editing
+const BudgetEditSchema = z.object({
+  name: z.string().min(1, 'Budget name is required').max(100, 'Name must be less than 100 characters'),
+  budget_amount: z.number().nonnegative('Budget amount cannot be negative'),
+  override_reason: z.string().max(500, 'Override reason must be less than 500 characters').optional(),
+});
 
 export default function EditBudgetPage({
   params,
@@ -14,9 +23,12 @@ export default function EditBudgetPage({
 }) {
   const { id: monthId, budgetId } = use(params);
   const router = useRouter();
+  const { showSuccessToast, showErrorToast } = useFormToastActions();
+
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const [formData, setFormData] = useState({
     name: '',
     budget_amount: '',
@@ -72,6 +84,44 @@ export default function EditBudgetPage({
       ...prev,
       [name]: value,
     }));
+
+    // Clear field error when user types
+    if (fieldErrors[name]) {
+      setFieldErrors(prev => {
+        const next = { ...prev };
+        delete next[name];
+        return next;
+      });
+    }
+  };
+
+  const handleBlur = (name: keyof typeof formData) => {
+    try {
+      const fieldSchema = (BudgetEditSchema as any).shape[name];
+      let value: any = formData[name];
+
+      // Convert budget_amount to number for validation
+      if (name === 'budget_amount') {
+        value = parseFloat(formData.budget_amount) || 0;
+      }
+
+      if (fieldSchema) {
+        fieldSchema.parse(value);
+        // Clear error if validation passes
+        setFieldErrors(prev => {
+          const next = { ...prev };
+          delete next[name];
+          return next;
+        });
+      }
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        setFieldErrors(prev => ({
+          ...prev,
+          [name]: error.issues[0]?.message || 'Invalid value',
+        }));
+      }
+    }
   };
 
   // Calculate if this is an override
@@ -87,28 +137,57 @@ export default function EditBudgetPage({
     e.preventDefault();
     setIsSaving(true);
     setError(null);
+    setFieldErrors({});
 
     try {
+      const newAmount = parseFloat(formData.budget_amount) || 0;
+      const isOverride = masterBudgetAmount !== null && Math.abs(newAmount - masterBudgetAmount) > 0.01;
+
+      // Prepare data for validation
+      const dataToValidate = {
+        name: formData.name,
+        budget_amount: newAmount,
+        override_reason: formData.override_reason,
+      };
+
+      // Validate with Zod
+      const validationResult = BudgetEditSchema.safeParse(dataToValidate);
+
+      if (!validationResult.success) {
+        const errors: Record<string, string> = {};
+        validationResult.error.issues.forEach(err => {
+          if (err.path[0]) {
+            errors[err.path[0] as string] = err.message;
+          }
+        });
+        setFieldErrors(errors);
+        showErrorToast('Please fix the validation errors before submitting');
+        setIsSaving(false);
+        return;
+      }
+
+      // Additional validation: Require reason if overriding master budget
+      if (isOverride && !formData.override_reason.trim()) {
+        const errorMessage = 'Please provide a reason for changing this budget amount from the master budget.';
+        setFieldErrors({ override_reason: errorMessage });
+        setError(errorMessage);
+        showErrorToast(errorMessage);
+        setIsSaving(false);
+        return;
+      }
+
       const supabase = createSupabaseBrowserClient();
       const { data: { user } } = await supabase.auth.getUser();
 
       if (!user) {
-        setError('You must be logged in');
+        const errorMessage = 'You must be logged in';
+        setError(errorMessage);
+        showErrorToast(errorMessage);
         setIsSaving(false);
         return;
       }
 
       const budgetService = new BudgetService(supabase);
-
-      const newAmount = parseFloat(formData.budget_amount) || 0;
-      const isOverride = masterBudgetAmount !== null && Math.abs(newAmount - masterBudgetAmount) > 0.01;
-
-      // Require reason if overriding master budget
-      if (isOverride && !formData.override_reason.trim()) {
-        setError('Please provide a reason for changing this budget amount from the master budget.');
-        setIsSaving(false);
-        return;
-      }
 
       await budgetService.update(budgetId, {
         name: formData.name.trim(),
@@ -117,10 +196,13 @@ export default function EditBudgetPage({
         override_reason: isOverride ? formData.override_reason.trim() : null,
       });
 
+      showSuccessToast('Budget updated successfully');
       router.push(`/months/${monthId}/budgets/${budgetId}`);
       router.refresh();
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to update budget');
+      const errorMessage = err instanceof Error ? err.message : 'Failed to update budget';
+      setError(errorMessage);
+      showErrorToast(errorMessage);
     } finally {
       setIsSaving(false);
     }
@@ -176,6 +258,8 @@ export default function EditBudgetPage({
             placeholder="e.g., Food, Transport, Entertainment"
             value={formData.name}
             onChange={handleChange}
+            onBlur={() => handleBlur('name')}
+            error={fieldErrors.name}
             required
           />
 
@@ -199,6 +283,8 @@ export default function EditBudgetPage({
             placeholder="0.00"
             value={formData.budget_amount}
             onChange={handleChange}
+            onBlur={() => handleBlur('budget_amount')}
+            error={fieldErrors.budget_amount}
             required
             hint={
               masterBudgetAmount !== null
@@ -234,14 +320,26 @@ export default function EditBudgetPage({
                 name="override_reason"
                 value={formData.override_reason}
                 onChange={handleChange}
+                onBlur={() => handleBlur('override_reason')}
                 placeholder="e.g., Special event this month, Holiday season, Unexpected expenses..."
                 required
                 rows={3}
-                className="w-full px-4 py-3 rounded-[var(--radius-md)] bg-[var(--color-surface)] border border-[var(--color-border)] text-body text-[var(--color-text)] placeholder:text-[var(--color-text-muted)] focus:outline-none focus:ring-2 focus:ring-[var(--color-primary)] focus:border-transparent"
+                className={`w-full px-4 py-3 rounded-[var(--radius-md)] bg-[var(--color-surface)] border ${
+                  fieldErrors.override_reason
+                    ? 'border-[var(--color-danger)]'
+                    : 'border-[var(--color-border)]'
+                } text-body text-[var(--color-text)] placeholder:text-[var(--color-text-muted)] focus:outline-none focus:ring-2 focus:ring-[var(--color-primary)] focus:border-transparent`}
               />
-              <p className="text-small text-[var(--color-text-muted)] mt-1">
-                Explain why this month's budget differs from the master budget. This helps with reporting and analysis.
-              </p>
+              {fieldErrors.override_reason && (
+                <p className="text-small text-[var(--color-danger)] mt-1">
+                  {fieldErrors.override_reason}
+                </p>
+              )}
+              {!fieldErrors.override_reason && (
+                <p className="text-small text-[var(--color-text-muted)] mt-1">
+                  Explain why this month's budget differs from the master budget. This helps with reporting and analysis.
+                </p>
+              )}
             </div>
           )}
 

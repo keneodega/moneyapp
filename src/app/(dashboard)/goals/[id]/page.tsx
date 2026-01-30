@@ -8,8 +8,8 @@ import { Drawdowns } from './Drawdowns';
 import { GoalActions } from './GoalActions';
 import dynamic from 'next/dynamic';
 
-// Load DrawdownButton dynamically (client component)
-const DrawdownButton = dynamic(() => import('./DrawdownButton').then(mod => ({ default: mod.DrawdownButton })), {
+// Load TransferButton dynamically (client component)
+const TransferButton = dynamic(() => import('./TransferButton').then(mod => ({ default: mod.TransferButton })), {
   loading: () => <div className="text-small text-[var(--color-text-muted)]">Loading...</div>,
 });
 
@@ -127,7 +127,7 @@ export default async function GoalDetailPage({
           )}
         </div>
         <div className="flex items-center gap-2">
-          <DrawdownButton 
+          <TransferButton 
             goalId={id} 
             goalName={goal.name}
             currentAmount={goal.current_amount}
@@ -268,9 +268,9 @@ export default async function GoalDetailPage({
             <Contributions goalId={id} />
           </Card>
 
-          {/* Drawdowns */}
+          {/* Transfers (out from this goal) */}
           <Card variant="outlined" padding="md">
-            <h3 className="text-title text-[var(--color-text)] mb-4">Drawdowns</h3>
+            <h3 className="text-title text-[var(--color-text)] mb-4">Transfers</h3>
             <Drawdowns goalId={id} />
           </Card>
 

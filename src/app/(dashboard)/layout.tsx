@@ -1,7 +1,7 @@
 import { Navigation } from '@/components/layout/Navigation';
 import { ExportOptionsDialogProvider } from '@/components/ui/ExportOptionsDialog';
 import { FundGoalDialogProvider } from '@/components/ui/FundGoalDialog';
-import { DrawdownGoalDialogProvider } from '@/components/ui/DrawdownGoalDialog';
+import { TransferDialogProvider } from '@/components/ui/TransferDialog';
 
 export default function DashboardLayout({
   children,
@@ -11,7 +11,7 @@ export default function DashboardLayout({
   return (
     <ExportOptionsDialogProvider>
       <FundGoalDialogProvider>
-        <DrawdownGoalDialogProvider>
+        <TransferDialogProvider>
           <div className="min-h-screen flex flex-col">
             <Navigation />
             <main className="flex-1">
@@ -20,7 +20,7 @@ export default function DashboardLayout({
               </div>
             </main>
           </div>
-        </DrawdownGoalDialogProvider>
+        </TransferDialogProvider>
       </FundGoalDialogProvider>
     </ExportOptionsDialogProvider>
   );

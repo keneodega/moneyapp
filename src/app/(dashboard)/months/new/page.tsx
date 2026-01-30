@@ -6,6 +6,9 @@ import Link from 'next/link';
 import { Card, Button, Input, Textarea } from '@/components/ui';
 import { createSupabaseBrowserClient } from '@/lib/supabase/client';
 import { MonthlyOverviewService } from '@/lib/services';
+import { MonthlyOverviewSchema } from '@/lib/validation/schemas';
+import { useFormValidation } from '@/lib/hooks/useFormValidation';
+import { useFormToastActions } from '@/lib/hooks/useFormToast';
 
 function getDefaultDates() {
   const now = new Date();
@@ -25,7 +28,9 @@ function getDefaultDates() {
 export default function NewMonthPage() {
   const router = useRouter();
   const defaults = getDefaultDates();
-  
+  const { showSuccessToast, showErrorToast } = useFormToastActions();
+  const { errors, validateField, validateAll, clearError } = useFormValidation(MonthlyOverviewSchema);
+
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [formData, setFormData] = useState({
@@ -43,6 +48,16 @@ export default function NewMonthPage() {
       ...prev,
       [name]: value,
     }));
+
+    // Clear error when user types
+    if (errors[name as keyof typeof formData]) {
+      clearError(name as keyof typeof formData);
+    }
+  };
+
+  const handleBlur = (name: keyof typeof formData) => {
+    // Validate field on blur
+    validateField(name, formData[name]);
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -51,6 +66,15 @@ export default function NewMonthPage() {
     setError(null);
 
     try {
+      // Validate entire form before submission
+      const validationResult = validateAll(formData);
+
+      if (!validationResult.valid) {
+        showErrorToast('Please fix the validation errors before submitting');
+        setIsLoading(false);
+        return;
+      }
+
       const supabase = createSupabaseBrowserClient();
       const { data: { user } } = await supabase.auth.getUser();
 
@@ -69,11 +93,14 @@ export default function NewMonthPage() {
         notes: formData.notes || null,
       });
 
-      // Redirect to the new month
+      // Show success toast and redirect
+      showSuccessToast('Month created successfully');
       router.push(`/months/${data.id}`);
       router.refresh();
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to create month');
+      const errorMessage = err instanceof Error ? err.message : 'Failed to create month';
+      setError(errorMessage);
+      showErrorToast(errorMessage);
     } finally {
       setIsLoading(false);
     }
@@ -135,6 +162,8 @@ export default function NewMonthPage() {
             placeholder="e.g., January 2026"
             value={formData.name}
             onChange={handleChange}
+            onBlur={() => handleBlur('name')}
+            error={errors.name}
             required
           />
 
@@ -146,6 +175,8 @@ export default function NewMonthPage() {
               type="date"
               value={formData.start_date}
               onChange={handleChange}
+              onBlur={() => handleBlur('start_date')}
+              error={errors.start_date}
               required
             />
             <Input
@@ -154,6 +185,8 @@ export default function NewMonthPage() {
               type="date"
               value={formData.end_date}
               onChange={handleChange}
+              onBlur={() => handleBlur('end_date')}
+              error={errors.end_date}
               required
             />
           </div>
@@ -165,6 +198,8 @@ export default function NewMonthPage() {
             placeholder="Add any notes for this month..."
             value={formData.notes}
             onChange={handleChange}
+            onBlur={() => handleBlur('notes')}
+            error={errors.notes}
           />
 
           {/* Actions */}

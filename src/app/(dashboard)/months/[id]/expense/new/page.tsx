@@ -7,6 +7,9 @@ import { Card, Button, Input, Select, Textarea } from '@/components/ui';
 import { createSupabaseBrowserClient } from '@/lib/supabase/client';
 import { SettingsService } from '@/lib/services';
 import { filterValidPaymentMethods, DEFAULT_PAYMENT_METHODS } from '@/lib/utils/payment-methods';
+import { ExpenseSchema, type ExpenseInput } from '@/lib/validation/schemas';
+import { useFormValidation } from '@/lib/hooks/useFormValidation';
+import { useFormToastActions } from '@/lib/hooks/useFormToast';
 
 interface BudgetOption {
   id: string;
@@ -15,6 +18,8 @@ interface BudgetOption {
   amount_left: number;
 }
 
+type RecurringFreq = NonNullable<ExpenseInput['recurring_frequency']>;
+
 interface FormData {
   budget_id: string;
   amount: string;
@@ -22,7 +27,7 @@ interface FormData {
   bank: string;
   description: string;
   is_recurring: boolean;
-  recurring_frequency: string;
+  recurring_frequency: RecurringFreq | '';
 }
 
 export default function NewExpensePage({
@@ -32,6 +37,9 @@ export default function NewExpensePage({
 }) {
   const { id: monthId } = use(params);
   const router = useRouter();
+  const { showSuccessToast, showErrorToast } = useFormToastActions();
+  const { errors, validateField, validateAll, clearError } = useFormValidation(ExpenseSchema);
+
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [budgets, setBudgets] = useState<BudgetOption[]>([]);
@@ -101,6 +109,24 @@ export default function NewExpensePage({
       ...prev,
       [name]: type === 'checkbox' ? (e.target as HTMLInputElement).checked : value,
     }));
+
+    // Clear error when user types
+    if (errors[name as keyof FormData]) {
+      clearError(name as keyof FormData);
+    }
+  };
+
+  const handleBlur = (name: keyof FormData) => {
+    // Convert form value for validation
+    let value: any = formData[name];
+
+    // Convert amount to number for validation
+    if (name === 'amount' && formData.amount) {
+      value = parseFloat(formData.amount);
+    }
+
+    // Validate field on blur
+    validateField(name, value);
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -108,26 +134,50 @@ export default function NewExpensePage({
     setIsLoading(true);
     setError(null);
 
-    // Validate amount against budget
-    const selectedBudget = budgets.find(b => b.id === formData.budget_id);
-    if (selectedBudget && parseFloat(formData.amount) > selectedBudget.amount_left) {
-      setError(`This expense (€${formData.amount}) exceeds the remaining budget (€${selectedBudget.amount_left.toFixed(2)}) for ${selectedBudget.name}.`);
-      setIsLoading(false);
-      return;
-    }
-
     try {
+      // Prepare data for validation (convert amount to number)
+      const dataToValidate = {
+        budget_id: formData.budget_id,
+        amount: parseFloat(formData.amount),
+        date: formData.date,
+        bank: formData.bank || null,
+        description: formData.description || null,
+        is_recurring: formData.is_recurring,
+        recurring_frequency: formData.is_recurring && formData.recurring_frequency ? formData.recurring_frequency : null,
+      };
+
+      // Validate with Zod
+      const validationResult = validateAll(dataToValidate);
+
+      if (!validationResult.valid) {
+        showErrorToast('Please fix the validation errors before submitting');
+        setIsLoading(false);
+        return;
+      }
+
+      // Additional validation: Check overspending
+      const selectedBudget = budgets.find(b => b.id === formData.budget_id);
+      if (selectedBudget && parseFloat(formData.amount) > selectedBudget.amount_left) {
+        const errorMessage = `This expense (€${formData.amount}) exceeds the remaining budget (€${selectedBudget.amount_left.toFixed(2)}) for ${selectedBudget.name}.`;
+        setError(errorMessage);
+        showErrorToast(errorMessage);
+        setIsLoading(false);
+        return;
+      }
+
       const supabase = createSupabaseBrowserClient();
       const { data: { user } } = await supabase.auth.getUser();
 
       if (!user) {
-        setError('You must be logged in to add expenses');
+        const errorMessage = 'You must be logged in to add expenses';
+        setError(errorMessage);
+        showErrorToast(errorMessage);
         setIsLoading(false);
         return;
       }
 
       const expenseAmount = parseFloat(formData.amount);
-      
+
       const { error: insertError } = await supabase
         .from('expenses')
         .insert({
@@ -145,10 +195,13 @@ export default function NewExpensePage({
         throw new Error(insertError.message);
       }
 
+      showSuccessToast('Expense added successfully');
       router.push(`/months/${monthId}`);
       router.refresh();
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to add expense');
+      const errorMessage = err instanceof Error ? err.message : 'Failed to add expense';
+      setError(errorMessage);
+      showErrorToast(errorMessage);
     } finally {
       setIsLoading(false);
     }
@@ -253,6 +306,8 @@ export default function NewExpensePage({
             placeholder="0.00"
             value={formData.amount}
             onChange={handleChange}
+            onBlur={() => handleBlur('amount')}
+            error={errors.amount}
             required
             hint={selectedBudget ? `Max: €${selectedBudget.amount_left.toFixed(2)}` : undefined}
           />
@@ -264,6 +319,8 @@ export default function NewExpensePage({
             type="date"
             value={formData.date}
             onChange={handleChange}
+            onBlur={() => handleBlur('date')}
+            error={errors.date}
             required
           />
 
@@ -315,6 +372,8 @@ export default function NewExpensePage({
             placeholder="Add any notes about this expense..."
             value={formData.description}
             onChange={handleChange}
+            onBlur={() => handleBlur('description')}
+            error={errors.description}
           />
 
           {/* Actions */}

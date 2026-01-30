@@ -17,7 +17,7 @@ const FundGoalButton = dynamic(() => import('./FundGoalButton').then(mod => ({ d
   loading: () => <div className="text-small text-[var(--color-text-muted)]">Loading...</div>,
 });
 
-const DrawdownButton = dynamic(() => import('./DrawdownButton').then(mod => ({ default: mod.DrawdownButton })), {
+const TransferButton = dynamic(() => import('./TransferButton').then(mod => ({ default: mod.TransferButton })), {
   loading: () => <div className="text-small text-[var(--color-text-muted)]">Loading...</div>,
 });
 
@@ -122,89 +122,72 @@ async function getMonthData(id: string): Promise<{
       amount_unallocated: totalIncome - totalBudgeted,
     };
 
-    // Fetch budgets with summary and master budget info
-    // Query budgets table directly and calculate spent amount manually
-    // This is more reliable than using the view which may be missing columns
+    // Fetch budget_summary (transfer-aware amount_spent, amount_left) and budgets with master_budget
+    const [summaryResult, budgetsWithMasterResult] = await Promise.all([
+      supabase
+        .from('budget_summary')
+        .select('id, amount_spent, amount_left, percent_used')
+        .eq('monthly_overview_id', id),
+      supabase
+        .from('budgets')
+        .select(`
+          *,
+          master_budget:master_budgets(budget_amount, name)
+        `)
+        .eq('monthly_overview_id', id)
+        .order('name'),
+    ]);
+
+    const { data: summaryRows } = summaryResult;
+    const { data: budgetsWithMaster, error: budgetsWithMasterError } = budgetsWithMasterResult;
+
     let budgetsData: any[] | null = null;
-    let budgetsQueryError: any = null;
-    
-    // Try to fetch with master_budget join first
-    const { data: budgetsWithMaster, error: budgetsWithMasterError } = await supabase
-      .from('budgets')
-      .select(`
-        *,
-        master_budget:master_budgets(budget_amount, name)
-      `)
-      .eq('monthly_overview_id', id)
-      .order('name');
-    
     if (budgetsWithMasterError) {
       console.error(`Error fetching budgets with master_budget join for month ${id}:`, budgetsWithMasterError);
-      // Fallback: try without the join if the join fails
-      const { data: budgetsWithoutMaster, error: budgetsWithoutMasterError } = await supabase
+      const { data: budgetsWithoutMaster, error: noJoinErr } = await supabase
         .from('budgets')
         .select('*')
         .eq('monthly_overview_id', id)
         .order('name');
-      
-      if (budgetsWithoutMasterError) {
-        console.error(`Error fetching budgets without join for month ${id}:`, budgetsWithoutMasterError);
-        budgetsQueryError = budgetsWithoutMasterError;
-      } else {
-        budgetsData = budgetsWithoutMaster;
-      }
+      if (!noJoinErr && budgetsWithoutMaster) budgetsData = budgetsWithoutMaster;
     } else {
       budgetsData = budgetsWithMaster;
     }
-    
-    if (budgetsQueryError && !budgetsData) {
-      console.error(`Failed to fetch budgets for month ${id}:`, budgetsQueryError);
+
+    const summaryByBudgetId = new Map<string, { amount_spent: number; amount_left: number; percent_used: number }>();
+    for (const row of summaryRows || []) {
+      const spent = typeof row.amount_spent === 'string' ? parseFloat(row.amount_spent) : Number(row.amount_spent ?? 0);
+      const left = typeof row.amount_left === 'string' ? parseFloat(row.amount_left) : Number(row.amount_left ?? 0);
+      const pct = typeof row.percent_used === 'string' ? parseFloat(row.percent_used) : Number(row.percent_used ?? 0);
+      summaryByBudgetId.set(row.id, {
+        amount_spent: isNaN(spent) ? 0 : spent,
+        amount_left: isNaN(left) ? 0 : left,
+        percent_used: isNaN(pct) ? 0 : pct,
+      });
     }
-    
-    // Log for debugging
-    if (budgetsData) {
-      console.log(`Found ${budgetsData.length} budgets for month ${id}`);
-    } else {
-      console.warn(`No budgets data returned for month ${id}`);
-    }
-    
-    // Calculate spent amount for each budget
-    const budgets = await Promise.all(
-      (budgetsData || []).map(async (budget) => {
-        const { data: expenses, error: expensesError } = await supabase
-          .from('expenses')
-          .select('amount')
-          .eq('budget_id', budget.id);
-        
-        if (expensesError) {
-          console.error(`Error fetching expenses for budget ${budget.id}:`, expensesError);
-        }
-        
-        const amount_spent = expenses?.reduce((sum, e) => {
-          const amount = typeof e.amount === 'string' ? parseFloat(e.amount) : Number(e.amount || 0);
-          return sum + (isNaN(amount) ? 0 : amount);
-        }, 0) || 0;
-        
-        return {
-          id: budget.id,
-          monthly_overview_id: budget.monthly_overview_id,
-          name: budget.name,
-          budget_amount: budget.budget_amount,
-          amount_spent,
-          amount_left: Number(budget.budget_amount) - amount_spent,
-          percent_used: Number(budget.budget_amount) > 0 
-            ? (amount_spent / Number(budget.budget_amount)) * 100 
-            : 0,
-          description: budget.description,
-          master_budget_id: budget.master_budget_id,
-          override_amount: budget.override_amount,
-          override_reason: budget.override_reason,
-          master_budget: budget.master_budget,
-          created_at: budget.created_at,
-          updated_at: budget.updated_at,
-        };
-      })
-    );
+
+    const budgets = (budgetsData || []).map((budget) => {
+      const summary = summaryByBudgetId.get(budget.id);
+      const amount_spent = summary?.amount_spent ?? 0;
+      const amount_left = summary != null ? summary.amount_left : Number(budget.budget_amount) - amount_spent;
+      const percent_used = summary?.percent_used ?? (Number(budget.budget_amount) > 0 ? (amount_spent / Number(budget.budget_amount)) * 100 : 0);
+      return {
+        id: budget.id,
+        monthly_overview_id: budget.monthly_overview_id,
+        name: budget.name,
+        budget_amount: budget.budget_amount,
+        amount_spent,
+        amount_left,
+        percent_used,
+        description: budget.description,
+        master_budget_id: budget.master_budget_id,
+        override_amount: budget.override_amount,
+        override_reason: budget.override_reason,
+        master_budget: budget.master_budget,
+        created_at: budget.created_at,
+        updated_at: budget.updated_at,
+      };
+    });
 
     // Fetch income
     const { data: income } = await supabase
@@ -236,9 +219,6 @@ async function getMonthData(id: string): Promise<{
     // Update month with total_spent
     month.total_spent = totalSpent;
 
-    // Log final budgets count for debugging
-    console.log(`Returning ${budgets?.length || 0} budgets for month ${id}`);
-    
     return {
       month,
       budgets: budgets || [],
@@ -518,7 +498,7 @@ export default async function MonthDetailPage({
               {/* Goal Actions - Grouped together with visual separator */}
               <div className="flex items-center gap-2 flex-wrap">
                 {totalIncome > 0 && <FundGoalButton monthId={id} />}
-                <DrawdownButton monthId={id} />
+                <TransferButton monthId={id} />
               </div>
               
               {/* Add Income Action - Full width on mobile, auto on larger screens */}
