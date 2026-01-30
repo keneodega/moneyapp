@@ -1,0 +1,6 @@
+Clean run: 2026-01-30T01:10:14.934Z
+Input: /Users/keneodega/Documents/App/MoneyApp/scripts/fixtures/sf-subscriptions-sample.json
+Output: /Users/keneodega/Documents/App/MoneyApp/scripts/fixtures/subscriptions-cleaned.json
+Total input rows: 2
+Cleaned (will import): 2
+Skipped: 0

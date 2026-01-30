@@ -96,6 +96,7 @@ Open [http://localhost:3000](http://localhost:3000) to see the app.
 
 ## Documentation
 
+- [Salesforce subscriptions import](./scripts/README-subscriptions-import.md) – Clean SF `Subscription__c` JSON and import into the app
 - [Production Prerequisites](./docs/production-prerequisites.md) - **START HERE** - Verify Supabase, environments, and Git setup
 - [Deployment Guide](./docs/deployment.md) - Deploy to Vercel with staging/production
 - [Backups & Restore](./docs/backups-restore.md) - Set up backups and restore procedures
