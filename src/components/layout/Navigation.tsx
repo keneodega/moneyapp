@@ -13,7 +13,6 @@ const navItems = [
   { href: '/goals', label: 'Goals', icon: TargetIcon },
   { href: '/subscriptions', label: 'Subscriptions', icon: RepeatIcon },
   { href: '/loans', label: 'Loans', icon: BankIcon },
-  { href: '/recurring-expenses', label: 'Recurring', icon: RepeatIcon },
   { href: '/settings', label: 'Settings', icon: SettingsIcon },
 ];
 
