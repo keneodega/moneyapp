@@ -2,7 +2,7 @@
 
 import { useState, useMemo } from 'react';
 import Link from 'next/link';
-import { Card, BudgetProgress } from '@/components/ui';
+import { Card, BudgetProgress, Currency } from '@/components/ui';
 
 type SortOption =
   | 'name-asc'
@@ -36,7 +36,6 @@ interface PreviousBudgetInfo {
 interface BudgetCategoriesListProps {
   budgets: BudgetItem[];
   monthId: string;
-  formatCurrency: (amount: number) => string;
   /** Previous month's budgets by name, for % change display */
   previousBudgetsByName?: Record<string, PreviousBudgetInfo> | null;
 }
@@ -60,7 +59,6 @@ function pctChange(curr: number, prev: number): number | null {
 export function BudgetCategoriesList({
   budgets,
   monthId,
-  formatCurrency,
   previousBudgetsByName,
 }: BudgetCategoriesListProps) {
   const [sortBy, setSortBy] = useState<SortOption>('name-asc');
@@ -217,7 +215,7 @@ export function BudgetCategoriesList({
                     )}
                   </div>
                   <span className="text-small font-medium text-[var(--color-text)] tabular-nums">
-                    {formatCurrency(effectiveAmount)}
+                    <Currency amount={effectiveAmount} size="sm" />
                   </span>
                 </div>
                 <BudgetProgress spent={budget.amount_spent} total={effectiveAmount} />

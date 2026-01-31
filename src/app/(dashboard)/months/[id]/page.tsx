@@ -537,7 +537,6 @@ export default async function MonthDetailPage({
             <BudgetCategoriesList
               budgets={budgets}
               monthId={id}
-              formatCurrency={formatCurrency}
               previousBudgetsByName={previousMonth?.budgetsByName ?? undefined}
             />
           ) : (
