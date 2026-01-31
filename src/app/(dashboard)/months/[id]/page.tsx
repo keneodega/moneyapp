@@ -526,9 +526,9 @@ export default async function MonthDetailPage({
                 data={pieData}
                 showLegend={true}
                 showLabels={false}
-                height={220}
-                innerRadius={40}
-                outerRadius={70}
+                height={360}
+                innerRadius={70}
+                outerRadius={120}
               />
             </Card>
           )}
