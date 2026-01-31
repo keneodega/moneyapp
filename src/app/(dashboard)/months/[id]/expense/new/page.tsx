@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, use } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { Card, Button, Input, Select, Textarea } from '@/components/ui';
 import { createSupabaseBrowserClient } from '@/lib/supabase/client';
@@ -37,6 +37,7 @@ export default function NewExpensePage({
 }) {
   const { id: monthId } = use(params);
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { showSuccessToast, showErrorToast } = useFormToastActions();
   const { errors, validateField, validateAll, clearError } = useFormValidation(ExpenseSchema);
 
@@ -83,6 +84,11 @@ export default function NewExpensePage({
 
         if (!budgetError && budgetData) {
           setBudgets(budgetData);
+          // Default to budget from URL if present and valid
+          const budgetParam = searchParams.get('budget');
+          if (budgetParam && budgetData.some((b) => b.id === budgetParam)) {
+            setFormData((prev) => ({ ...prev, budget_id: budgetParam }));
+          }
         }
 
         // Fetch payment methods from settings
@@ -99,7 +105,7 @@ export default function NewExpensePage({
     }
 
     fetchData();
-  }, [monthId]);
+  }, [monthId, searchParams]);
 
   const handleChange = (
     e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>

@@ -150,7 +150,7 @@ async function getMonthData(id: string): Promise<{
         .from('budgets')
         .select(`
           *,
-          master_budget:master_budgets(budget_amount, name)
+          master_budget:master_budgets(budget_amount, name, budget_type)
         `)
         .eq('monthly_overview_id', id)
         .order('name'),
@@ -189,6 +189,7 @@ async function getMonthData(id: string): Promise<{
       const amount_spent = summary?.amount_spent ?? 0;
       const amount_left = summary != null ? summary.amount_left : Number(budget.budget_amount) - amount_spent;
       const percent_used = summary?.percent_used ?? (Number(budget.budget_amount) > 0 ? (amount_spent / Number(budget.budget_amount)) * 100 : 0);
+      const effectiveAmount = Number(budget.override_amount ?? budget.budget_amount ?? 0);
       return {
         id: budget.id,
         monthly_overview_id: budget.monthly_overview_id,
@@ -204,8 +205,22 @@ async function getMonthData(id: string): Promise<{
         master_budget: budget.master_budget,
         created_at: budget.created_at,
         updated_at: budget.updated_at,
+        effectiveAmount,
+        budget_type: budget.master_budget?.budget_type ?? 'Variable',
       };
     });
+
+    // Compute fixed vs variable totals
+    let totalFixed = 0;
+    let totalVariable = 0;
+    for (const b of budgets) {
+      const amt = b.effectiveAmount;
+      if (b.budget_type === 'Fixed') {
+        totalFixed += amt;
+      } else {
+        totalVariable += amt;
+      }
+    }
 
     // Fetch income
     const { data: income } = await supabase
@@ -303,6 +318,8 @@ async function getMonthData(id: string): Promise<{
       income: income || [],
       totalGoalContributions,
       previousMonth,
+      totalFixed,
+      totalVariable,
     };
   } catch {
     return null;
@@ -337,7 +354,7 @@ export default async function MonthDetailPage({
     notFound();
   }
 
-  const { month, budgets, income, totalGoalContributions, previousMonth } = data;
+  const { month, budgets, income, totalGoalContributions, previousMonth, totalFixed, totalVariable } = data;
   
   // Use totals from view (more accurate than manual calculation)
   const totalIncome = month.total_income || 0;
@@ -420,6 +437,31 @@ export default async function MonthDetailPage({
             </div>
             <div className="w-10 h-10 rounded-[var(--radius-md)] bg-[var(--color-primary)]/10 flex items-center justify-center">
               <PieChartIcon className="w-5 h-5 text-[var(--color-primary)]" />
+            </div>
+          </div>
+        </Card>
+
+        {/* Budget breakdown: Fixed + Variable */}
+        <Card variant="raised" padding="md" className="animate-slide-up stagger-2">
+          <p className="text-small text-[var(--color-text-muted)] mb-2">Budget breakdown</p>
+          <div className="space-y-2">
+            <div className="flex justify-between">
+              <span className="text-body text-[var(--color-text-muted)]">Fixed</span>
+              <span className="text-body font-medium text-[var(--color-text)] tabular-nums">
+                {formatCurrency(totalFixed ?? 0)}
+              </span>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-body text-[var(--color-text-muted)]">Variable</span>
+              <span className="text-body font-medium text-[var(--color-text)] tabular-nums">
+                {formatCurrency(totalVariable ?? 0)}
+              </span>
+            </div>
+            <div className="flex justify-between pt-2 border-t border-[var(--color-border)]">
+              <span className="text-small font-medium text-[var(--color-text)]">Total</span>
+              <span className="text-small font-semibold text-[var(--color-text)] tabular-nums">
+                {formatCurrency(totalBudgeted)}
+              </span>
             </div>
           </div>
         </Card>
