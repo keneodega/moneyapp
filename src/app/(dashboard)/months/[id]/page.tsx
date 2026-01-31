@@ -70,6 +70,8 @@ async function getMonthData(id: string): Promise<{
   income: IncomeData[];
   totalGoalContributions: number;
   previousMonth: PreviousMonthData | null;
+  totalFixed: number;
+  totalVariable: number;
 } | null> {
   try {
     const supabase = await createSupabaseServerClient();
