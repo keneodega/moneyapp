@@ -11,6 +11,7 @@ DROP VIEW IF EXISTS public.investment_holding_summary;
 
 -- ============================================
 -- 2. Recreate Monthly Overview Summary View
+-- Uses subqueries to properly aggregate income and budgets separately
 -- ============================================
 CREATE VIEW public.monthly_overview_summary
 WITH (security_invoker = true)
@@ -23,36 +24,45 @@ SELECT
   mo.end_date,
   mo.notes,
   (mo.start_date <= CURRENT_DATE AND mo.end_date >= CURRENT_DATE) AS is_active,
-  COALESCE((
-    SELECT SUM(inc.amount) 
-    FROM public.income_sources inc 
-    WHERE inc.monthly_overview_id = mo.id
-  ), 0) AS total_income,
-  COALESCE((
-    SELECT SUM(b.budget_amount) 
-    FROM public.budgets b 
-    WHERE b.monthly_overview_id = mo.id
-  ), 0) AS total_budgeted,
-  COALESCE((
-    SELECT SUM(inc.amount) 
-    FROM public.income_sources inc 
-    WHERE inc.monthly_overview_id = mo.id
-  ), 0) - COALESCE((
-    SELECT SUM(b.budget_amount) 
-    FROM public.budgets b 
-    WHERE b.monthly_overview_id = mo.id
-  ), 0) AS amount_unallocated,
+  COALESCE(income_totals.total_income, 0) AS total_income,
+  COALESCE(budget_totals.total_budgeted, 0) AS total_budgeted,
+  COALESCE(expense_totals.total_spent, 0) AS total_spent,
+  COALESCE(income_totals.total_income, 0) - COALESCE(budget_totals.total_budgeted, 0) AS amount_unallocated,
   mo.created_at,
   mo.updated_at
-FROM public.monthly_overviews mo;
+FROM public.monthly_overviews mo
+LEFT JOIN (
+  SELECT 
+    monthly_overview_id,
+    SUM(amount) AS total_income
+  FROM public.income_sources
+  GROUP BY monthly_overview_id
+) income_totals ON income_totals.monthly_overview_id = mo.id
+LEFT JOIN (
+  SELECT 
+    monthly_overview_id,
+    SUM(budget_amount) AS total_budgeted
+  FROM public.budgets
+  GROUP BY monthly_overview_id
+) budget_totals ON budget_totals.monthly_overview_id = mo.id
+LEFT JOIN (
+  SELECT 
+    b.monthly_overview_id,
+    SUM(e.amount) AS total_spent
+  FROM public.budgets b
+  LEFT JOIN public.expenses e ON e.budget_id = b.id
+  GROUP BY b.monthly_overview_id
+) expense_totals ON expense_totals.monthly_overview_id = mo.id;
 
 -- ============================================
 -- 3. Recreate Budget Summary View
+-- Includes transfers in amount_left calculation
+-- amount_left = budget_amount + transfers_in - transfers_out - amount_spent
 -- ============================================
 CREATE VIEW public.budget_summary
 WITH (security_invoker = true)
 AS
-SELECT 
+SELECT
   b.id,
   b.monthly_overview_id,
   b.name,
@@ -61,9 +71,17 @@ SELECT
   b.override_amount,
   b.override_reason,
   COALESCE(SUM(e.amount), 0) AS amount_spent,
-  b.budget_amount - COALESCE(SUM(e.amount), 0) AS amount_left,
+  b.budget_amount
+    + COALESCE((SELECT SUM(t.amount) FROM public.transfers t WHERE t.to_budget_id = b.id), 0)
+    - COALESCE((SELECT SUM(t.amount) FROM public.transfers t WHERE t.from_budget_id = b.id), 0)
+    - COALESCE(SUM(e.amount), 0) AS amount_left,
   CASE 
-    WHEN b.budget_amount > 0 THEN (COALESCE(SUM(e.amount), 0) / b.budget_amount) * 100
+    WHEN (b.budget_amount
+      + COALESCE((SELECT SUM(t.amount) FROM public.transfers t WHERE t.to_budget_id = b.id), 0)
+      - COALESCE((SELECT SUM(t.amount) FROM public.transfers t WHERE t.from_budget_id = b.id), 0)) > 0
+    THEN (COALESCE(SUM(e.amount), 0) / (b.budget_amount
+      + COALESCE((SELECT SUM(t.amount) FROM public.transfers t WHERE t.to_budget_id = b.id), 0)
+      - COALESCE((SELECT SUM(t.amount) FROM public.transfers t WHERE t.from_budget_id = b.id), 0))) * 100
     ELSE 0 
   END AS percent_used,
   b.description,
@@ -111,6 +129,6 @@ GRANT SELECT ON public.investment_holding_summary TO authenticated;
 -- ============================================
 -- Add comments
 -- ============================================
-COMMENT ON VIEW public.monthly_overview_summary IS 'Monthly overview with computed totals (security invoker)';
-COMMENT ON VIEW public.budget_summary IS 'Budget with spent amount calculations and master budget references (security invoker)';
+COMMENT ON VIEW public.monthly_overview_summary IS 'Monthly overview with computed totals (security invoker) - Fixed calculation using subqueries';
+COMMENT ON VIEW public.budget_summary IS 'Budget with spent amount and transfer-adjusted amount_left (security invoker)';
 COMMENT ON VIEW public.investment_holding_summary IS 'Investment holding with transaction totals (security invoker)';

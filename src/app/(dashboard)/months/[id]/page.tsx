@@ -1,7 +1,7 @@
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import dynamic from 'next/dynamic';
-import { Card, CardHeader, BudgetProgress } from '@/components/ui';
+import { Card, BudgetProgress, PieChart } from '@/components/ui';
 import { createSupabaseServerClient } from '@/lib/supabase/server';
 
 // Code splitting: Load these components dynamically
@@ -21,6 +21,11 @@ const TransferButton = dynamic(() => import('./TransferButton').then(mod => ({ d
   loading: () => <div className="text-small text-[var(--color-text-muted)]">Loading...</div>,
 });
 
+const BudgetCategoriesList = dynamic(
+  () => import('./BudgetCategoriesList').then(mod => ({ default: mod.BudgetCategoriesList })),
+  { loading: () => <div className="p-4 text-small text-[var(--color-text-muted)]">Loading budgets...</div> },
+);
+
 interface MonthData {
   id: string;
   name: string;
@@ -37,6 +42,9 @@ interface BudgetData {
   budget_amount: number;
   amount_spent: number;
   amount_left: number;
+  percent_used?: number;
+  override_amount?: number | null;
+  master_budget?: { budget_amount: number; name: string } | null;
 }
 
 interface IncomeData {
@@ -47,11 +55,21 @@ interface IncomeData {
   date_paid: string;
 }
 
+interface PreviousMonthData {
+  id: string;
+  name: string;
+  total_income: number;
+  total_budgeted: number;
+  total_spent: number;
+  budgetsByName: Record<string, { amount_spent: number; budget_amount: number }>;
+}
+
 async function getMonthData(id: string): Promise<{
   month: MonthData;
   budgets: BudgetData[];
   income: IncomeData[];
   totalGoalContributions: number;
+  previousMonth: PreviousMonthData | null;
 } | null> {
   try {
     const supabase = await createSupabaseServerClient();
@@ -219,11 +237,72 @@ async function getMonthData(id: string): Promise<{
     // Update month with total_spent
     month.total_spent = totalSpent;
 
+    // Fetch previous month for comparison (same user, start_date < current)
+    let previousMonth: PreviousMonthData | null = null;
+    const { data: prevMonthRow } = await supabase
+      .from('monthly_overviews')
+      .select('id, name, start_date, end_date')
+      .lt('start_date', baseMonth.start_date)
+      .order('start_date', { ascending: false })
+      .limit(1)
+      .single();
+
+    if (prevMonthRow) {
+      const prevId = prevMonthRow.id;
+      const [prevIncomeRes, prevBudgetsRes, prevSummaryRes] = await Promise.all([
+        supabase
+          .from('income_sources')
+          .select('amount')
+          .eq('monthly_overview_id', prevId),
+        supabase
+          .from('budgets')
+          .select('id, name, budget_amount')
+          .eq('monthly_overview_id', prevId),
+        supabase
+          .from('budget_summary')
+          .select('id, amount_spent')
+          .eq('monthly_overview_id', prevId),
+      ]);
+
+      const prevTotalIncome =
+        prevIncomeRes.data && !prevIncomeRes.error
+          ? prevIncomeRes.data.reduce((s, i) => s + Number(i.amount || 0), 0)
+          : 0;
+      const prevTotalBudgeted =
+        prevBudgetsRes.data && !prevBudgetsRes.error
+          ? prevBudgetsRes.data.reduce((s, b) => s + Number(b.budget_amount || 0), 0)
+          : 0;
+      const prevSummaryMap = new Map<string, number>();
+      for (const row of prevSummaryRes.data || []) {
+        prevSummaryMap.set(row.id, Number(row.amount_spent || 0));
+      }
+      const prevBudgetsByName: Record<string, { amount_spent: number; budget_amount: number }> = {};
+      let prevTotalSpent = 0;
+      for (const b of prevBudgetsRes.data || []) {
+        const spent = prevSummaryMap.get(b.id) ?? 0;
+        prevTotalSpent += spent;
+        prevBudgetsByName[b.name] = {
+          amount_spent: spent,
+          budget_amount: Number(b.budget_amount || 0),
+        };
+      }
+
+      previousMonth = {
+        id: prevMonthRow.id,
+        name: prevMonthRow.name,
+        total_income: prevTotalIncome,
+        total_budgeted: prevTotalBudgeted,
+        total_spent: prevTotalSpent,
+        budgetsByName: prevBudgetsByName,
+      };
+    }
+
     return {
       month,
       budgets: budgets || [],
       income: income || [],
       totalGoalContributions,
+      previousMonth,
     };
   } catch {
     return null;
@@ -258,7 +337,7 @@ export default async function MonthDetailPage({
     notFound();
   }
 
-  const { month, budgets, income, totalGoalContributions } = data;
+  const { month, budgets, income, totalGoalContributions, previousMonth } = data;
   
   // Use totals from view (more accurate than manual calculation)
   const totalIncome = month.total_income || 0;
@@ -268,6 +347,19 @@ export default async function MonthDetailPage({
   // Calculate spent from budgets (view provides this per budget)
   const totalSpent = (budgets || []).reduce((sum, b) => sum + Number(b?.amount_spent || 0), 0);
   const spentPercent = totalBudgeted > 0 ? (totalSpent / totalBudgeted) * 100 : 0;
+
+  // Month-over-month changes
+  const pctChange = (curr: number, prev: number) =>
+    prev !== 0 ? (((curr - prev) / prev) * 100) : (curr !== 0 ? 100 : 0);
+  const overallIncomeChange = previousMonth ? pctChange(totalIncome, previousMonth.total_income) : null;
+  const overallBudgetedChange = previousMonth ? pctChange(totalBudgeted, previousMonth.total_budgeted) : null;
+  const overallSpentChange = previousMonth ? pctChange(totalSpent, previousMonth.total_spent) : null;
+
+  // Pie chart data: budget amounts (allocation) per category
+  const pieData = (budgets || []).map((b) => ({
+    name: b.name,
+    value: Number(b.override_amount ?? b.budget_amount ?? 0),
+  })).filter((d) => d.value > 0);
 
   return (
     <div className="space-y-8 animate-fade-in">
@@ -300,6 +392,11 @@ export default async function MonthDetailPage({
               <p className="text-headline text-[var(--color-success)] mt-1 tabular-nums">
                 {formatCurrency(totalIncome)}
               </p>
+              {overallIncomeChange != null && (
+                <p className={`text-caption mt-0.5 ${overallIncomeChange > 0 ? 'text-[var(--color-success)]' : overallIncomeChange < 0 ? 'text-[var(--color-danger)]' : 'text-[var(--color-text-muted)]'}`}>
+                  {overallIncomeChange > 0 ? '↑' : overallIncomeChange < 0 ? '↓' : ''} {overallIncomeChange > 0 ? '+' : ''}{overallIncomeChange.toFixed(1)}% vs {previousMonth?.name}
+                </p>
+              )}
             </div>
             <div className="w-10 h-10 rounded-[var(--radius-md)] bg-[var(--color-success)]/10 flex items-center justify-center">
               <ArrowUpIcon className="w-5 h-5 text-[var(--color-success)]" />
@@ -315,6 +412,11 @@ export default async function MonthDetailPage({
               <p className="text-headline text-[var(--color-text)] mt-1 tabular-nums">
                 {formatCurrency(totalBudgeted)}
               </p>
+              {overallBudgetedChange != null && (
+                <p className={`text-caption mt-0.5 ${overallBudgetedChange > 0 ? 'text-[var(--color-warning)]' : overallBudgetedChange < 0 ? 'text-[var(--color-success)]' : 'text-[var(--color-text-muted)]'}`}>
+                  {overallBudgetedChange > 0 ? '↑' : overallBudgetedChange < 0 ? '↓' : ''} {overallBudgetedChange > 0 ? '+' : ''}{overallBudgetedChange.toFixed(1)}% vs {previousMonth?.name}
+                </p>
+              )}
             </div>
             <div className="w-10 h-10 rounded-[var(--radius-md)] bg-[var(--color-primary)]/10 flex items-center justify-center">
               <PieChartIcon className="w-5 h-5 text-[var(--color-primary)]" />
@@ -333,6 +435,11 @@ export default async function MonthDetailPage({
               <p className="text-caption text-[var(--color-text-subtle)] mt-1">
                 {spentPercent.toFixed(0)}% of budget
               </p>
+              {overallSpentChange != null && (
+                <p className={`text-caption mt-0.5 ${overallSpentChange > 0 ? 'text-[var(--color-warning)]' : overallSpentChange < 0 ? 'text-[var(--color-success)]' : 'text-[var(--color-text-muted)]'}`}>
+                  {overallSpentChange > 0 ? '↑' : overallSpentChange < 0 ? '↓' : ''} {overallSpentChange > 0 ? '+' : ''}{overallSpentChange.toFixed(1)}% vs {previousMonth?.name}
+                </p>
+              )}
             </div>
             <div className="w-10 h-10 rounded-[var(--radius-md)] bg-[var(--color-warning)]/10 flex items-center justify-center">
               <CreditCardIcon className="w-5 h-5 text-[var(--color-warning)]" />
@@ -382,7 +489,7 @@ export default async function MonthDetailPage({
 
       {/* Main Content Grid */}
       <div className="grid gap-6 lg:grid-cols-3">
-        {/* Budget Categories */}
+        {/* Budget Categories + Pie Chart */}
         <div className="lg:col-span-2 space-y-4">
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
             <div>
@@ -408,64 +515,31 @@ export default async function MonthDetailPage({
               </Link>
             </div>
           </div>
+
+          {/* Budget allocation pie chart */}
+          {pieData.length > 0 && (
+            <Card variant="outlined" padding="md">
+              <h3 className="text-small font-medium text-[var(--color-text-muted)] mb-4">
+                Budget allocation
+              </h3>
+              <PieChart
+                data={pieData}
+                showLegend={true}
+                showLabels={false}
+                height={220}
+                innerRadius={40}
+                outerRadius={70}
+              />
+            </Card>
+          )}
           
           {budgets && budgets.length > 0 ? (
-            <div className="grid gap-3">
-              {budgets.map((budget: any, index) => {
-                const percent = budget.budget_amount > 0 
-                  ? (budget.amount_spent / budget.budget_amount) * 100 
-                  : 0;
-                
-                // Calculate deviation from master budget
-                const masterAmount = budget.master_budget?.budget_amount;
-                const effectiveAmount = budget.override_amount ?? budget.budget_amount;
-                const deviation = masterAmount && Math.abs(effectiveAmount - masterAmount) > 0.01
-                  ? effectiveAmount - masterAmount
-                  : null;
-                const deviationPercent = deviation && masterAmount && masterAmount > 0
-                  ? ((deviation / masterAmount) * 100).toFixed(1)
-                  : null;
-                
-                return (
-                  <Link 
-                    key={budget.id}
-                    href={`/months/${id}/budgets/${budget.id}`}
-                    className={`animate-slide-up stagger-${Math.min(index + 1, 6)}`}
-                  >
-                    <Card variant="outlined" padding="md" hover>
-                      <div className="flex items-center justify-between mb-3">
-                        <div className="flex-1">
-                          <h3 className="text-body font-medium text-[var(--color-text)]">
-                            {budget.name}
-                          </h3>
-                          {deviation !== null && (
-                            <p className={`text-caption mt-0.5 ${
-                              deviation > 0 ? 'text-[var(--color-warning)]' : 'text-[var(--color-success)]'
-                            }`}>
-                              {deviation > 0 ? '↑' : '↓'} {deviation > 0 ? '+' : ''}€{Math.abs(deviation).toLocaleString('en-IE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                              {deviationPercent && ` (${deviation > 0 ? '+' : ''}${deviationPercent}%)`}
-                              {' '}from master
-                            </p>
-                          )}
-                          {budget.override_reason && (
-                            <p className="text-caption text-[var(--color-text-muted)] mt-0.5 italic">
-                              "{budget.override_reason}"
-                            </p>
-                          )}
-                        </div>
-                        <span className="text-small font-medium text-[var(--color-text)] tabular-nums">
-                          {formatCurrency(effectiveAmount)}
-                        </span>
-                      </div>
-                      <BudgetProgress 
-                        spent={budget.amount_spent} 
-                        total={effectiveAmount} 
-                      />
-                    </Card>
-                  </Link>
-                );
-              })}
-            </div>
+            <BudgetCategoriesList
+              budgets={budgets}
+              monthId={id}
+              formatCurrency={formatCurrency}
+              previousBudgetsByName={previousMonth?.budgetsByName ?? undefined}
+            />
           ) : (
             <Card variant="outlined" padding="lg" className="text-center">
               <div className="w-12 h-12 mx-auto mb-4 rounded-full bg-[var(--color-surface-sunken)] flex items-center justify-center">

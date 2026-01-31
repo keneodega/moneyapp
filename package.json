@@ -21,7 +21,11 @@
     "test:all": "npm run test:unit && npm run test:e2e",
     "ci": "npm run lint && npm run typecheck && npm run test:all",
     "clean:subscriptions": "node scripts/clean-sf-subscriptions.mjs",
-    "import:subscriptions": "node scripts/import-subscriptions.mjs"
+    "import:subscriptions": "node scripts/import-subscriptions.mjs",
+    "check:subscriptions": "node scripts/check-subscriptions.mjs",
+    "fix:subscriptions": "node scripts/fix-subscription-user-ids.mjs",
+    "delete:subscriptions": "node scripts/delete-all-subscriptions.mjs",
+    "get:user-id": "node scripts/get-user-id.mjs"
   },
   "dependencies": {
     "@sentry/nextjs": "^10.36.0",

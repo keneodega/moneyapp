@@ -460,7 +460,9 @@ CREATE TRIGGER update_inv_transactions_updated_at BEFORE UPDATE ON investment_tr
 -- ============================================
 
 -- Monthly Overview with computed totals
-CREATE OR REPLACE VIEW monthly_overview_summary AS
+CREATE OR REPLACE VIEW monthly_overview_summary
+WITH (security_invoker = true)
+AS
 SELECT 
   mo.id,
   mo.user_id,
@@ -469,27 +471,60 @@ SELECT
   mo.end_date,
   mo.notes,
   (mo.start_date <= CURRENT_DATE AND mo.end_date >= CURRENT_DATE) AS is_active,
-  COALESCE(SUM(DISTINCT inc.amount), 0) AS total_income,
-  COALESCE(SUM(DISTINCT b.budget_amount), 0) AS total_budgeted,
-  COALESCE(SUM(DISTINCT inc.amount), 0) - COALESCE(SUM(DISTINCT b.budget_amount), 0) AS amount_unallocated,
+  COALESCE(income_totals.total_income, 0) AS total_income,
+  COALESCE(budget_totals.total_budgeted, 0) AS total_budgeted,
+  COALESCE(expense_totals.total_spent, 0) AS total_spent,
+  COALESCE(income_totals.total_income, 0) - COALESCE(budget_totals.total_budgeted, 0) AS amount_unallocated,
   mo.created_at,
   mo.updated_at
 FROM monthly_overviews mo
-LEFT JOIN income_sources inc ON inc.monthly_overview_id = mo.id
-LEFT JOIN budgets b ON b.monthly_overview_id = mo.id
-GROUP BY mo.id;
+LEFT JOIN (
+  SELECT 
+    monthly_overview_id,
+    SUM(amount) AS total_income
+  FROM income_sources
+  GROUP BY monthly_overview_id
+) income_totals ON income_totals.monthly_overview_id = mo.id
+LEFT JOIN (
+  SELECT 
+    monthly_overview_id,
+    SUM(budget_amount) AS total_budgeted
+  FROM budgets
+  GROUP BY monthly_overview_id
+) budget_totals ON budget_totals.monthly_overview_id = mo.id
+LEFT JOIN (
+  SELECT 
+    b.monthly_overview_id,
+    SUM(e.amount) AS total_spent
+  FROM budgets b
+  LEFT JOIN expenses e ON e.budget_id = b.id
+  GROUP BY b.monthly_overview_id
+) expense_totals ON expense_totals.monthly_overview_id = mo.id;
 
--- Budget with spent amount
-CREATE OR REPLACE VIEW budget_summary AS
-SELECT 
+-- Budget with spent amount and transfers
+CREATE OR REPLACE VIEW budget_summary
+WITH (security_invoker = true)
+AS
+SELECT
   b.id,
   b.monthly_overview_id,
   b.name,
   b.budget_amount,
+  b.master_budget_id,
+  b.override_amount,
+  b.override_reason,
   COALESCE(SUM(e.amount), 0) AS amount_spent,
-  b.budget_amount - COALESCE(SUM(e.amount), 0) AS amount_left,
+  b.budget_amount
+    + COALESCE((SELECT SUM(t.amount) FROM transfers t WHERE t.to_budget_id = b.id), 0)
+    - COALESCE((SELECT SUM(t.amount) FROM transfers t WHERE t.from_budget_id = b.id), 0)
+    - COALESCE(SUM(e.amount), 0) AS amount_left,
   CASE 
-    WHEN b.budget_amount > 0 THEN (COALESCE(SUM(e.amount), 0) / b.budget_amount) * 100
+    WHEN (b.budget_amount
+      + COALESCE((SELECT SUM(t.amount) FROM transfers t WHERE t.to_budget_id = b.id), 0)
+      - COALESCE((SELECT SUM(t.amount) FROM transfers t WHERE t.from_budget_id = b.id), 0)) > 0
+    THEN (COALESCE(SUM(e.amount), 0) / (b.budget_amount
+      + COALESCE((SELECT SUM(t.amount) FROM transfers t WHERE t.to_budget_id = b.id), 0)
+      - COALESCE((SELECT SUM(t.amount) FROM transfers t WHERE t.from_budget_id = b.id), 0))) * 100
     ELSE 0 
   END AS percent_used,
   b.description,
@@ -500,7 +535,9 @@ LEFT JOIN expenses e ON e.budget_id = b.id
 GROUP BY b.id;
 
 -- Investment holding with totals
-CREATE OR REPLACE VIEW investment_holding_summary AS
+CREATE OR REPLACE VIEW investment_holding_summary
+WITH (security_invoker = true)
+AS
 SELECT 
   ih.id,
   ih.user_id,
