@@ -3,6 +3,7 @@ import { notFound } from 'next/navigation';
 import dynamic from 'next/dynamic';
 import { Card, BudgetProgress, PieChart } from '@/components/ui';
 import { createSupabaseServerClient } from '@/lib/supabase/server';
+import { SubscriptionService } from '@/lib/services';
 
 // Code splitting: Load these components dynamically
 const IncomeList = dynamic(() => import('./IncomeList').then(mod => ({ default: mod.IncomeList })), {
@@ -72,6 +73,7 @@ async function getMonthData(id: string): Promise<{
   previousMonth: PreviousMonthData | null;
   totalFixed: number;
   totalVariable: number;
+  totalSubscriptions: number;
 } | null> {
   try {
     const supabase = await createSupabaseServerClient();
@@ -314,6 +316,18 @@ async function getMonthData(id: string): Promise<{
       };
     }
 
+    // Total subscriptions due this month (monthly equivalent cost)
+    let totalSubscriptions = 0;
+    try {
+      const subscriptionService = new SubscriptionService(supabase);
+      totalSubscriptions = await subscriptionService.getTotalMonthlyCostForDateRange(
+        baseMonth.start_date,
+        baseMonth.end_date
+      );
+    } catch {
+      // Non-fatal; leave at 0
+    }
+
     return {
       month,
       budgets: budgets || [],
@@ -322,6 +336,7 @@ async function getMonthData(id: string): Promise<{
       previousMonth,
       totalFixed,
       totalVariable,
+      totalSubscriptions,
     };
   } catch {
     return null;
@@ -356,7 +371,7 @@ export default async function MonthDetailPage({
     notFound();
   }
 
-  const { month, budgets, income, totalGoalContributions, previousMonth, totalFixed, totalVariable } = data;
+  const { month, budgets, income, totalGoalContributions, previousMonth, totalFixed, totalVariable, totalSubscriptions } = data;
   
   // Use totals from view (more accurate than manual calculation)
   const totalIncome = month.total_income || 0;
@@ -488,6 +503,24 @@ export default async function MonthDetailPage({
             <div className="w-10 h-10 rounded-[var(--radius-md)] bg-[var(--color-warning)]/10 flex items-center justify-center">
               <CreditCardIcon className="w-5 h-5 text-[var(--color-warning)]" />
             </div>
+          </div>
+        </Card>
+
+        {/* Total Subscriptions */}
+        <Card variant="raised" padding="md" className="animate-slide-up stagger-3">
+          <div className="flex items-start justify-between">
+            <div>
+              <p className="text-small text-[var(--color-text-muted)]">Subscriptions</p>
+              <p className="text-headline text-[var(--color-text)] mt-1 tabular-nums">
+                {formatCurrency(totalSubscriptions ?? 0)}
+              </p>
+              <p className="text-caption text-[var(--color-text-subtle)] mt-1">
+                Due this month
+              </p>
+            </div>
+            <Link href="/subscriptions" className="w-10 h-10 rounded-[var(--radius-md)] bg-[var(--color-primary)]/10 flex items-center justify-center hover:bg-[var(--color-primary)]/20 transition-colors">
+              <RepeatIcon className="w-5 h-5 text-[var(--color-primary)]" />
+            </Link>
           </div>
         </Card>
 
@@ -719,6 +752,14 @@ function TargetIcon({ className }: { className?: string }) {
   return (
     <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
       <path strokeLinecap="round" strokeLinejoin="round" d="M12 6v12m-3-2.818l.879.659c1.171.879 3.07.879 4.242 0 1.172-.879 1.172-2.303 0-3.182C13.536 12.219 12.768 12 12 12c-.725 0-1.45-.22-2.003-.659-1.106-.879-1.106-2.303 0-3.182s2.9-.879 4.006 0l.415.33M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+    </svg>
+  );
+}
+
+function RepeatIcon({ className }: { className?: string }) {
+  return (
+    <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+      <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 12c0-1.232-.046-2.453-.138-3.662a4.006 4.006 0 00-3.7-3.7 48.678 48.678 0 00-7.324 0 4.006 4.006 0 00-3.7 3.7c-.017.22-.032.441-.046.662M19.5 12l3-3m-3 3l-3-3m-12 3c0 1.232.046 2.453.138 3.662a4.006 4.006 0 003.7 3.7 48.656 48.656 0 007.324 0 4.006 4.006 0 003.7-3.7c.017-.22.032-.441.046-.662M4.5 12l3 3m-3-3l-3 3" />
     </svg>
   );
 }
