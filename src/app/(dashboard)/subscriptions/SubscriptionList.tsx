@@ -146,6 +146,14 @@ export function SubscriptionList({ subscriptions }: SubscriptionListProps) {
 
   const selection = useSelection(filteredSubscriptions);
 
+  const selectedSums = useMemo(() => {
+    const selected = filteredSubscriptions.filter(s => selection.selectedIds.includes(s.id));
+    const totalAmount = selected.reduce((sum, s) => sum + s.amount, 0);
+    const totalMonthly = selected.reduce((sum, s) => sum + SubscriptionService.calculateMonthlyCost(s.amount, s.frequency), 0);
+    const totalYearly = selected.reduce((sum, s) => sum + SubscriptionService.calculateYearlyCost(s.amount, s.frequency), 0);
+    return { totalAmount, totalMonthly, totalYearly };
+  }, [filteredSubscriptions, selection.selectedIds]);
+
   const handleBulkDelete = async () => {
     if (selection.selectedIds.length === 0) return;
     if (!confirm(`Delete ${selection.selectedIds.length} subscription(s)?`)) return;
@@ -226,13 +234,29 @@ export function SubscriptionList({ subscriptions }: SubscriptionListProps) {
         </div>
       )}
       {selection.isSomeSelected && (
-        <BulkActionsBar
-          selectedCount={selection.selectedCount}
-          itemLabel="subscriptions"
-          onClear={selection.clear}
-          onDelete={handleBulkDelete}
-          isDeleting={bulkDeleting}
-        />
+        <div className="space-y-2">
+          <BulkActionsBar
+            selectedCount={selection.selectedCount}
+            itemLabel="subscriptions"
+            onClear={selection.clear}
+            onDelete={handleBulkDelete}
+            isDeleting={bulkDeleting}
+          />
+          <div className="flex flex-wrap gap-4 py-2 px-4 rounded-[var(--radius-md)] bg-[var(--color-surface-sunken)]">
+            <div>
+              <span className="text-small text-[var(--color-text-muted)]">Monthly: </span>
+              <span className="text-small font-medium text-[var(--color-text)]">
+                <Currency amount={selectedSums.totalMonthly} />
+              </span>
+            </div>
+            <div>
+              <span className="text-small text-[var(--color-text-muted)]">Yearly: </span>
+              <span className="text-small font-medium text-[var(--color-text)]">
+                <Currency amount={selectedSums.totalYearly} />
+              </span>
+            </div>
+          </div>
+        </div>
       )}
       {/* Sort and filters */}
       <div className="space-y-3">
