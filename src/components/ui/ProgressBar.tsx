@@ -54,6 +54,8 @@ export function ProgressBar({
 interface BudgetProgressProps {
   spent: number;
   total: number;
+  /** Transfer-adjusted amount left (from budget_summary.amount_left). When provided, used for "X left" instead of total - spent. */
+  remaining?: number;
   currency?: string;
   className?: string;
 }
@@ -61,11 +63,12 @@ interface BudgetProgressProps {
 export function BudgetProgress({
   spent,
   total,
+  remaining: remainingProp,
   currency = 'EUR',
   className = '',
 }: BudgetProgressProps) {
   const percentage = total > 0 ? (spent / total) * 100 : 0;
-  const remaining = total - spent;
+  const remaining = remainingProp !== undefined ? remainingProp : total - spent;
 
   const formatCurrency = (amount: number) =>
     new Intl.NumberFormat('en-IE', {

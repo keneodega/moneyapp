@@ -412,7 +412,7 @@ export function BudgetCategoriesList({
                     <Currency amount={effectiveAmount} size="sm" />
                   </span>
                 </div>
-                <BudgetProgress spent={budget.amount_spent} total={effectiveAmount} />
+                <BudgetProgress spent={budget.amount_spent} total={effectiveAmount} remaining={budget.amount_left} />
               </Card>
             </Link>
             </div>
