@@ -29,7 +29,8 @@ interface BudgetItem {
   master_budget_id?: string;
   override_amount?: number | null;
   override_reason?: string | null;
-  master_budget?: { budget_amount: number; name: string } | null;
+  master_budget?: { budget_amount: number; name: string; budget_type?: string } | null;
+  budget_type?: 'Fixed' | 'Variable';
 }
 
 interface PreviousBudgetInfo {
@@ -55,6 +56,9 @@ const SORT_OPTIONS: { value: SortOption; label: string }[] = [
   { value: 'percent-asc', label: '% Used (Low-High)' },
 ];
 
+type TypeFilter = 'all' | 'Fixed' | 'Variable';
+type StatusFilter = 'all' | 'over' | 'under' | 'on-track';
+
 function pctChange(curr: number, prev: number): number | null {
   if (prev === 0) return curr !== 0 ? 100 : null;
   return ((curr - prev) / prev) * 100;
@@ -67,6 +71,10 @@ export function BudgetCategoriesList({
 }: BudgetCategoriesListProps) {
   const [sortBy, setSortBy] = useState<SortOption>('name-asc');
   const [bulkDeleting, setBulkDeleting] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [typeFilter, setTypeFilter] = useState<TypeFilter>('all');
+  const [statusFilter, setStatusFilter] = useState<StatusFilter>('all');
+  const [showFilters, setShowFilters] = useState(false);
   const router = useRouter();
 
   const selection = useSelection(budgets);
@@ -89,11 +97,42 @@ export function BudgetCategoriesList({
     }
   };
 
-  const sortedBudgets = useMemo(() => {
+  const filteredAndSortedBudgets = useMemo(() => {
     if (!budgets || budgets.length === 0) return [];
-    const arr = [...budgets];
+    let arr = [...budgets];
     const effectiveAmount = (b: BudgetItem) =>
       b.override_amount ?? Number(b.budget_amount);
+
+    // Apply search filter
+    if (searchQuery.trim()) {
+      const q = searchQuery.trim().toLowerCase();
+      arr = arr.filter(
+        (b) =>
+          b.name.toLowerCase().includes(q) ||
+          (b.description?.toLowerCase().includes(q) ?? false)
+      );
+    }
+
+    // Apply type filter (Fixed / Variable)
+    if (typeFilter !== 'all') {
+      const type = typeFilter as 'Fixed' | 'Variable';
+      arr = arr.filter(
+        (b) => (b.budget_type ?? b.master_budget?.budget_type) === type
+      );
+    }
+
+    // Apply status filter (over / under / on-track)
+    if (statusFilter !== 'all') {
+      arr = arr.filter((b) => {
+        const spent = b.amount_spent ?? 0;
+        const total = effectiveAmount(b);
+        const pct = total > 0 ? (spent / total) * 100 : 0;
+        if (statusFilter === 'over') return pct > 100;
+        if (statusFilter === 'under') return pct < 80;
+        if (statusFilter === 'on-track') return pct >= 80 && pct <= 100;
+        return true;
+      });
+    }
 
     arr.sort((a, b) => {
       switch (sortBy) {
@@ -118,16 +157,18 @@ export function BudgetCategoriesList({
       }
     });
     return arr;
-  }, [budgets, sortBy]);
+  }, [budgets, sortBy, searchQuery, typeFilter, statusFilter]);
 
   if (!budgets || budgets.length === 0) {
     return null;
   }
 
+  const hasActiveFilters = searchQuery.trim() || typeFilter !== 'all' || statusFilter !== 'all';
+
   return (
     <div className="space-y-3">
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 flex-wrap">
-        <div className="flex items-center gap-4">
+        <div className="flex items-center gap-4 flex-wrap">
           <label className="flex items-center gap-2 cursor-pointer text-small text-[var(--color-text-muted)] hover:text-[var(--color-text)]">
             <input
               type="checkbox"
@@ -137,22 +178,98 @@ export function BudgetCategoriesList({
             />
             {selection.isAllSelected ? 'Deselect all' : 'Select all'}
           </label>
+          <button
+            type="button"
+            onClick={() => setShowFilters(!showFilters)}
+            className={`inline-flex items-center gap-2 h-8 px-3 rounded-[var(--radius-md)] border text-small font-medium transition-colors ${
+              hasActiveFilters
+                ? 'border-[var(--color-primary)] bg-[var(--color-primary)]/10 text-[var(--color-primary)]'
+                : 'border-[var(--color-border)] bg-[var(--color-surface-default)] text-[var(--color-text-muted)] hover:text-[var(--color-text)]'
+            }`}
+            aria-expanded={showFilters}
+          >
+            <FilterIcon className="w-4 h-4" />
+            Filter
+            {hasActiveFilters && (
+              <span className="w-1.5 h-1.5 rounded-full bg-[var(--color-primary)]" />
+            )}
+          </button>
           <label className="text-caption text-[var(--color-text-muted)]">
             Sort by
           </label>
+          <select
+            value={sortBy}
+            onChange={(e) => setSortBy(e.target.value as SortOption)}
+            className="h-8 px-3 rounded-[var(--radius-md)] border border-[var(--color-border)] bg-[var(--color-surface-default)] text-small text-[var(--color-text)] focus:outline-none focus:ring-2 focus:ring-[var(--color-primary)]/30"
+          >
+            {SORT_OPTIONS.map((opt) => (
+              <option key={opt.value} value={opt.value}>
+                {opt.label}
+              </option>
+            ))}
+          </select>
         </div>
-        <select
-          value={sortBy}
-          onChange={(e) => setSortBy(e.target.value as SortOption)}
-          className="h-8 px-3 rounded-[var(--radius-md)] border border-[var(--color-border)] bg-[var(--color-surface-default)] text-small text-[var(--color-text)] focus:outline-none focus:ring-2 focus:ring-[var(--color-primary)]/30"
-        >
-          {SORT_OPTIONS.map((opt) => (
-            <option key={opt.value} value={opt.value}>
-              {opt.label}
-            </option>
-          ))}
-        </select>
       </div>
+
+      {showFilters && (
+        <div className="p-4 rounded-[var(--radius-md)] border border-[var(--color-border)] bg-[var(--color-surface-sunken)] space-y-3">
+          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+            <div>
+              <label className="block text-caption text-[var(--color-text-muted)] mb-1">Search by name</label>
+              <input
+                type="search"
+                placeholder="e.g. Food, Transport..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="w-full h-8 px-3 rounded-[var(--radius-md)] border border-[var(--color-border)] bg-[var(--color-surface-default)] text-small text-[var(--color-text)] placeholder:text-[var(--color-text-muted)] focus:outline-none focus:ring-2 focus:ring-[var(--color-primary)]/30"
+              />
+            </div>
+            <div>
+              <label className="block text-caption text-[var(--color-text-muted)] mb-1">Type</label>
+              <select
+                value={typeFilter}
+                onChange={(e) => setTypeFilter(e.target.value as TypeFilter)}
+                className="w-full h-8 px-3 rounded-[var(--radius-md)] border border-[var(--color-border)] bg-[var(--color-surface-default)] text-small text-[var(--color-text)] focus:outline-none focus:ring-2 focus:ring-[var(--color-primary)]/30"
+              >
+                <option value="all">All</option>
+                <option value="Fixed">Fixed</option>
+                <option value="Variable">Variable</option>
+              </select>
+            </div>
+            <div>
+              <label className="block text-caption text-[var(--color-text-muted)] mb-1">Spending status</label>
+              <select
+                value={statusFilter}
+                onChange={(e) => setStatusFilter(e.target.value as StatusFilter)}
+                className="w-full h-8 px-3 rounded-[var(--radius-md)] border border-[var(--color-border)] bg-[var(--color-surface-default)] text-small text-[var(--color-text)] focus:outline-none focus:ring-2 focus:ring-[var(--color-primary)]/30"
+              >
+                <option value="all">All</option>
+                <option value="over">Over budget</option>
+                <option value="under">Under budget (&lt;80%)</option>
+                <option value="on-track">On track (80–100%)</option>
+              </select>
+            </div>
+            {hasActiveFilters && (
+              <div className="flex items-end">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setSearchQuery('');
+                    setTypeFilter('all');
+                    setStatusFilter('all');
+                  }}
+                  className="h-8 px-3 rounded-[var(--radius-md)] text-small font-medium text-[var(--color-text-muted)] hover:text-[var(--color-text)] hover:bg-[var(--color-surface-default)]"
+                >
+                  Clear filters
+                </button>
+              </div>
+            )}
+          </div>
+          <p className="text-caption text-[var(--color-text-muted)]">
+            Showing {filteredAndSortedBudgets.length} of {budgets.length} categories
+          </p>
+        </div>
+      )}
 
       {selection.isSomeSelected && (
         <BulkActionsBar
@@ -165,7 +282,7 @@ export function BudgetCategoriesList({
       )}
 
       <div className="grid gap-3">
-        {sortedBudgets.map((budget, index) => {
+        {filteredAndSortedBudgets.map((budget) => {
           const percent =
             budget.budget_amount > 0
               ? (budget.amount_spent / budget.budget_amount) * 100
@@ -279,6 +396,20 @@ export function BudgetCategoriesList({
           );
         })}
       </div>
+
+      {filteredAndSortedBudgets.length === 0 && budgets.length > 0 && (
+        <p className="py-6 text-center text-small text-[var(--color-text-muted)]">
+          No categories match your filters. Try adjusting or clearing them.
+        </p>
+      )}
     </div>
+  );
+}
+
+function FilterIcon({ className }: { className?: string }) {
+  return (
+    <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+      <path strokeLinecap="round" strokeLinejoin="round" d="M10.5 6h9.75M10.5 6a1.5 1.5 0 11-3 0m3 0a1.5 1.5 0 10-3 0M3.75 6H7.5m3 12h9.75m-9.75 0a1.5 1.5 0 01-3 0m3 0a1.5 1.5 0 00-3 0m-3.75 0H7.5m9-6h3.75m-3.75 0a1.5 1.5 0 01-3 0m3 0a1.5 1.5 0 00-3 0m-9.75 0h9.75" />
+    </svg>
   );
 }
