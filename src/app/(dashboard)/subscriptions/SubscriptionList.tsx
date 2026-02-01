@@ -255,6 +255,12 @@ export function SubscriptionList({ subscriptions }: SubscriptionListProps) {
                 </p>
               </div>
               <div>
+                <p className="text-small text-[var(--color-text-muted)]">Yearly Cost</p>
+                <p className="text-body font-medium text-[var(--color-text)]">
+                  <Currency amount={SubscriptionService.calculateYearlyCost(subscription.amount, subscription.frequency)} />
+                </p>
+              </div>
+              <div>
                 <p className="text-small text-[var(--color-text-muted)]">Next Payment</p>
                 <p className="text-body text-[var(--color-text)]">
                   {formatDate(subscription.next_collection_date)}
