@@ -315,10 +315,46 @@ export class IncomeSourceService {
   }
 
   /**
-   * Delete an income source
+   * Delete an income source.
+   * If the income had tithe_deduction, subtracts 10% from Tithe budget and 5% from Offering budget for that month (rebalance).
    */
   async delete(id: string): Promise<void> {
     await this.getUserId();
+
+    const income = await this.getById(id);
+    const monthlyOverviewId = income.monthly_overview_id;
+
+    if (income.tithe_deduction && income.amount > 0) {
+      const titheAmount = income.amount * 0.1;
+      const offeringAmount = income.amount * 0.05;
+      try {
+        const { data: titheBudget } = await this.supabase
+          .from('budgets')
+          .select('id, budget_amount')
+          .eq('monthly_overview_id', monthlyOverviewId)
+          .eq('name', 'Tithe')
+          .maybeSingle();
+
+        if (titheBudget && Number(titheBudget.budget_amount ?? 0) > 0) {
+          const newAmount = Math.max(0, Number(titheBudget.budget_amount ?? 0) - titheAmount);
+          await this.supabase.from('budgets').update({ budget_amount: newAmount }).eq('id', titheBudget.id);
+        }
+
+        const { data: offeringBudget } = await this.supabase
+          .from('budgets')
+          .select('id, budget_amount')
+          .eq('monthly_overview_id', monthlyOverviewId)
+          .eq('name', 'Offering')
+          .maybeSingle();
+
+        if (offeringBudget && Number(offeringBudget.budget_amount ?? 0) > 0) {
+          const newAmount = Math.max(0, Number(offeringBudget.budget_amount ?? 0) - offeringAmount);
+          await this.supabase.from('budgets').update({ budget_amount: newAmount }).eq('id', offeringBudget.id);
+        }
+      } catch (err) {
+        console.error('Failed to rebalance Tithe/Offering on income delete:', err);
+      }
+    }
 
     const { error } = await this.supabase
       .from('income_sources')
