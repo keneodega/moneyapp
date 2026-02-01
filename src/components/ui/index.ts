@@ -14,3 +14,4 @@ export { TransferDialogProvider, useTransferDialog } from './TransferDialog';
 export type { TransferDialogOptions } from './TransferDialog';
 export { PieChart } from './PieChart';
 export type { PieChartData } from './PieChart';
+export { BulkActionsBar } from './BulkActionsBar';

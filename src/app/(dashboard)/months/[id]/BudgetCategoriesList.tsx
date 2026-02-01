@@ -2,7 +2,11 @@
 
 import { useState, useMemo } from 'react';
 import Link from 'next/link';
-import { Card, BudgetProgress, Currency } from '@/components/ui';
+import { useRouter } from 'next/navigation';
+import { Card, BudgetProgress, Currency, BulkActionsBar } from '@/components/ui';
+import { createSupabaseBrowserClient } from '@/lib/supabase/client';
+import { BudgetService } from '@/lib/services';
+import { useSelection } from '@/lib/hooks/useSelection';
 
 type SortOption =
   | 'name-asc'
@@ -62,6 +66,28 @@ export function BudgetCategoriesList({
   previousBudgetsByName,
 }: BudgetCategoriesListProps) {
   const [sortBy, setSortBy] = useState<SortOption>('name-asc');
+  const [bulkDeleting, setBulkDeleting] = useState(false);
+  const router = useRouter();
+
+  const selection = useSelection(budgets);
+
+  const handleBulkDelete = async () => {
+    if (selection.selectedIds.length === 0) return;
+    if (!confirm(`Delete ${selection.selectedIds.length} budget categor${selection.selectedIds.length === 1 ? 'y' : 'ies'}? All expenses in these budgets will be removed.`)) return;
+    setBulkDeleting(true);
+    try {
+      const supabase = createSupabaseBrowserClient();
+      const service = new BudgetService(supabase);
+      await service.deleteMany(selection.selectedIds);
+      selection.clear();
+      router.refresh();
+    } catch (error) {
+      console.error('Failed to delete budgets:', error);
+      alert(error instanceof Error ? error.message : 'Failed to delete budgets.');
+    } finally {
+      setBulkDeleting(false);
+    }
+  };
 
   const sortedBudgets = useMemo(() => {
     if (!budgets || budgets.length === 0) return [];
@@ -100,10 +126,21 @@ export function BudgetCategoriesList({
 
   return (
     <div className="space-y-3">
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
-        <label className="text-caption text-[var(--color-text-muted)]">
-          Sort by
-        </label>
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 flex-wrap">
+        <div className="flex items-center gap-4">
+          <label className="flex items-center gap-2 cursor-pointer text-small text-[var(--color-text-muted)] hover:text-[var(--color-text)]">
+            <input
+              type="checkbox"
+              checked={selection.isAllSelected}
+              onChange={selection.toggleAll}
+              className="w-4 h-4 rounded border-[var(--color-border)] text-[var(--color-primary)] focus:ring-[var(--color-primary)] cursor-pointer"
+            />
+            {selection.isAllSelected ? 'Deselect all' : 'Select all'}
+          </label>
+          <label className="text-caption text-[var(--color-text-muted)]">
+            Sort by
+          </label>
+        </div>
         <select
           value={sortBy}
           onChange={(e) => setSortBy(e.target.value as SortOption)}
@@ -116,6 +153,16 @@ export function BudgetCategoriesList({
           ))}
         </select>
       </div>
+
+      {selection.isSomeSelected && (
+        <BulkActionsBar
+          selectedCount={selection.selectedCount}
+          itemLabel="categories"
+          onClear={selection.clear}
+          onDelete={handleBulkDelete}
+          isDeleting={bulkDeleting}
+        />
+      )}
 
       <div className="grid gap-3">
         {sortedBudgets.map((budget, index) => {
@@ -147,10 +194,17 @@ export function BudgetCategoriesList({
               : null;
 
           return (
-            <Link
-              key={budget.id}
-              href={`/months/${monthId}/budgets/${budget.id}`}
-            >
+            <div key={budget.id} className="flex gap-3">
+              <label className="flex-shrink-0 pt-4 cursor-pointer" onClick={(e) => e.stopPropagation()}>
+                <input
+                  type="checkbox"
+                  checked={selection.isSelected(budget.id)}
+                  onChange={() => selection.toggle(budget.id)}
+                  className="w-4 h-4 rounded border-[var(--color-border)] text-[var(--color-primary)] focus:ring-[var(--color-primary)] cursor-pointer"
+                  onClick={(e) => e.stopPropagation()}
+                />
+              </label>
+              <Link href={`/months/${monthId}/budgets/${budget.id}`} className="flex-1 min-w-0">
               <Card variant="outlined" padding="md" hover>
                 <div className="flex items-center justify-between mb-3">
                   <div className="flex-1">
@@ -221,6 +275,7 @@ export function BudgetCategoriesList({
                 <BudgetProgress spent={budget.amount_spent} total={effectiveAmount} />
               </Card>
             </Link>
+            </div>
           );
         })}
       </div>

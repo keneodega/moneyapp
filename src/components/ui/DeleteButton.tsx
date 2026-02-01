@@ -32,7 +32,8 @@ export function DeleteButton({
       router.refresh();
     } catch (error) {
       console.error('Failed to delete:', error);
-      alert('Failed to delete. Please try again.');
+      const message = error instanceof Error ? error.message : 'Failed to delete. Please try again.';
+      alert(message);
     } finally {
       setLoading(false);
       setShowConfirm(false);

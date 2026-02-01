@@ -315,6 +315,20 @@ export class SubscriptionService {
     }
   }
 
+  async deleteMany(ids: string[]): Promise<void> {
+    await this.getUserId();
+    if (ids.length === 0) return;
+
+    const { error } = await this.supabase
+      .from('subscriptions')
+      .delete()
+      .in('id', ids);
+
+    if (error) {
+      throw new Error(`Failed to delete subscriptions: ${error.message}`);
+    }
+  }
+
   /**
    * Mark subscription as paid for current period
    */

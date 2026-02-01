@@ -278,7 +278,7 @@ export class MonthlyOverviewService {
   /**
    * Delete a monthly overview
    * This will cascade delete all related budgets, expenses, and income sources
-   * 
+   *
    * @param id - Monthly overview ID
    */
   async delete(id: string): Promise<void> {
@@ -291,6 +291,24 @@ export class MonthlyOverviewService {
 
     if (error) {
       throw new Error(`Failed to delete monthly overview: ${error.message}`);
+    }
+  }
+
+  /**
+   * Delete multiple monthly overviews by ID.
+   * Each must belong to the current user (enforced by RLS).
+   */
+  async deleteMany(ids: string[]): Promise<void> {
+    await this.getUserId();
+    if (ids.length === 0) return;
+
+    const { error } = await this.supabase
+      .from('monthly_overviews')
+      .delete()
+      .in('id', ids);
+
+    if (error) {
+      throw new Error(`Failed to delete monthly overviews: ${error.message}`);
     }
   }
 

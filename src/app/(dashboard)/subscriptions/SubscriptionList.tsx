@@ -6,8 +6,9 @@ import { useRouter } from 'next/navigation';
 import { Subscription, SubscriptionStatusType } from '@/lib/supabase/database.types';
 import { SubscriptionService } from '@/lib/services';
 import { createSupabaseBrowserClient } from '@/lib/supabase/client';
-import { Card } from '@/components/ui';
+import { Card, BulkActionsBar } from '@/components/ui';
 import { Currency } from '@/components/ui/Currency';
+import { useSelection } from '@/lib/hooks/useSelection';
 
 interface SubscriptionListProps {
   subscriptions: Subscription[];
@@ -36,6 +37,7 @@ export function SubscriptionList({ subscriptions }: SubscriptionListProps) {
   const [filter, setFilter] = useState<'all' | SubscriptionStatusType>('all');
   const [essentialFilter, setEssentialFilter] = useState<'all' | 'essential' | 'non-essential'>('all');
   const [loading, setLoading] = useState<string | null>(null);
+  const [bulkDeleting, setBulkDeleting] = useState(false);
   const router = useRouter();
   const supabase = createSupabaseBrowserClient();
 
@@ -47,6 +49,25 @@ export function SubscriptionList({ subscriptions }: SubscriptionListProps) {
     if (essentialFilter === 'non-essential' && s.is_essential) return false;
     return true;
   });
+
+  const selection = useSelection(filteredSubscriptions);
+
+  const handleBulkDelete = async () => {
+    if (selection.selectedIds.length === 0) return;
+    if (!confirm(`Delete ${selection.selectedIds.length} subscription(s)?`)) return;
+    setBulkDeleting(true);
+    try {
+      const service = new SubscriptionService(supabase);
+      await service.deleteMany(selection.selectedIds);
+      selection.clear();
+      router.refresh();
+    } catch (error) {
+      console.error('Failed to delete subscriptions:', error);
+      alert(error instanceof Error ? error.message : 'Failed to delete subscriptions.');
+    } finally {
+      setBulkDeleting(false);
+    }
+  };
 
   const handleStatusChange = async (id: string, action: 'pause' | 'resume' | 'cancel') => {
     setLoading(id);
@@ -97,6 +118,28 @@ export function SubscriptionList({ subscriptions }: SubscriptionListProps) {
 
   return (
     <div className="space-y-4">
+      {filteredSubscriptions.length > 0 && (
+        <div className="flex items-center gap-4 flex-wrap">
+          <label className="flex items-center gap-2 cursor-pointer text-small text-[var(--color-text-muted)] hover:text-[var(--color-text)]">
+            <input
+              type="checkbox"
+              checked={selection.isAllSelected}
+              onChange={selection.toggleAll}
+              className="w-4 h-4 rounded border-[var(--color-border)] text-[var(--color-primary)] focus:ring-[var(--color-primary)] cursor-pointer"
+            />
+            {selection.isAllSelected ? 'Deselect all' : 'Select all'}
+          </label>
+        </div>
+      )}
+      {selection.isSomeSelected && (
+        <BulkActionsBar
+          selectedCount={selection.selectedCount}
+          itemLabel="subscriptions"
+          onClear={selection.clear}
+          onDelete={handleBulkDelete}
+          isDeleting={bulkDeleting}
+        />
+      )}
       {/* Filter Tabs */}
       <div className="space-y-3">
         {/* Status Filter */}
@@ -149,13 +192,24 @@ export function SubscriptionList({ subscriptions }: SubscriptionListProps) {
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         {filteredSubscriptions.map((subscription) => (
           <Card key={subscription.id} variant="outlined" padding="md" className="relative group">
+            <div className="absolute top-4 left-4 z-10">
+              <label className="cursor-pointer" onClick={(e) => e.stopPropagation()}>
+                <input
+                  type="checkbox"
+                  checked={selection.isSelected(subscription.id)}
+                  onChange={() => selection.toggle(subscription.id)}
+                  className="w-4 h-4 rounded border-[var(--color-border)] text-[var(--color-primary)] focus:ring-[var(--color-primary)] cursor-pointer"
+                  onClick={(e) => e.stopPropagation()}
+                />
+              </label>
+            </div>
             {loading === subscription.id && (
               <div className="absolute inset-0 bg-[var(--color-surface)]/80 flex items-center justify-center rounded-[var(--radius-lg)] z-10">
                 <div className="w-6 h-6 border-2 border-[var(--color-primary)] border-t-transparent rounded-full animate-spin" />
               </div>
             )}
             
-            <div className="flex items-start justify-between">
+            <div className="flex items-start justify-between pl-8">
               <div className="flex items-start gap-3">
                 <div className="w-10 h-10 rounded-[var(--radius-md)] bg-[var(--color-surface-sunken)] flex items-center justify-center text-xl">
                   {typeIcons[subscription.subscription_type || 'Other']}

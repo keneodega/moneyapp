@@ -267,6 +267,20 @@ export class BudgetService {
     }
   }
 
+  async deleteMany(ids: string[]): Promise<void> {
+    await this.getUserId();
+    if (ids.length === 0) return;
+
+    const { error } = await this.supabase
+      .from('budgets')
+      .delete()
+      .in('id', ids);
+
+    if (error) {
+      throw new Error(`Failed to delete budgets: ${error.message}`);
+    }
+  }
+
   /**
    * Check if a budget has remaining funds
    */

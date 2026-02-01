@@ -1,6 +1,6 @@
 import Link from 'next/link';
-import { Card } from '@/components/ui';
 import { createSupabaseServerClient } from '@/lib/supabase/server';
+import { MonthsList } from './MonthsList';
 
 interface MonthData {
   id: string;
@@ -115,22 +115,6 @@ function groupByYear(months: MonthData[]): Record<string, MonthData[]> {
   }, {} as Record<string, MonthData[]>);
 }
 
-function formatCurrency(amount: number): string {
-  return new Intl.NumberFormat('en-IE', {
-    style: 'currency',
-    currency: 'EUR',
-    minimumFractionDigits: 0,
-    maximumFractionDigits: 0,
-  }).format(amount);
-}
-
-function isCurrentMonth(startDate: string, endDate: string): boolean {
-  const now = new Date();
-  const start = new Date(startDate);
-  const end = new Date(endDate);
-  return now >= start && now <= end;
-}
-
 export default async function MonthsPage() {
   const months = await getMonths();
   const groupedMonths = groupByYear(months);
@@ -156,84 +140,7 @@ export default async function MonthsPage() {
       </div>
 
       {/* Months by Year */}
-      {years.map((year, yearIndex) => (
-        <section key={year} className={`animate-slide-up stagger-${yearIndex + 1}`}>
-          <h2 className="text-headline text-[var(--color-text)] mb-4">{year}</h2>
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            {groupedMonths[year].map((month, monthIndex) => {
-              const isCurrent = isCurrentMonth(month.start_date, month.end_date);
-              const spentPercent = month.total_budgeted 
-                ? ((month.total_spent || 0) / month.total_budgeted) * 100 
-                : 0;
-              
-              return (
-                <Link 
-                  key={month.id} 
-                  href={`/months/${month.id}`}
-                  className={`animate-slide-up stagger-${monthIndex + 1}`}
-                >
-                  <Card 
-                    variant={isCurrent ? 'raised' : 'outlined'} 
-                    hover 
-                    padding="md"
-                    className={isCurrent ? 'ring-2 ring-[var(--color-primary)]/30' : ''}
-                  >
-                    <div className="flex items-start justify-between mb-4">
-                      <div>
-                        <h3 className="text-title text-[var(--color-text)]">{month.name}</h3>
-                        {isCurrent && (
-                          <span className="inline-flex items-center gap-1 mt-1 px-2 py-0.5 rounded-full bg-[var(--color-primary)]/10 text-[var(--color-primary)] text-caption font-medium">
-                            <span className="w-1.5 h-1.5 rounded-full bg-[var(--color-primary)] animate-pulse" />
-                            Current
-                          </span>
-                        )}
-                      </div>
-                      <ChevronRightIcon className="w-5 h-5 text-[var(--color-text-subtle)]" />
-                    </div>
-
-                    {/* Stats */}
-                    <div className="space-y-3">
-                      <div className="flex justify-between items-center">
-                        <span className="text-small text-[var(--color-text-muted)]">Income</span>
-                        <span className="text-small font-medium text-[var(--color-success)] tabular-nums">
-                          {formatCurrency(month.total_income || 0)}
-                        </span>
-                      </div>
-                      
-                      <div className="flex justify-between items-center">
-                        <span className="text-small text-[var(--color-text-muted)]">Budgeted</span>
-                        <span className="text-small font-medium text-[var(--color-text)] tabular-nums">
-                          {formatCurrency(month.total_budgeted || 0)}
-                        </span>
-                      </div>
-
-                      {/* Progress */}
-                      <div className="pt-2">
-                        <div className="flex justify-between items-center mb-1.5">
-                          <span className="text-caption text-[var(--color-text-muted)]">Spent</span>
-                          <span className="text-caption text-[var(--color-text-muted)] tabular-nums">
-                            {spentPercent.toFixed(0)}%
-                          </span>
-                        </div>
-                        <div className="h-2 bg-[var(--color-surface-sunken)] rounded-full overflow-hidden">
-                          <div 
-                            className={`h-full rounded-full transition-all duration-500 ${
-                              spentPercent >= 100 ? 'bg-[var(--color-danger)]' :
-                              spentPercent >= 80 ? 'bg-[var(--color-warning)]' :
-                              'bg-[var(--color-accent)]'
-                            }`}
-                            style={{ width: `${Math.min(100, spentPercent)}%` }}
-                          />
-                        </div>
-                      </div>
-                    </div>
-                  </Card>
-                </Link>
-              );
-            })}
-          </div>
-        </section>
-      ))}
+      <MonthsList months={months} groupedByYear={groupedMonths} years={years} />
 
       {/* Empty State */}
       {months.length === 0 && (
@@ -263,14 +170,6 @@ function PlusIcon({ className }: { className?: string }) {
   return (
     <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
       <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
-    </svg>
-  );
-}
-
-function ChevronRightIcon({ className }: { className?: string }) {
-  return (
-    <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-      <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" />
     </svg>
   );
 }
