@@ -412,6 +412,7 @@ export class BudgetService {
 
   /**
    * Get trends for a master budget across time periods
+   * Matches budgets by master_budget_id or by name (for budgets not yet linked)
    */
   async getTrendsByMasterBudget(
     masterBudgetId: string,
@@ -419,17 +420,44 @@ export class BudgetService {
   ): Promise<BudgetTrend[]> {
     await this.getUserId();
 
-    // Get all budgets for this master budget
-    const { data: budgets, error: budgetsError } = await this.supabase
-      .from('budgets')
-      .select('id, budget_amount, monthly_overview_id')
-      .eq('master_budget_id', masterBudgetId);
+    // Fetch master budget to get name (for fallback matching)
+    const { data: masterBudget, error: masterError } = await this.supabase
+      .from('master_budgets')
+      .select('id, name')
+      .eq('id', masterBudgetId)
+      .single();
 
-    if (budgetsError) {
-      throw new Error(`Failed to fetch budgets: ${budgetsError.message}`);
+    if (masterError || !masterBudget) {
+      throw new Error(`Failed to fetch master budget: ${masterError?.message ?? 'Not found'}`);
     }
 
-    if (!budgets || budgets.length === 0) {
+    // Get budgets linked by master_budget_id
+    const { data: budgetsById, error: budgetsByIdError } = await this.supabase
+      .from('budgets')
+      .select('id, budget_amount, override_amount, monthly_overview_id')
+      .eq('master_budget_id', masterBudgetId);
+
+    if (budgetsByIdError) {
+      throw new Error(`Failed to fetch budgets: ${budgetsByIdError.message}`);
+    }
+
+    // Get budgets matched by name (when master_budget_id is null) - same user via RLS
+    const { data: budgetsByName, error: budgetsByNameError } = await this.supabase
+      .from('budgets')
+      .select('id, budget_amount, override_amount, monthly_overview_id')
+      .eq('name', masterBudget.name)
+      .is('master_budget_id', null);
+
+    if (budgetsByNameError) {
+      throw new Error(`Failed to fetch budgets by name: ${budgetsByNameError.message}`);
+    }
+
+    // Merge and deduplicate by id (prioritize master_budget_id match)
+    const seenIds = new Set((budgetsById || []).map((b) => b.id));
+    const budgetsByNameFiltered = (budgetsByName || []).filter((b) => !seenIds.has(b.id));
+    const budgets = [...(budgetsById || []), ...budgetsByNameFiltered];
+
+    if (budgets.length === 0) {
       return [];
     }
 
@@ -485,8 +513,9 @@ export class BudgetService {
         periodKey = String(startDate.getFullYear());
       }
 
+      const effectiveAmount = Number((budget as { override_amount?: number | null }).override_amount ?? budget.budget_amount ?? 0);
       const existing = trendsMap.get(periodKey) || { budgeted: 0, spent: 0, period: periodKey };
-      existing.budgeted += Number(budget.budget_amount || 0);
+      existing.budgeted += effectiveAmount;
 
       // Add expenses for this budget
       const budgetExpenses = expenses?.filter((e) => e.budget_id === budget.id) || [];
