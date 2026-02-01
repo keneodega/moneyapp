@@ -84,7 +84,7 @@ export default function NewMonthPage() {
         return;
       }
 
-      // Use the service to create the month (which will auto-add subscriptions as budgets)
+      // Use the service to create the month (no subscription budgets are added)
       const service = new MonthlyOverviewService(supabase);
       const data = await service.create({
         name: formData.name,

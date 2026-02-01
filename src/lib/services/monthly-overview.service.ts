@@ -57,11 +57,10 @@ export class MonthlyOverviewService {
   }
 
   /**
-   * Create a new monthly overview with default budget categories
-   * 
-   * Business Rule: Auto-create 13 default budget categories
-   * This replicates the Salesforce Flow "Budget_Automation"
-   * 
+   * Create a new monthly overview.
+   * Default budget categories (if any) are created by the database trigger only.
+   * No subscription-based budget categories (e.g. from subscriptions table) are added here.
+   *
    * @param data - Monthly overview data (name, start_date, end_date)
    * @returns The created monthly overview
    */
