@@ -396,6 +396,17 @@ export default async function MonthDetailPage({
     value: Number(b.override_amount ?? b.budget_amount ?? 0),
   })).filter((d) => d.value > 0);
 
+  // Fixed budgets + subscriptions: total budget minus Tithe, Offering, Drawdown, plus subscriptions
+  const EXCLUDE_FROM_FIXED_BUDGETS = ['tithe', 'offering', 'drawdown'];
+  const excludedFromFixed = (budgets || []).reduce((sum, b) => {
+    const name = (b.name || '').trim().toLowerCase();
+    if (EXCLUDE_FROM_FIXED_BUDGETS.includes(name)) {
+      return sum + Number(b.override_amount ?? b.budget_amount ?? 0);
+    }
+    return sum;
+  }, 0);
+  const fixedBudgetsPlusSubscriptions = totalBudgeted - excludedFromFixed + (totalSubscriptions ?? 0);
+
   // Income breakdown: budget, subscriptions, goal contributions, unallocated
   const subsTotal = totalSubscriptions ?? 0;
   const goalTotal = totalGoalContributions ?? 0;
@@ -470,13 +481,14 @@ export default async function MonthDetailPage({
           </div>
         </Card>
 
-        {/* Budget + Subscriptions */}
+        {/* Fixed budgets + Subscriptions (excludes Tithe, Offering, Drawdown) */}
         <Card variant="raised" padding="md" className="animate-slide-up stagger-2">
           <div className="flex items-start justify-between">
             <div>
               <p className="text-small text-[var(--color-text-muted)]">Budget + Subscriptions</p>
+              <p className="text-caption text-[var(--color-text-subtle)] mt-0.5">Fixed categories + subscriptions</p>
               <p className="text-headline text-[var(--color-text)] mt-1 tabular-nums">
-                {formatCurrency(totalBudgeted + (totalSubscriptions ?? 0))}
+                {formatCurrency(fixedBudgetsPlusSubscriptions)}
               </p>
             </div>
             <div className="w-10 h-10 rounded-[var(--radius-md)] bg-[var(--color-primary)]/10 flex items-center justify-center">
