@@ -6,9 +6,10 @@ import Link from 'next/link';
 import { Card, Button, Input, Select, Textarea } from '@/components/ui';
 import { createSupabaseBrowserClient } from '@/lib/supabase/client';
 import { SettingsService, IncomeSourceService } from '@/lib/services';
-import { filterValidPaymentMethods, DEFAULT_PAYMENT_METHODS } from '@/lib/utils/payment-methods';
+import { DEFAULT_PAYMENT_METHODS, validateBankType } from '@/lib/utils/payment-methods';
 
-const INCOME_SOURCES = [
+// Default fallbacks when no settings
+const DEFAULT_INCOME_SOURCES = [
   { value: 'Salary', label: 'Salary' },
   { value: 'Freelance', label: 'Freelance' },
   { value: 'Side Hustle', label: 'Side Hustle' },
@@ -17,6 +18,8 @@ const INCOME_SOURCES = [
   { value: 'Refund', label: 'Refund' },
   { value: 'Other', label: 'Other' },
 ];
+
+const VALID_INCOME_SOURCE_TYPES = ['Salary', 'Freelance', 'Side Hustle', 'Investment', 'Gift', 'Refund', 'Other'] as const;
 
 // Default fallbacks
 const DEFAULT_PERSONS = [
@@ -54,6 +57,7 @@ export default function NewIncomePage({
   const [error, setError] = useState<string | null>(null);
   const [persons, setPersons] = useState(DEFAULT_PERSONS);
   const [banks, setBanks] = useState(DEFAULT_BANKS);
+  const [incomeSources, setIncomeSources] = useState<{ value: string; label: string }[]>(DEFAULT_INCOME_SOURCES);
   const [formData, setFormData] = useState<FormData>({
     amount: '',
     source: 'Salary',
@@ -65,16 +69,17 @@ export default function NewIncomePage({
     description: '',
   });
 
-  // Load custom settings for persons and payment methods
+  // Load custom settings for persons, payment methods, and income sources
   useEffect(() => {
     async function loadSettings() {
       try {
         const supabase = createSupabaseBrowserClient();
         const settingsService = new SettingsService(supabase);
         
-        const [loadedPersons, loadedBanks] = await Promise.all([
+        const [loadedPersons, loadedBanks, loadedIncomeSources] = await Promise.all([
           settingsService.getPeople(),
           settingsService.getPaymentMethods(),
+          settingsService.getIncomeSources(),
         ]);
 
         if (loadedPersons.length > 0) {
@@ -84,19 +89,26 @@ export default function NewIncomePage({
           setFormData(prev => ({ ...prev, person: DEFAULT_PERSONS[0].value }));
         }
 
-        // Filter to only valid bank_type enum values
-        const validBanks = loadedBanks.length > 0 
-          ? filterValidPaymentMethods(loadedBanks)
-          : DEFAULT_BANKS;
-        setBanks(validBanks);
-        setFormData(prev => ({ ...prev, bank: validBanks[0].value }));
+        // Use raw payment methods for display (submit will map to valid bank_type)
+        const banksToUse = loadedBanks.length > 0 ? loadedBanks : DEFAULT_BANKS;
+        setBanks(banksToUse);
+        setFormData(prev => ({ ...prev, bank: banksToUse[0].value }));
+
+        if (loadedIncomeSources.length > 0) {
+          setIncomeSources(loadedIncomeSources);
+          setFormData(prev => ({ ...prev, source: loadedIncomeSources[0].value }));
+        } else {
+          setIncomeSources(DEFAULT_INCOME_SOURCES);
+          setFormData(prev => ({ ...prev, source: DEFAULT_INCOME_SOURCES[0].value }));
+        }
       } catch (err) {
         console.error('Failed to load settings:', err);
         // Use defaults
         setFormData(prev => ({ 
           ...prev, 
           person: DEFAULT_PERSONS[0].value,
-          bank: DEFAULT_BANKS[0].value 
+          bank: DEFAULT_BANKS[0].value,
+          source: DEFAULT_INCOME_SOURCES[0].value,
         }));
       }
     }
@@ -146,62 +158,23 @@ export default function NewIncomePage({
         return;
       }
 
-      // 1. Insert the income source using the service (which will auto-create budgets)
+      // Map source to valid IncomeSourceType (DB enum); unknown values use 'Other'
+      const sourceValue = VALID_INCOME_SOURCE_TYPES.includes(formData.source as any)
+        ? formData.source
+        : 'Other';
+
+      // 1. Insert the income source using the service (which will auto-create/update Tithe/Offering budgets)
       const incomeService = new IncomeSourceService(supabase);
       await incomeService.create({
         monthly_overview_id: monthId,
         amount: calculations.amount,
-        source: formData.source as any,
+        source: sourceValue as any,
         person: formData.person || null,
-        bank: formData.bank || null,
+        bank: validateBankType(formData.bank) ?? null,
         date_paid: formData.date_paid,
         tithe_deduction: formData.auto_tithe || formData.auto_offering,
         description: formData.description || null,
       });
-
-      // 2. If auto-tithe is enabled, create expense in Tithe budget
-      if (formData.auto_tithe && calculations.titheAmount > 0) {
-        // Find the Tithe budget for this month
-        const { data: titheBudget } = await supabase
-          .from('budgets')
-          .select('id')
-          .eq('monthly_overview_id', monthId)
-          .eq('name', 'Tithe')
-          .single();
-
-        if (titheBudget) {
-          await supabase.from('expenses').insert({
-            budget_id: titheBudget.id,
-            user_id: user.id,
-            amount: calculations.titheAmount,
-            date: formData.date_paid,
-            description: `Tithe (10%) from ${formData.source} - ${formData.person}`,
-            bank: formData.bank,
-          });
-        }
-      }
-
-      // 3. If auto-offering is enabled, create expense in Offering budget
-      if (formData.auto_offering && calculations.offeringAmount > 0) {
-        // Find the Offering budget for this month
-        const { data: offeringBudget } = await supabase
-          .from('budgets')
-          .select('id')
-          .eq('monthly_overview_id', monthId)
-          .eq('name', 'Offering')
-          .single();
-
-        if (offeringBudget) {
-          await supabase.from('expenses').insert({
-            budget_id: offeringBudget.id,
-            user_id: user.id,
-            amount: calculations.offeringAmount,
-            date: formData.date_paid,
-            description: `Offering (5%) from ${formData.source} - ${formData.person}`,
-            bank: formData.bank,
-          });
-        }
-      }
 
       router.push(`/months/${monthId}`);
       router.refresh();
@@ -268,7 +241,7 @@ export default function NewIncomePage({
               name="source"
               value={formData.source}
               onChange={handleChange}
-              options={INCOME_SOURCES}
+              options={incomeSources}
               required
             />
             <Select

@@ -310,42 +310,15 @@ export function TransferDialogProvider({ children }: { children: ReactNode }) {
                   {mode === 'transfer' && (
                     <>
                       <div className="mb-4">
-                        <label className="block text-small font-medium text-[var(--color-text)] mb-2">Source</label>
+                        <label className="block text-small font-medium text-[var(--color-text)] mb-2">From budget</label>
                         <Select
-                          name="sourceType"
-                          value={formData.sourceType}
+                          name="fromBudgetId"
+                          value={formData.fromBudgetId}
                           onChange={handleChange}
-                          options={[
-                            { value: 'budget', label: 'Budget category' },
-                            { value: 'goal', label: 'Goal' },
-                          ]}
+                          options={budgets.map(b => ({ value: b.id, label: `${b.name} (€${b.amount_left.toFixed(0)} left)` }))}
                           disabled={isLoading}
                         />
                       </div>
-                      {formData.sourceType === 'budget' && (
-                        <div className="mb-4">
-                          <label className="block text-small font-medium text-[var(--color-text)] mb-2">From budget</label>
-                          <Select
-                            name="fromBudgetId"
-                            value={formData.fromBudgetId}
-                            onChange={handleChange}
-                            options={budgets.map(b => ({ value: b.id, label: `${b.name} (€${b.amount_left.toFixed(0)} left)` }))}
-                            disabled={isLoading}
-                          />
-                        </div>
-                      )}
-                      {formData.sourceType === 'goal' && (
-                        <div className="mb-4">
-                          <label className="block text-small font-medium text-[var(--color-text)] mb-2">From goal</label>
-                          <Select
-                            name="fromGoalId"
-                            value={formData.fromGoalId}
-                            onChange={handleChange}
-                            options={goals.map(g => ({ value: g.id, label: `${g.name} (€${g.current_amount.toFixed(0)})` }))}
-                            disabled={isLoading}
-                          />
-                        </div>
-                      )}
                       <div className="mb-4">
                         <label className="block text-small font-medium text-[var(--color-text)] mb-2">To budget</label>
                         <Select

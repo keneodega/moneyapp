@@ -138,32 +138,34 @@ export class IncomeSourceService {
       }
     }
 
-    // If tithe/offering is selected, ensure Tithe and Offering budgets exist
+    // If tithe/offering is selected, ensure Tithe and Offering budgets exist with calculated amounts (10% and 5%); no expenses created
     if (incomeSource.tithe_deduction) {
+      const titheAmount = incomeSource.amount * 0.1;
+      const offeringAmount = incomeSource.amount * 0.05;
       try {
         const budgetService = new BudgetService(this.supabase);
         const masterBudgetService = new MasterBudgetService(this.supabase);
 
-        // Check for Tithe budget
+        // Tithe budget: create or add 10% of this income to existing
         const { data: titheBudget } = await this.supabase
           .from('budgets')
-          .select('id')
+          .select('id, budget_amount')
           .eq('monthly_overview_id', incomeSource.monthly_overview_id)
           .eq('name', 'Tithe')
           .maybeSingle();
 
-        if (!titheBudget) {
-          // Try to find Tithe master budget first
+        if (titheBudget) {
+          const newAmount = Number(titheBudget.budget_amount ?? 0) + titheAmount;
+          await this.supabase.from('budgets').update({ budget_amount: newAmount }).eq('id', titheBudget.id);
+        } else {
           const masterBudgets = await masterBudgetService.getAll(true);
           const titheMaster = masterBudgets.find(mb => mb.name.toLowerCase() === 'tithe');
-          
           if (titheMaster) {
-            // Create from master budget
             try {
               await budgetService.create({
                 monthly_overview_id: incomeSource.monthly_overview_id,
                 name: titheMaster.name,
-                budget_amount: titheMaster.budget_amount,
+                budget_amount: titheAmount,
                 master_budget_id: titheMaster.id,
                 description: titheMaster.description || null,
               });
@@ -171,9 +173,6 @@ export class IncomeSourceService {
               console.warn('Failed to create Tithe budget from master:', err);
             }
           } else {
-            // Create standalone Tithe budget with default amount
-            // Default to 10% of the income amount, or a reasonable minimum
-            const titheAmount = Math.max(incomeSource.amount * 0.1, 100);
             try {
               await budgetService.create({
                 monthly_overview_id: incomeSource.monthly_overview_id,
@@ -187,26 +186,26 @@ export class IncomeSourceService {
           }
         }
 
-        // Check for Offering budget
+        // Offering budget: create or add 5% of this income to existing
         const { data: offeringBudget } = await this.supabase
           .from('budgets')
-          .select('id')
+          .select('id, budget_amount')
           .eq('monthly_overview_id', incomeSource.monthly_overview_id)
           .eq('name', 'Offering')
           .maybeSingle();
 
-        if (!offeringBudget) {
-          // Try to find Offering master budget first
+        if (offeringBudget) {
+          const newAmount = Number(offeringBudget.budget_amount ?? 0) + offeringAmount;
+          await this.supabase.from('budgets').update({ budget_amount: newAmount }).eq('id', offeringBudget.id);
+        } else {
           const masterBudgets = await masterBudgetService.getAll(true);
           const offeringMaster = masterBudgets.find(mb => mb.name.toLowerCase() === 'offering');
-          
           if (offeringMaster) {
-            // Create from master budget
             try {
               await budgetService.create({
                 monthly_overview_id: incomeSource.monthly_overview_id,
                 name: offeringMaster.name,
-                budget_amount: offeringMaster.budget_amount,
+                budget_amount: offeringAmount,
                 master_budget_id: offeringMaster.id,
                 description: offeringMaster.description || null,
               });
@@ -214,9 +213,6 @@ export class IncomeSourceService {
               console.warn('Failed to create Offering budget from master:', err);
             }
           } else {
-            // Create standalone Offering budget with default amount
-            // Default to 5% of the income amount, or a reasonable minimum
-            const offeringAmount = Math.max(incomeSource.amount * 0.05, 50);
             try {
               await budgetService.create({
                 monthly_overview_id: incomeSource.monthly_overview_id,
@@ -231,7 +227,7 @@ export class IncomeSourceService {
         }
       } catch (err) {
         // Don't fail income creation if budget creation fails
-        console.error('Failed to create Tithe/Offering budgets:', err);
+        console.error('Failed to create/update Tithe/Offering budgets:', err);
       }
     }
 

@@ -9,7 +9,7 @@ import { SettingsService } from '@/lib/services';
 import { exportAllData } from '@/lib/utils/export';
 import type { AppSetting } from '@/lib/services/settings.service';
 
-type SettingType = 'payment_method' | 'person' | 'subscription_type';
+type SettingType = 'payment_method' | 'person' | 'subscription_type' | 'income_source';
 
 const SETTING_LABELS: Record<SettingType, { title: string; description: string }> = {
   payment_method: {
@@ -24,6 +24,10 @@ const SETTING_LABELS: Record<SettingType, { title: string; description: string }
     title: 'Subscription Types',
     description: 'Categories for organizing your subscriptions',
   },
+  income_source: {
+    title: 'Income Sources',
+    description: 'Types of income (e.g. Salary, Freelance) used when adding income',
+  },
 };
 
 export default function SettingsPage() {
@@ -34,6 +38,7 @@ export default function SettingsPage() {
     payment_method: [],
     person: [],
     subscription_type: [],
+    income_source: [],
   });
   const [isLoading, setIsLoading] = useState(true);
   const [tableExists, setTableExists] = useState(true);
@@ -41,6 +46,7 @@ export default function SettingsPage() {
     payment_method: '',
     person: '',
     subscription_type: '',
+    income_source: '',
   });
   const [saving, setSaving] = useState<string | null>(null);
   const [isExporting, setIsExporting] = useState(false);
@@ -89,6 +95,7 @@ export default function SettingsPage() {
           payment_method: allSettings.payment_method || [],
           person: allSettings.person || [],
           subscription_type: allSettings.subscription_type || [],
+          income_source: allSettings.income_source || [],
         });
       } catch (error) {
         console.error('Failed to load settings:', error);

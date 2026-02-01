@@ -396,6 +396,17 @@ export default async function MonthDetailPage({
     value: Number(b.override_amount ?? b.budget_amount ?? 0),
   })).filter((d) => d.value > 0);
 
+  // Income breakdown: budget, subscriptions, goal contributions, unallocated
+  const subsTotal = totalSubscriptions ?? 0;
+  const goalTotal = totalGoalContributions ?? 0;
+  const unallocatedTotal = totalIncome - totalBudgeted - subsTotal - goalTotal;
+  const incomeBreakdownData = [
+    { name: 'Budget', value: totalBudgeted },
+    { name: 'Subscriptions', value: subsTotal },
+    { name: 'Goal contributions', value: goalTotal },
+    { name: 'Unallocated', value: Math.max(0, unallocatedTotal) },
+  ].filter((d) => d.value > 0);
+
   return (
     <div className="space-y-8 animate-fade-in">
       {/* Header */}
@@ -452,6 +463,21 @@ export default async function MonthDetailPage({
                   {overallBudgetedChange > 0 ? '↑' : overallBudgetedChange < 0 ? '↓' : ''} {overallBudgetedChange > 0 ? '+' : ''}{overallBudgetedChange.toFixed(1)}% vs {previousMonth?.name}
                 </p>
               )}
+            </div>
+            <div className="w-10 h-10 rounded-[var(--radius-md)] bg-[var(--color-primary)]/10 flex items-center justify-center">
+              <PieChartIcon className="w-5 h-5 text-[var(--color-primary)]" />
+            </div>
+          </div>
+        </Card>
+
+        {/* Budget + Subscriptions */}
+        <Card variant="raised" padding="md" className="animate-slide-up stagger-2">
+          <div className="flex items-start justify-between">
+            <div>
+              <p className="text-small text-[var(--color-text-muted)]">Budget + Subscriptions</p>
+              <p className="text-headline text-[var(--color-text)] mt-1 tabular-nums">
+                {formatCurrency(totalBudgeted + (totalSubscriptions ?? 0))}
+              </p>
             </div>
             <div className="w-10 h-10 rounded-[var(--radius-md)] bg-[var(--color-primary)]/10 flex items-center justify-center">
               <PieChartIcon className="w-5 h-5 text-[var(--color-primary)]" />
@@ -550,19 +576,21 @@ export default async function MonthDetailPage({
         </Card>
 
         {/* Goal Contributions */}
-        <Card variant="raised" padding="md" className="animate-slide-up stagger-5">
-          <div className="flex items-start justify-between">
-            <div>
-              <p className="text-small text-[var(--color-text-muted)]">Goal Contributions</p>
-              <p className="text-headline text-[var(--color-primary)] mt-1 tabular-nums">
-                {formatCurrency(totalGoalContributions)}
-              </p>
+        <Link href="/goals">
+          <Card variant="raised" padding="md" className="animate-slide-up stagger-5 hover:border-[var(--color-primary)]/30 transition-colors cursor-pointer">
+            <div className="flex items-start justify-between">
+              <div>
+                <p className="text-small text-[var(--color-text-muted)]">Goal Contributions</p>
+                <p className="text-headline text-[var(--color-primary)] mt-1 tabular-nums">
+                  {formatCurrency(totalGoalContributions)}
+                </p>
+              </div>
+              <div className="w-10 h-10 rounded-[var(--radius-md)] bg-[var(--color-primary)]/10 flex items-center justify-center">
+                <TargetIcon className="w-5 h-5 text-[var(--color-primary)]" />
+              </div>
             </div>
-            <div className="w-10 h-10 rounded-[var(--radius-md)] bg-[var(--color-primary)]/10 flex items-center justify-center">
-              <TargetIcon className="w-5 h-5 text-[var(--color-primary)]" />
-            </div>
-          </div>
-        </Card>
+          </Card>
+        </Link>
       </div>
 
       {/* Main Content Grid */}
@@ -602,6 +630,23 @@ export default async function MonthDetailPage({
               </h3>
               <PieChart
                 data={pieData}
+                showLegend={true}
+                showLabels={false}
+                height={360}
+                innerRadius={70}
+                outerRadius={120}
+              />
+            </Card>
+          )}
+
+          {/* Income breakdown pie chart */}
+          {incomeBreakdownData.length > 0 && totalIncome > 0 && (
+            <Card variant="outlined" padding="md">
+              <h3 className="text-small font-medium text-[var(--color-text-muted)] mb-4">
+                Income breakdown
+              </h3>
+              <PieChart
+                data={incomeBreakdownData}
                 showLegend={true}
                 showLabels={false}
                 height={360}

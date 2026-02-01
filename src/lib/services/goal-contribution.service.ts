@@ -42,7 +42,8 @@ export class GoalContributionService {
   }
 
   /**
-   * Get monthly overview with income and budget totals
+   * Get monthly overview with income, budget, subscription, and contribution totals.
+   * Available income = income - total budgets - total subscriptions - total contributions.
    */
   private async getMonthlyOverviewWithTotals(monthlyOverviewId: string): Promise<{
     overview: MonthlyOverview;
@@ -114,8 +115,21 @@ export class GoalContributionService {
       return sum + (isNaN(amount) ? 0 : amount);
     }, 0) || 0;
 
-    // Available income = total income - total budgeted - total contributions
-    const availableIncome = totalIncome - totalBudgeted - totalContributions;
+    // Total subscriptions due this month (monthly equivalent cost)
+    let totalSubscriptions = 0;
+    try {
+      const { SubscriptionService } = await import('./subscription.service');
+      const subscriptionService = new SubscriptionService(this.supabase);
+      totalSubscriptions = await subscriptionService.getTotalMonthlyCostForDateRange(
+        overview.start_date,
+        overview.end_date
+      );
+    } catch {
+      // Non-fatal; leave at 0
+    }
+
+    // Available income = income - total budgets - total subscriptions - total contributions
+    const availableIncome = totalIncome - totalBudgeted - totalSubscriptions - totalContributions;
 
     return {
       overview,

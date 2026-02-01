@@ -75,6 +75,7 @@ export function BudgetCategoriesList({
   const [typeFilter, setTypeFilter] = useState<TypeFilter>('all');
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('all');
   const [showFilters, setShowFilters] = useState(false);
+  const [selectionModeActive, setSelectionModeActive] = useState(false);
   const router = useRouter();
 
   const selection = useSelection(budgets);
@@ -88,6 +89,7 @@ export function BudgetCategoriesList({
       const service = new BudgetService(supabase);
       await service.deleteMany(selection.selectedIds);
       selection.clear();
+      setSelectionModeActive(false);
       router.refresh();
     } catch (error) {
       console.error('Failed to delete budgets:', error);
@@ -169,15 +171,34 @@ export function BudgetCategoriesList({
     <div className="space-y-3">
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 flex-wrap">
         <div className="flex items-center gap-4 flex-wrap">
-          <label className="flex items-center gap-2 cursor-pointer text-small text-[var(--color-text-muted)] hover:text-[var(--color-text)]">
-            <input
-              type="checkbox"
-              checked={selection.isAllSelected}
-              onChange={selection.toggleAll}
-              className="w-4 h-4 rounded border-[var(--color-border)] text-[var(--color-primary)] focus:ring-[var(--color-primary)] cursor-pointer"
-            />
-            {selection.isAllSelected ? 'Deselect all' : 'Select all'}
-          </label>
+          {selectionModeActive ? (
+            <>
+              <label className="flex items-center gap-2 cursor-pointer text-small text-[var(--color-text-muted)] hover:text-[var(--color-text)]">
+                <input
+                  type="checkbox"
+                  checked={selection.isAllSelected}
+                  onChange={selection.toggleAll}
+                  className="w-4 h-4 rounded border-[var(--color-border)] text-[var(--color-primary)] focus:ring-[var(--color-primary)] cursor-pointer"
+                />
+                {selection.isAllSelected ? 'Deselect all' : 'Select all'}
+              </label>
+              <button
+                type="button"
+                onClick={() => { setSelectionModeActive(false); selection.clear(); }}
+                className="h-8 px-3 rounded-[var(--radius-md)] text-small font-medium text-[var(--color-text-muted)] hover:text-[var(--color-text)] border border-[var(--color-border)] hover:bg-[var(--color-surface-sunken)]"
+              >
+                Done
+              </button>
+            </>
+          ) : (
+            <button
+              type="button"
+              onClick={() => { setSelectionModeActive(true); selection.selectAll(); }}
+              className="inline-flex items-center gap-2 h-8 px-3 rounded-[var(--radius-md)] text-small font-medium text-[var(--color-text-muted)] hover:text-[var(--color-text)] border border-[var(--color-border)] hover:bg-[var(--color-surface-sunken)]"
+            >
+              Select all
+            </button>
+          )}
           <button
             type="button"
             onClick={() => setShowFilters(!showFilters)}
@@ -271,7 +292,7 @@ export function BudgetCategoriesList({
         </div>
       )}
 
-      {selection.isSomeSelected && (
+      {selectionModeActive && selection.isSomeSelected && (
         <BulkActionsBar
           selectedCount={selection.selectedCount}
           itemLabel="categories"
@@ -312,15 +333,17 @@ export function BudgetCategoriesList({
 
           return (
             <div key={budget.id} className="flex gap-3">
-              <label className="flex-shrink-0 pt-4 cursor-pointer" onClick={(e) => e.stopPropagation()}>
-                <input
-                  type="checkbox"
-                  checked={selection.isSelected(budget.id)}
-                  onChange={() => selection.toggle(budget.id)}
-                  className="w-4 h-4 rounded border-[var(--color-border)] text-[var(--color-primary)] focus:ring-[var(--color-primary)] cursor-pointer"
-                  onClick={(e) => e.stopPropagation()}
-                />
-              </label>
+              {selectionModeActive && (
+                <label className="flex-shrink-0 pt-4 cursor-pointer" onClick={(e) => e.stopPropagation()}>
+                  <input
+                    type="checkbox"
+                    checked={selection.isSelected(budget.id)}
+                    onChange={() => selection.toggle(budget.id)}
+                    className="w-4 h-4 rounded border-[var(--color-border)] text-[var(--color-primary)] focus:ring-[var(--color-primary)] cursor-pointer"
+                    onClick={(e) => e.stopPropagation()}
+                  />
+                </label>
+              )}
               <Link href={`/months/${monthId}/budgets/${budget.id}`} className="flex-1 min-w-0">
               <Card variant="outlined" padding="md" hover>
                 <div className="flex items-center justify-between mb-3">

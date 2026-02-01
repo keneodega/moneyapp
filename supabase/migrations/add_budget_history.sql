@@ -60,7 +60,10 @@ BEGIN
     SELECT user_id INTO v_user_id
     FROM monthly_overviews
     WHERE id = OLD.monthly_overview_id;
-    
+    -- When monthly_overview was cascade-deleted first (e.g. delete month), it no longer exists; use current user.
+    IF v_user_id IS NULL THEN
+      v_user_id := auth.uid();
+    END IF;
     INSERT INTO budget_history (budget_id, master_budget_id, monthly_overview_id, user_id, action, old_data, new_data)
     VALUES (OLD.id, OLD.master_budget_id, OLD.monthly_overview_id, v_user_id, 'deleted', to_jsonb(OLD), NULL);
     RETURN OLD;

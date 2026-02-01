@@ -18,7 +18,7 @@ import {
   BudgetInsert 
 } from '@/lib/supabase/database.types';
 import { NotFoundError, UnauthorizedError, ValidationError } from './errors';
-import { logMonthCreated, logError } from '@/lib/utils/logger';
+import { logMonthCreated } from '@/lib/utils/logger';
 
 /**
  * Default budget categories automatically created for each new month
@@ -102,40 +102,6 @@ export class MonthlyOverviewService {
     // If budgets table doesn't exist, log warning but don't fail
     if (countError && (countError.message.includes('does not exist') || countError.code === '42P01')) {
       console.warn('Budgets table does not exist. Please run the database schema migration.');
-    }
-
-    // Automatically add subscriptions as budget categories for this month
-    // Only add subscriptions that are due within this month's date range
-    try {
-      const { SubscriptionService } = await import('./subscription.service');
-      const subscriptionService = new SubscriptionService(this.supabase);
-      
-      // Check if the method exists (in case it's not deployed yet)
-      if (typeof (subscriptionService as any).createBudgetsFromSubscriptions === 'function') {
-        const result = await (subscriptionService as any).createBudgetsFromSubscriptions(
-          monthlyOverview.id,
-          monthlyOverview.start_date,
-          monthlyOverview.end_date
-        );
-        
-        if (result.created > 0) {
-          console.log(`Automatically created ${result.created} budget(s) from subscriptions for ${monthlyOverview.name}`);
-        }
-      }
-    } catch (error) {
-      // Don't fail month creation if subscription conversion fails
-      console.warn('Failed to automatically add subscriptions as budgets:', error);
-      logError(
-        error instanceof Error ? error : new Error(String(error)),
-        {
-          event: 'subscription.budget_conversion_failed',
-          metadata: {
-            monthlyOverviewId: monthlyOverview.id,
-            startDate: monthlyOverview.start_date,
-            endDate: monthlyOverview.end_date,
-          },
-        }
-      );
     }
 
     // Log successful month creation

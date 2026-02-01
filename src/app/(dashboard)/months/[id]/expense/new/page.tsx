@@ -6,7 +6,7 @@ import Link from 'next/link';
 import { Card, Button, Input, Select, Textarea } from '@/components/ui';
 import { createSupabaseBrowserClient } from '@/lib/supabase/client';
 import { SettingsService } from '@/lib/services';
-import { filterValidPaymentMethods, DEFAULT_PAYMENT_METHODS } from '@/lib/utils/payment-methods';
+import { DEFAULT_PAYMENT_METHODS, validateBankType } from '@/lib/utils/payment-methods';
 import { ExpenseSchema } from '@/lib/validation/schemas';
 import { useFormValidation } from '@/lib/hooks/useFormValidation';
 import { useFormToastActions } from '@/lib/hooks/useFormToast';
@@ -76,14 +76,12 @@ export default function NewExpensePage({
           }
         }
 
-        // Fetch payment methods from settings
+        // Fetch payment methods from settings (raw list for display; submit will map to valid bank_type)
         const settingsService = new SettingsService(supabase);
         const methods = await settingsService.getPaymentMethods();
-        // Filter to only valid bank_type enum values
-        const validMethods = methods.length > 0 
-          ? filterValidPaymentMethods(methods)
-          : DEFAULT_PAYMENT_METHODS;
-        setPaymentMethods(validMethods);
+        const methodsToUse = methods.length > 0 ? methods : DEFAULT_PAYMENT_METHODS;
+        setPaymentMethods(methodsToUse);
+        setFormData(prev => ({ ...prev, bank: prev.bank || methodsToUse[0]?.value ?? 'Revolut' }));
       } catch {
         // Silent fail - will use defaults
       }
@@ -175,7 +173,7 @@ export default function NewExpensePage({
           user_id: user.id,
           amount: expenseAmount,
           date: formData.date,
-          bank: formData.bank || null,
+          bank: validateBankType(formData.bank) ?? null,
           description: formData.description || null,
           is_recurring: false,
           recurring_frequency: null,
