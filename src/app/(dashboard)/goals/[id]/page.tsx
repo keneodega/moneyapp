@@ -1,7 +1,7 @@
 import Link from 'next/link';
 import { Card, Button, ProgressBar, Currency } from '@/components/ui';
 import { createSupabaseServerClient } from '@/lib/supabase/server';
-import { FinancialGoalService } from '@/lib/services';
+import { FinancialGoalService, GoalContributionService } from '@/lib/services';
 import { NotFoundError } from '@/lib/services/errors';
 import { Contributions } from './Contributions';
 import { Drawdowns } from './Drawdowns';
@@ -62,7 +62,7 @@ async function getGoal(id: string) {
   try {
     const supabase = await createSupabaseServerClient();
     const { data: { user } } = await supabase.auth.getUser();
-    
+
     if ( !user) {
       return null;
     }
@@ -77,13 +77,36 @@ async function getGoal(id: string) {
   }
 }
 
+async function getContributions(goalId: string) {
+  try {
+    const supabase = await createSupabaseServerClient();
+    const { data: { user } } = await supabase.auth.getUser();
+
+    if (!user) {
+      return [];
+    }
+
+    const contributionService = new GoalContributionService(supabase);
+    const contributions = await contributionService.getByGoal(goalId);
+
+    // Limit to latest 10
+    return contributions.slice(0, 10);
+  } catch (error) {
+    console.error('Error fetching contributions:', error);
+    return [];
+  }
+}
+
 export default async function GoalDetailPage({
   params,
 }: {
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
-  const goal = await getGoal(id);
+  const [goal, contributions] = await Promise.all([
+    getGoal(id),
+    getContributions(id),
+  ]);
 
   if ( !goal) {
     return (
@@ -265,7 +288,7 @@ export default async function GoalDetailPage({
           {/* Contributions */}
           <Card variant="outlined" padding="md">
             <h3 className="text-title text-[var(--color-text)] mb-4">Contributions</h3>
-            <Contributions goalId={id} />
+            <Contributions contributions={contributions} />
           </Card>
 
           {/* Transfers (out from this goal) */}

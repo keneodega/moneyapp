@@ -8,7 +8,7 @@ import { Currency } from './Currency';
 import { createSupabaseBrowserClient } from '@/lib/supabase/client';
 import { GoalContributionService } from '@/lib/services';
 import { SettingsService } from '@/lib/services';
-import { filterValidPaymentMethods, DEFAULT_PAYMENT_METHODS, validateBankType } from '@/lib/utils/payment-methods';
+import { DEFAULT_PAYMENT_METHODS, validateBankType } from '@/lib/utils/payment-methods';
 
 interface FundGoalDialogOptions {
   monthlyOverviewId: string;
@@ -103,15 +103,13 @@ export function FundGoalDialogProvider({ children }: { children: ReactNode }) {
         // Fetch payment methods from settings
         const settingsService = new SettingsService(supabase);
         const methods = await settingsService.getPaymentMethods();
-        // Filter to only valid bank_type enum values
-        const validMethods = methods.length > 0 
-          ? filterValidPaymentMethods(methods)
-          : DEFAULT_PAYMENT_METHODS;
-        setPaymentMethods(validMethods);
-        
-        // Set default bank if available (use filtered valid methods)
-        if (validMethods.length > 0 && !formData.bank) {
-          setFormData(prev => ({ ...prev, bank: validMethods[0].value }));
+        // Use payment methods from settings directly, fall back to defaults if none
+        const userMethods = methods.length > 0 ? methods : DEFAULT_PAYMENT_METHODS;
+        setPaymentMethods(userMethods);
+
+        // Set default bank if available
+        if (userMethods.length > 0 && !formData.bank) {
+          setFormData(prev => ({ ...prev, bank: userMethods[0].value }));
         } else if (!formData.bank) {
           setFormData(prev => ({ ...prev, bank: 'Revolut' }));
         }
