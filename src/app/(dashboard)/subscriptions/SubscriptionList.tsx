@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { Subscription, SubscriptionStatusType } from '@/lib/supabase/database.types';
@@ -9,6 +9,8 @@ import { createSupabaseBrowserClient } from '@/lib/supabase/client';
 import { Card, BulkActionsBar } from '@/components/ui';
 import { Currency } from '@/components/ui/Currency';
 import { useSelection } from '@/lib/hooks/useSelection';
+
+type SortOption = 'name_asc' | 'name_desc' | 'amount_asc' | 'amount_desc' | 'monthly_asc' | 'monthly_desc' | 'next_date_asc' | 'next_date_desc';
 
 interface SubscriptionListProps {
   subscriptions: Subscription[];
@@ -20,6 +22,17 @@ const statusColors: Record<SubscriptionStatusType, string> = {
   Cancelled: 'bg-red-500/10 text-red-400',
   Ended: 'bg-gray-500/10 text-gray-400',
 };
+
+const SORT_OPTIONS: { value: SortOption; label: string }[] = [
+  { value: 'name_asc', label: 'Name (A–Z)' },
+  { value: 'name_desc', label: 'Name (Z–A)' },
+  { value: 'amount_asc', label: 'Amount (Low–High)' },
+  { value: 'amount_desc', label: 'Amount (High–Low)' },
+  { value: 'monthly_asc', label: 'Monthly cost (Low–High)' },
+  { value: 'monthly_desc', label: 'Monthly cost (High–Low)' },
+  { value: 'next_date_asc', label: 'Next payment (Soonest)' },
+  { value: 'next_date_desc', label: 'Next payment (Latest)' },
+];
 
 const typeIcons: Record<string, string> = {
   Streaming: '🎬',
@@ -36,19 +49,75 @@ const typeIcons: Record<string, string> = {
 export function SubscriptionList({ subscriptions }: SubscriptionListProps) {
   const [filter, setFilter] = useState<'all' | SubscriptionStatusType>('all');
   const [essentialFilter, setEssentialFilter] = useState<'all' | 'essential' | 'non-essential'>('all');
+  const [typeFilter, setTypeFilter] = useState<string>('all');
+  const [personFilter, setPersonFilter] = useState<string>('all');
+  const [sortBy, setSortBy] = useState<SortOption>('name_asc');
   const [loading, setLoading] = useState<string | null>(null);
   const [bulkDeleting, setBulkDeleting] = useState(false);
   const router = useRouter();
   const supabase = createSupabaseBrowserClient();
 
-  const filteredSubscriptions = subscriptions.filter(s => {
-    // Status filter
-    if (filter !== 'all' && s.status !== filter) return false;
-    // Essential filter
-    if (essentialFilter === 'essential' && !s.is_essential) return false;
-    if (essentialFilter === 'non-essential' && s.is_essential) return false;
-    return true;
-  });
+  const uniqueTypes = useMemo(() => {
+    const set = new Set<string>();
+    subscriptions.forEach(s => {
+      const t = (s.subscription_type || 'Other').trim();
+      if (t) set.add(t);
+    });
+    return Array.from(set).sort();
+  }, [subscriptions]);
+
+  const uniquePersons = useMemo(() => {
+    const set = new Set<string>();
+    subscriptions.forEach(s => {
+      const p = (s.person || '').trim();
+      if (p) set.add(p);
+    });
+    return Array.from(set).sort();
+  }, [subscriptions]);
+
+  const filteredSubscriptions = useMemo(() => {
+    let list = subscriptions.filter(s => {
+      if (filter !== 'all' && s.status !== filter) return false;
+      if (essentialFilter === 'essential' && !s.is_essential) return false;
+      if (essentialFilter === 'non-essential' && s.is_essential) return false;
+      if (typeFilter !== 'all' && (s.subscription_type || 'Other').trim() !== typeFilter) return false;
+      if (personFilter !== 'all' && (s.person || '').trim() !== personFilter) return false;
+      return true;
+    });
+
+    const monthly = (s: Subscription) => SubscriptionService.calculateMonthlyCost(s.amount, s.frequency);
+    const nextDate = (s: Subscription) => s.next_collection_date ? new Date(s.next_collection_date).getTime() : 0;
+
+    switch (sortBy) {
+      case 'name_asc':
+        list = [...list].sort((a, b) => (a.name || '').localeCompare(b.name || ''));
+        break;
+      case 'name_desc':
+        list = [...list].sort((a, b) => (b.name || '').localeCompare(a.name || ''));
+        break;
+      case 'amount_asc':
+        list = [...list].sort((a, b) => a.amount - b.amount);
+        break;
+      case 'amount_desc':
+        list = [...list].sort((a, b) => b.amount - a.amount);
+        break;
+      case 'monthly_asc':
+        list = [...list].sort((a, b) => monthly(a) - monthly(b));
+        break;
+      case 'monthly_desc':
+        list = [...list].sort((a, b) => monthly(b) - monthly(a));
+        break;
+      case 'next_date_asc':
+        list = [...list].sort((a, b) => nextDate(a) - nextDate(b));
+        break;
+      case 'next_date_desc':
+        list = [...list].sort((a, b) => nextDate(b) - nextDate(a));
+        break;
+      default:
+        break;
+    }
+    return list;
+  }, [subscriptions, filter, essentialFilter, typeFilter, personFilter, sortBy]);
 
   const selection = useSelection(filteredSubscriptions);
 
@@ -140,8 +209,68 @@ export function SubscriptionList({ subscriptions }: SubscriptionListProps) {
           isDeleting={bulkDeleting}
         />
       )}
-      {/* Filter Tabs */}
+      {/* Sort and filters */}
       <div className="space-y-3">
+        <div className="flex flex-wrap items-center gap-4">
+          <div className="flex items-center gap-2">
+            <label htmlFor="subscriptions-sort" className="text-small text-[var(--color-text-muted)] whitespace-nowrap">
+              Sort by
+            </label>
+            <select
+              id="subscriptions-sort"
+              value={sortBy}
+              onChange={(e) => setSortBy(e.target.value as SortOption)}
+              className="h-9 px-3 rounded-[var(--radius-md)] border border-[var(--color-border)] bg-[var(--color-surface)] text-[var(--color-text)] text-small font-medium focus:outline-none focus:ring-2 focus:ring-[var(--color-primary)]"
+            >
+              {SORT_OPTIONS.map((opt) => (
+                <option key={opt.value} value={opt.value}>
+                  {opt.label}
+                </option>
+              ))}
+            </select>
+          </div>
+          {uniqueTypes.length > 0 && (
+            <div className="flex items-center gap-2">
+              <label htmlFor="subscriptions-type" className="text-small text-[var(--color-text-muted)] whitespace-nowrap">
+                Type
+              </label>
+              <select
+                id="subscriptions-type"
+                value={typeFilter}
+                onChange={(e) => setTypeFilter(e.target.value)}
+                className="h-9 px-3 rounded-[var(--radius-md)] border border-[var(--color-border)] bg-[var(--color-surface)] text-[var(--color-text)] text-small font-medium focus:outline-none focus:ring-2 focus:ring-[var(--color-primary)]"
+              >
+                <option value="all">All types</option>
+                {uniqueTypes.map((t) => (
+                  <option key={t} value={t}>
+                    {t}
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
+          {uniquePersons.length > 0 && (
+            <div className="flex items-center gap-2">
+              <label htmlFor="subscriptions-person" className="text-small text-[var(--color-text-muted)] whitespace-nowrap">
+                Person
+              </label>
+              <select
+                id="subscriptions-person"
+                value={personFilter}
+                onChange={(e) => setPersonFilter(e.target.value)}
+                className="h-9 px-3 rounded-[var(--radius-md)] border border-[var(--color-border)] bg-[var(--color-surface)] text-[var(--color-text)] text-small font-medium focus:outline-none focus:ring-2 focus:ring-[var(--color-primary)]"
+              >
+                <option value="all">All</option>
+                {uniquePersons.map((p) => (
+                  <option key={p} value={p}>
+                    {p}
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
+        </div>
+
         {/* Status Filter */}
         <div className="flex gap-2 flex-wrap">
           {(['all', 'Active', 'Paused', 'Cancelled'] as const).map((status) => (
@@ -344,7 +473,9 @@ export function SubscriptionList({ subscriptions }: SubscriptionListProps) {
       {filteredSubscriptions.length === 0 && (
         <Card variant="outlined" padding="lg" className="text-center">
           <p className="text-body text-[var(--color-text-muted)]">
-            No {filter === 'all' ? '' : filter.toLowerCase()} subscriptions found.
+            {filter !== 'all' || essentialFilter !== 'all' || typeFilter !== 'all' || personFilter !== 'all'
+              ? 'No subscriptions match your filters. Try changing the filters above.'
+              : 'No subscriptions found.'}
           </p>
         </Card>
       )}
