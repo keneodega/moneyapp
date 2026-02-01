@@ -449,12 +449,141 @@ export class SubscriptionService {
 
   /**
    * Calculate total monthly cost for subscriptions due within a date range
+   * This calculates the ACTUAL amount due (not monthly equivalent)
    */
   async getTotalMonthlyCostForDateRange(startDate: string, endDate: string): Promise<number> {
-    const subscriptions = await this.getByDateRange(startDate, endDate, 'Active');
-    return subscriptions.reduce((total, sub) => {
-      return total + SubscriptionService.calculateMonthlyCost(sub.amount, sub.frequency);
-    }, 0);
+    // Get all active subscriptions (not just those with next_collection_date in range)
+    const allActive = await this.getActive();
+
+    const start = new Date(startDate);
+    const end = new Date(endDate);
+
+    let total = 0;
+
+    for (const sub of allActive) {
+      // Count how many payment occurrences fall within the date range
+      const occurrences = this.countPaymentOccurrences(sub, start, end);
+      total += sub.amount * occurrences;
+    }
+
+    return total;
+  }
+
+  /**
+   * Count how many times a subscription payment occurs within a date range
+   */
+  private countPaymentOccurrences(subscription: Subscription, startDate: Date, endDate: Date): number {
+    if (!subscription.next_collection_date && !subscription.start_date) {
+      return 0;
+    }
+
+    // Find the first payment date (either next_collection_date or start_date)
+    let paymentDate = new Date(subscription.next_collection_date || subscription.start_date!);
+
+    // If the payment date is after the end date, no payments in this range
+    // We need to go backwards to find payments that might be in range
+    const frequencyDays = this.getFrequencyDays(subscription.frequency);
+
+    // Move payment date back to find payments before our range start
+    while (paymentDate > startDate && frequencyDays > 0) {
+      paymentDate = this.subtractFrequency(paymentDate, subscription.frequency);
+    }
+
+    // Now move forward and count occurrences within range
+    let count = 0;
+    const maxIterations = 100; // Safety limit
+    let iterations = 0;
+
+    while (paymentDate <= endDate && iterations < maxIterations) {
+      if (paymentDate >= startDate && paymentDate <= endDate) {
+        count++;
+      }
+      paymentDate = this.addFrequency(paymentDate, subscription.frequency);
+      iterations++;
+
+      // For one-time payments, only count once
+      if (subscription.frequency === 'One-Time') {
+        break;
+      }
+    }
+
+    return count;
+  }
+
+  /**
+   * Get approximate days between payments for a frequency
+   */
+  private getFrequencyDays(frequency: FrequencyType): number {
+    switch (frequency) {
+      case 'Weekly': return 7;
+      case 'Bi-Weekly': return 14;
+      case 'Monthly': return 30;
+      case 'Quarterly': return 91;
+      case 'Bi-Annually': return 182;
+      case 'Annually': return 365;
+      case 'One-Time': return 0;
+      default: return 30;
+    }
+  }
+
+  /**
+   * Add frequency interval to a date
+   */
+  private addFrequency(date: Date, frequency: FrequencyType): Date {
+    const newDate = new Date(date);
+    switch (frequency) {
+      case 'Weekly':
+        newDate.setDate(newDate.getDate() + 7);
+        break;
+      case 'Bi-Weekly':
+        newDate.setDate(newDate.getDate() + 14);
+        break;
+      case 'Monthly':
+        newDate.setMonth(newDate.getMonth() + 1);
+        break;
+      case 'Quarterly':
+        newDate.setMonth(newDate.getMonth() + 3);
+        break;
+      case 'Bi-Annually':
+        newDate.setMonth(newDate.getMonth() + 6);
+        break;
+      case 'Annually':
+        newDate.setFullYear(newDate.getFullYear() + 1);
+        break;
+      default:
+        break;
+    }
+    return newDate;
+  }
+
+  /**
+   * Subtract frequency interval from a date
+   */
+  private subtractFrequency(date: Date, frequency: FrequencyType): Date {
+    const newDate = new Date(date);
+    switch (frequency) {
+      case 'Weekly':
+        newDate.setDate(newDate.getDate() - 7);
+        break;
+      case 'Bi-Weekly':
+        newDate.setDate(newDate.getDate() - 14);
+        break;
+      case 'Monthly':
+        newDate.setMonth(newDate.getMonth() - 1);
+        break;
+      case 'Quarterly':
+        newDate.setMonth(newDate.getMonth() - 3);
+        break;
+      case 'Bi-Annually':
+        newDate.setMonth(newDate.getMonth() - 6);
+        break;
+      case 'Annually':
+        newDate.setFullYear(newDate.getFullYear() - 1);
+        break;
+      default:
+        break;
+    }
+    return newDate;
   }
 
   /**
