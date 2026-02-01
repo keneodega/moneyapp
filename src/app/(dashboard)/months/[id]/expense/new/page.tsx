@@ -81,7 +81,7 @@ export default function NewExpensePage({
         const methods = await settingsService.getPaymentMethods();
         const methodsToUse = methods.length > 0 ? methods : DEFAULT_PAYMENT_METHODS;
         setPaymentMethods(methodsToUse);
-        setFormData(prev => ({ ...prev, bank: prev.bank || methodsToUse[0]?.value ?? 'Revolut' }));
+        setFormData(prev => ({ ...prev, bank: prev.bank || (methodsToUse[0]?.value ?? 'Revolut') }));
       } catch {
         // Silent fail - will use defaults
       }
