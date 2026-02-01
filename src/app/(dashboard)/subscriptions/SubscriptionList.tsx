@@ -10,7 +10,7 @@ import { Card, BulkActionsBar } from '@/components/ui';
 import { Currency } from '@/components/ui/Currency';
 import { useSelection } from '@/lib/hooks/useSelection';
 
-type SortOption = 'name_asc' | 'name_desc' | 'amount_asc' | 'amount_desc' | 'monthly_asc' | 'monthly_desc' | 'next_date_asc' | 'next_date_desc';
+type SortOption = 'name_asc' | 'name_desc' | 'amount_asc' | 'amount_desc' | 'monthly_asc' | 'monthly_desc' | 'next_date_asc' | 'next_date_desc' | 'payment_method_asc' | 'payment_method_desc' | 'frequency_asc' | 'frequency_desc';
 
 interface SubscriptionListProps {
   subscriptions: Subscription[];
@@ -32,6 +32,10 @@ const SORT_OPTIONS: { value: SortOption; label: string }[] = [
   { value: 'monthly_desc', label: 'Monthly cost (High–Low)' },
   { value: 'next_date_asc', label: 'Next payment (Soonest)' },
   { value: 'next_date_desc', label: 'Next payment (Latest)' },
+  { value: 'payment_method_asc', label: 'Payment method (A–Z)' },
+  { value: 'payment_method_desc', label: 'Payment method (Z–A)' },
+  { value: 'frequency_asc', label: 'Frequency (Shortest–Longest)' },
+  { value: 'frequency_desc', label: 'Frequency (Longest–Shortest)' },
 ];
 
 const typeIcons: Record<string, string> = {
@@ -87,6 +91,15 @@ export function SubscriptionList({ subscriptions }: SubscriptionListProps) {
 
     const monthly = (s: Subscription) => SubscriptionService.calculateMonthlyCost(s.amount, s.frequency);
     const nextDate = (s: Subscription) => s.next_collection_date ? new Date(s.next_collection_date).getTime() : 0;
+    const frequencyOrder: Record<string, number> = {
+      'Weekly': 1,
+      'Bi-Weekly': 2,
+      'Monthly': 3,
+      'Quarterly': 4,
+      'Bi-Annually': 5,
+      'Annually': 6,
+      'One-Time': 7,
+    };
 
     switch (sortBy) {
       case 'name_asc':
@@ -112,6 +125,18 @@ export function SubscriptionList({ subscriptions }: SubscriptionListProps) {
         break;
       case 'next_date_desc':
         list = [...list].sort((a, b) => nextDate(b) - nextDate(a));
+        break;
+      case 'payment_method_asc':
+        list = [...list].sort((a, b) => (a.bank || '').localeCompare(b.bank || ''));
+        break;
+      case 'payment_method_desc':
+        list = [...list].sort((a, b) => (b.bank || '').localeCompare(a.bank || ''));
+        break;
+      case 'frequency_asc':
+        list = [...list].sort((a, b) => (frequencyOrder[a.frequency] || 99) - (frequencyOrder[b.frequency] || 99));
+        break;
+      case 'frequency_desc':
+        list = [...list].sort((a, b) => (frequencyOrder[b.frequency] || 99) - (frequencyOrder[a.frequency] || 99));
         break;
       default:
         break;
