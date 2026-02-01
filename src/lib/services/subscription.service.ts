@@ -176,7 +176,7 @@ export class SubscriptionService {
 
     // Calculate next collection date if not provided
     const nextCollectionDate = data.next_collection_date || 
-      this.calculateNextCollectionDate(data.frequency, data.collection_day, data.start_date);
+      this.calculateNextCollectionDate(data.frequency, data.collection_day, data.last_collection_date ?? data.start_date);
 
     const { data: subscription, error } = await this.supabase
       .from('subscriptions')

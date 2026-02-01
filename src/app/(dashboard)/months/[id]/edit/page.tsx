@@ -135,12 +135,13 @@ export default function EditMonthPage({ params }: EditMonthPageProps) {
   return (
     <div className="max-w-2xl mx-auto space-y-6 animate-fade-in">
       <div className="flex items-center gap-4">
-        <Link
-          href={`/months/${id}`}
+        <button
+          type="button"
+          onClick={() => router.back()}
           className="w-10 h-10 rounded-[var(--radius-md)] bg-[var(--color-surface-sunken)] flex items-center justify-center hover:bg-[var(--color-border)] transition-colors"
         >
           <ChevronLeftIcon className="w-5 h-5 text-[var(--color-text)]" />
-        </Link>
+        </button>
         <div>
           <h1 className="text-headline text-[var(--color-text)]">Edit Month</h1>
           <p className="text-small text-[var(--color-text-muted)]">
@@ -202,12 +203,13 @@ export default function EditMonthPage({ params }: EditMonthPageProps) {
           />
 
           <div className="flex flex-col-reverse sm:flex-row gap-3 pt-4">
-            <Link
-              href={`/months/${id}`}
+            <button
+              type="button"
+              onClick={() => router.back()}
               className="flex-1 h-12 flex items-center justify-center rounded-[var(--radius-md)] border border-[var(--color-border)] text-[var(--color-text)] font-medium hover:bg-[var(--color-surface-sunken)] transition-colors"
             >
               Cancel
-            </Link>
+            </button>
             <Button type="submit" size="lg" isLoading={isLoading} className="flex-1">
               Save Changes
             </Button>

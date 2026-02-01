@@ -7,7 +7,7 @@ import { Card, Button, Input, Select, Textarea } from '@/components/ui';
 import { createSupabaseBrowserClient } from '@/lib/supabase/client';
 import { SettingsService } from '@/lib/services';
 import { filterValidPaymentMethods, DEFAULT_PAYMENT_METHODS } from '@/lib/utils/payment-methods';
-import { ExpenseSchema, type ExpenseInput } from '@/lib/validation/schemas';
+import { ExpenseSchema } from '@/lib/validation/schemas';
 import { useFormValidation } from '@/lib/hooks/useFormValidation';
 import { useFormToastActions } from '@/lib/hooks/useFormToast';
 
@@ -18,16 +18,12 @@ interface BudgetOption {
   amount_left: number;
 }
 
-type RecurringFreq = NonNullable<ExpenseInput['recurring_frequency']>;
-
 interface FormData {
   budget_id: string;
   amount: string;
   date: string;
   bank: string;
   description: string;
-  is_recurring: boolean;
-  recurring_frequency: RecurringFreq | '';
 }
 
 export default function NewExpensePage({
@@ -51,18 +47,7 @@ export default function NewExpensePage({
     date: new Date().toISOString().split('T')[0],
     bank: 'Revolut',
     description: '',
-    is_recurring: false,
-    recurring_frequency: 'Monthly',
   });
-
-  const FREQUENCY_OPTIONS = [
-    { value: 'Weekly', label: 'Weekly' },
-    { value: 'Bi-Weekly', label: 'Bi-Weekly' },
-    { value: 'Monthly', label: 'Monthly' },
-    { value: 'Quarterly', label: 'Quarterly' },
-    { value: 'Bi-Annually', label: 'Bi-Annually' },
-    { value: 'Annually', label: 'Annually' },
-  ];
 
   // Fetch budgets, goals, and payment methods on mount
   useEffect(() => {
@@ -148,8 +133,7 @@ export default function NewExpensePage({
         date: formData.date,
         bank: formData.bank || null,
         description: formData.description || null,
-        is_recurring: formData.is_recurring,
-        recurring_frequency: formData.is_recurring && formData.recurring_frequency ? formData.recurring_frequency : null,
+        is_recurring: false,
       };
 
       // Validate with Zod
@@ -193,8 +177,8 @@ export default function NewExpensePage({
           date: formData.date,
           bank: formData.bank || null,
           description: formData.description || null,
-          is_recurring: formData.is_recurring,
-          recurring_frequency: formData.is_recurring ? (formData.recurring_frequency as any) : null,
+          is_recurring: false,
+          recurring_frequency: null,
         });
 
       if (insertError) {
@@ -219,12 +203,13 @@ export default function NewExpensePage({
     <div className="max-w-2xl mx-auto space-y-6 animate-fade-in">
       {/* Header */}
       <div className="flex items-center gap-4">
-        <Link
-          href={`/months/${monthId}`}
+        <button
+          type="button"
+          onClick={() => router.back()}
           className="w-10 h-10 rounded-[var(--radius-md)] bg-[var(--color-surface-sunken)] flex items-center justify-center hover:bg-[var(--color-border)] transition-colors"
         >
           <ChevronLeftIcon className="w-5 h-5 text-[var(--color-text)]" />
-        </Link>
+        </button>
         <div>
           <h1 className="text-headline text-[var(--color-text)]">Add Expense</h1>
           <p className="text-small text-[var(--color-text-muted)]">
@@ -252,12 +237,13 @@ export default function NewExpensePage({
                 <p className="text-small text-[var(--color-warning)]">
                   No budget categories found. Please add budgets to this month first.
                 </p>
-                <Link 
-                  href={`/months/${monthId}`}
+                <button
+                  type="button"
+                  onClick={() => router.back()}
                   className="text-small text-[var(--color-primary)] hover:underline mt-2 inline-block"
                 >
                   Go back to add budgets
-                </Link>
+                </button>
               </div>
             ) : (
               <select
@@ -339,38 +325,6 @@ export default function NewExpensePage({
             options={paymentMethods}
           />
 
-          {/* Recurring */}
-          <div className="space-y-3">
-            <label className="flex items-center gap-3 cursor-pointer min-h-[44px]">
-              <input
-                type="checkbox"
-                name="is_recurring"
-                checked={formData.is_recurring}
-                onChange={handleChange}
-                className="w-5 h-5 rounded-[var(--radius-sm)] border-[var(--color-border)] text-[var(--color-primary)] focus:ring-[var(--color-primary)] cursor-pointer"
-              />
-              <div>
-                <span className="text-body font-medium text-[var(--color-text)]">
-                  Recurring Expense
-                </span>
-                <p className="text-small text-[var(--color-text-muted)]">
-                  Mark this as a recurring expense
-                </p>
-              </div>
-            </label>
-            
-            {formData.is_recurring && (
-              <Select
-                label="Recurring Frequency"
-                name="recurring_frequency"
-                value={formData.recurring_frequency}
-                onChange={handleChange}
-                options={FREQUENCY_OPTIONS}
-                hint="How often should this expense be created?"
-              />
-            )}
-          </div>
-
           {/* Description */}
           <Textarea
             label="Description (optional)"
@@ -384,12 +338,13 @@ export default function NewExpensePage({
 
           {/* Actions */}
           <div className="flex flex-col-reverse sm:flex-row gap-3 pt-4">
-            <Link
-              href={`/months/${monthId}`}
+            <button
+              type="button"
+              onClick={() => router.back()}
               className="flex-1 h-12 flex items-center justify-center rounded-[var(--radius-md)] border border-[var(--color-border)] text-[var(--color-text)] font-medium hover:bg-[var(--color-surface-sunken)] transition-colors"
             >
               Cancel
-            </Link>
+            </button>
             <Button
               type="submit"
               size="lg"

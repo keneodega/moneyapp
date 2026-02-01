@@ -51,7 +51,7 @@ export default async function SubscriptionsPage() {
       </div>
 
       {/* Stats Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
         <Card variant="raised" padding="md">
           <p className="text-small text-[var(--color-text-muted)] mb-1">Active</p>
           <p className="text-display text-[var(--color-text)]">{activeSubscriptions.length}</p>
@@ -74,6 +74,24 @@ export default async function SubscriptionsPage() {
         <Card variant="raised" padding="md">
           <p className="text-small text-[var(--color-text-muted)] mb-1">Due This Week</p>
           <p className="text-display text-[var(--color-warning)]">{dueSoon.length}</p>
+        </Card>
+        
+        <Card variant="raised" padding="md">
+          <p className="text-small text-[var(--color-text-muted)] mb-1">Last Payment</p>
+          <p className="text-display text-[var(--color-text)]">
+            {(() => {
+              const withLast = activeSubscriptions.filter(s => s.last_collection_date);
+              if (withLast.length === 0) return '-';
+              const mostRecent = withLast.reduce((latest, s) => {
+                const d = s.last_collection_date!;
+                return !latest || d > latest ? d : latest;
+              }, '' as string | null);
+              return mostRecent ? new Date(mostRecent).toLocaleDateString('en-IE', { day: 'numeric', month: 'short', year: 'numeric' }) : '-';
+            })()}
+          </p>
+          <p className="text-caption text-[var(--color-text-muted)] mt-0.5">
+            Most recent across all
+          </p>
         </Card>
       </div>
 

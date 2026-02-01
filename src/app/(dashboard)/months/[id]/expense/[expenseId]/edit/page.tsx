@@ -21,8 +21,6 @@ interface FormData {
   date: string;
   bank: string;
   description: string;
-  is_recurring: boolean;
-  recurring_frequency: string;
   financial_goal_id: string;
 }
 
@@ -45,19 +43,8 @@ export default function EditExpensePage({
     date: new Date().toISOString().split('T')[0],
     bank: 'Revolut',
     description: '',
-    is_recurring: false,
-    recurring_frequency: 'Monthly',
     financial_goal_id: '',
   });
-
-  const FREQUENCY_OPTIONS = [
-    { value: 'Weekly', label: 'Weekly' },
-    { value: 'Bi-Weekly', label: 'Bi-Weekly' },
-    { value: 'Monthly', label: 'Monthly' },
-    { value: 'Quarterly', label: 'Quarterly' },
-    { value: 'Bi-Annually', label: 'Bi-Annually' },
-    { value: 'Annually', label: 'Annually' },
-  ];
 
   // Fetch expense data and related data on mount
   useEffect(() => {
@@ -112,8 +99,6 @@ export default function EditExpensePage({
           date: expense.date,
           bank: expense.bank || 'Revolut',
           description: expense.description || '',
-          is_recurring: expense.is_recurring || false,
-          recurring_frequency: expense.recurring_frequency || 'Monthly',
           financial_goal_id: expense.financial_goal_id || '',
         });
 
@@ -162,8 +147,8 @@ export default function EditExpensePage({
         date: formData.date,
         bank: formData.bank || null,
         description: formData.description || null,
-        is_recurring: formData.is_recurring,
-        recurring_frequency: formData.is_recurring ? (formData.recurring_frequency as any) : null,
+        is_recurring: false,
+        recurring_frequency: null,
         financial_goal_id: formData.financial_goal_id || null,
       });
 
@@ -205,12 +190,13 @@ export default function EditExpensePage({
     <div className="max-w-2xl mx-auto space-y-6 animate-fade-in">
       {/* Header */}
       <div className="flex items-center gap-4">
-        <Link
-          href={`/months/${monthId}`}
+        <button
+          type="button"
+          onClick={() => router.back()}
           className="w-10 h-10 rounded-[var(--radius-md)] bg-[var(--color-surface-sunken)] flex items-center justify-center hover:bg-[var(--color-border)] transition-colors"
         >
           <ChevronLeftIcon className="w-5 h-5 text-[var(--color-text)]" />
-        </Link>
+        </button>
         <div>
           <h1 className="text-headline text-[var(--color-text)]">Edit Expense</h1>
           <p className="text-small text-[var(--color-text-muted)]">
@@ -330,38 +316,6 @@ export default function EditExpensePage({
             />
           )}
 
-          {/* Recurring */}
-          <div className="space-y-3">
-            <label className="flex items-center gap-3 cursor-pointer min-h-[44px]">
-              <input
-                type="checkbox"
-                name="is_recurring"
-                checked={formData.is_recurring}
-                onChange={handleChange}
-                className="w-5 h-5 rounded-[var(--radius-sm)] border-[var(--color-border)] text-[var(--color-primary)] focus:ring-[var(--color-primary)] cursor-pointer"
-              />
-              <div>
-                <span className="text-body font-medium text-[var(--color-text)]">
-                  Recurring Expense
-                </span>
-                <p className="text-small text-[var(--color-text-muted)]">
-                  Mark this as a recurring expense
-                </p>
-              </div>
-            </label>
-            
-            {formData.is_recurring && (
-              <Select
-                label="Recurring Frequency"
-                name="recurring_frequency"
-                value={formData.recurring_frequency}
-                onChange={handleChange}
-                options={FREQUENCY_OPTIONS}
-                hint="How often should this expense be created?"
-              />
-            )}
-          </div>
-
           {/* Description */}
           <Textarea
             label="Description (optional)"
@@ -373,12 +327,13 @@ export default function EditExpensePage({
 
           {/* Actions */}
           <div className="flex flex-col-reverse sm:flex-row gap-3 pt-4">
-            <Link
-              href={selectedBudget ? `/months/${monthId}/budgets/${selectedBudget.id}` : `/months/${monthId}`}
+            <button
+              type="button"
+              onClick={() => router.back()}
               className="flex-1 h-12 flex items-center justify-center rounded-[var(--radius-md)] border border-[var(--color-border)] text-[var(--color-text)] font-medium hover:bg-[var(--color-surface-sunken)] transition-colors"
             >
               Cancel
-            </Link>
+            </button>
             <Button
               type="submit"
               size="lg"

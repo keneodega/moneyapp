@@ -261,6 +261,12 @@ export function SubscriptionList({ subscriptions }: SubscriptionListProps) {
                 </p>
               </div>
               <div>
+                <p className="text-small text-[var(--color-text-muted)]">Last Payment</p>
+                <p className="text-body text-[var(--color-text)]">
+                  {formatDate(subscription.last_collection_date)}
+                </p>
+              </div>
+              <div>
                 <p className="text-small text-[var(--color-text-muted)]">Next Payment</p>
                 <p className="text-body text-[var(--color-text)]">
                   {formatDate(subscription.next_collection_date)}

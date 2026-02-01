@@ -69,6 +69,7 @@ export default function EditSubscriptionPage() {
     collection_day: '',
     start_date: '',
     end_date: '',
+    last_collection_date: '',
     description: '',
   });
 
@@ -103,6 +104,7 @@ export default function EditSubscriptionPage() {
           collection_day: data.collection_day?.toString() || '',
           start_date: data.start_date || '',
           end_date: data.end_date || '',
+          last_collection_date: data.last_collection_date || '',
           description: data.description || '',
         });
       } catch (err) {
@@ -134,6 +136,7 @@ export default function EditSubscriptionPage() {
         collection_day: formData.collection_day ? parseInt(formData.collection_day) : null,
         start_date: formData.start_date || null,
         end_date: formData.end_date || null,
+        last_collection_date: formData.last_collection_date || null,
         description: formData.description || null,
       } as any);
       router.push('/subscriptions');
@@ -170,12 +173,13 @@ export default function EditSubscriptionPage() {
   return (
     <div className="max-w-2xl mx-auto space-y-6 animate-fade-in">
       <div className="flex items-center gap-4">
-        <Link
-          href="/subscriptions"
+        <button
+          type="button"
+          onClick={() => router.back()}
           className="p-2 rounded-[var(--radius-md)] hover:bg-[var(--color-surface-sunken)] transition-colors"
         >
           <ArrowLeftIcon className="w-5 h-5 text-[var(--color-text-muted)]" />
-        </Link>
+        </button>
         <div>
           <h1 className="text-display text-[var(--color-text)]">Edit Subscription</h1>
           <p className="text-body text-[var(--color-text-muted)]">
@@ -332,12 +336,18 @@ export default function EditSubscriptionPage() {
           </div>
 
           {/* Dates */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <Input
               label="Start Date"
               type="date"
               value={formData.start_date}
               onChange={(e) => setFormData({ ...formData, start_date: e.target.value })}
+            />
+            <Input
+              label="Last Payment"
+              type="date"
+              value={formData.last_collection_date}
+              onChange={(e) => setFormData({ ...formData, last_collection_date: e.target.value })}
             />
             <Input
               label="End Date (if cancelled)"
@@ -366,11 +376,9 @@ export default function EditSubscriptionPage() {
             <Button type="submit" disabled={saving}>
               {saving ? 'Saving...' : 'Save Changes'}
             </Button>
-            <Link href="/subscriptions">
-              <Button type="button" variant="secondary">
-                Cancel
-              </Button>
-            </Link>
+            <Button type="button" variant="secondary" onClick={() => router.back()}>
+              Cancel
+            </Button>
           </div>
         </form>
       </Card>
