@@ -5,7 +5,6 @@ import { useTransferDialog } from '@/components/ui';
 import { useRouter } from 'next/navigation';
 import { useState, useEffect } from 'react';
 import { createSupabaseBrowserClient } from '@/lib/supabase/client';
-import { FinancialGoalService } from '@/lib/services';
 
 interface TransferButtonProps {
   monthId: string;
@@ -43,10 +42,10 @@ export function TransferButton({ monthId, disabled }: TransferButtonProps) {
     });
   };
 
-  if (isLoading || !hasSource) return null;
+  const unavailable = isLoading || !hasSource;
 
   return (
-    <Button variant="secondary" onClick={handleClick} disabled={disabled} className="inline-flex items-center gap-2 h-9">
+    <Button variant="secondary" onClick={handleClick} disabled={disabled || unavailable} className="inline-flex items-center gap-2 h-9" title={unavailable ? (isLoading ? 'Checking...' : 'Add a goal or budget with available balance to transfer') : undefined}>
       <ArrowRightIcon className="w-4 h-4" />
       Transfer
     </Button>
