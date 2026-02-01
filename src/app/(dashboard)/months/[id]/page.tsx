@@ -693,7 +693,7 @@ export default async function MonthDetailPage({
             <div className="flex flex-col gap-3">
               {/* Goal Actions - Grouped together with visual separator */}
               <div className="flex items-center gap-2 flex-wrap">
-                <FundGoalButton monthId={id} disabled={totalIncome <= 0} />
+                <FundGoalButton monthId={id} />
                 <TransferButton monthId={id} />
               </div>
               

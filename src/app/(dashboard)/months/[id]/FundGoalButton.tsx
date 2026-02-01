@@ -29,7 +29,6 @@ export function FundGoalButton({ monthId, disabled }: FundGoalButtonProps) {
       onClick={handleClick}
       disabled={disabled}
       className="inline-flex items-center gap-2 h-9"
-      title={disabled ? 'Add income to this month first' : undefined}
     >
       <PiggyBankIcon className="w-4 h-4" />
       Fund Goal

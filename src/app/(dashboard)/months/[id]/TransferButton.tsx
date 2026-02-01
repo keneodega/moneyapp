@@ -3,8 +3,6 @@
 import { Button } from '@/components/ui';
 import { useTransferDialog } from '@/components/ui';
 import { useRouter } from 'next/navigation';
-import { useState, useEffect } from 'react';
-import { createSupabaseBrowserClient } from '@/lib/supabase/client';
 
 interface TransferButtonProps {
   monthId: string;
@@ -14,26 +12,6 @@ interface TransferButtonProps {
 export function TransferButton({ monthId, disabled }: TransferButtonProps) {
   const { showTransferDialog } = useTransferDialog();
   const router = useRouter();
-  const [hasSource, setHasSource] = useState(false);
-  const [isLoading, setIsLoading] = useState(true);
-
-  useEffect(() => {
-    async function check() {
-      try {
-        const supabase = createSupabaseBrowserClient();
-        const [goalRes, budgetRes] = await Promise.all([
-          supabase.from('financial_goals').select('id').gt('current_amount', 0).limit(1),
-          supabase.from('budget_summary').select('id').eq('monthly_overview_id', monthId).gt('amount_left', 0).limit(1),
-        ]);
-        setHasSource((goalRes.data?.length ?? 0) > 0 || (budgetRes.data?.length ?? 0) > 0);
-      } catch {
-        setHasSource(false);
-      } finally {
-        setIsLoading(false);
-      }
-    }
-    check();
-  }, [monthId]);
 
   const handleClick = () => {
     showTransferDialog({
@@ -42,10 +20,8 @@ export function TransferButton({ monthId, disabled }: TransferButtonProps) {
     });
   };
 
-  const unavailable = isLoading || !hasSource;
-
   return (
-    <Button variant="secondary" onClick={handleClick} disabled={disabled || unavailable} className="inline-flex items-center gap-2 h-9" title={unavailable ? (isLoading ? 'Checking...' : 'Add a goal or budget with available balance to transfer') : undefined}>
+    <Button variant="secondary" onClick={handleClick} disabled={disabled} className="inline-flex items-center gap-2 h-9">
       <ArrowRightIcon className="w-4 h-4" />
       Transfer
     </Button>
