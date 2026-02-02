@@ -455,168 +455,64 @@ export default async function MonthDetailPage({
         <MonthActions monthId={id} monthName={month.name} />
       </div>
 
-      {/* Dashboard Cards */}
-      <div className="grid gap-4 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5">
-        {/* Total Income */}
-        <Card variant="raised" padding="md" className="animate-slide-up stagger-1">
-          <div className="flex items-start justify-between">
-            <div>
-              <p className="text-small text-[var(--color-text-muted)]">Total Income</p>
-              <p className="text-headline text-[var(--color-success)] mt-1 tabular-nums">
-                {formatCurrency(totalIncome)}
-              </p>
-              {overallIncomeChange != null && (
-                <p className={`text-caption mt-0.5 ${overallIncomeChange > 0 ? 'text-[var(--color-success)]' : overallIncomeChange < 0 ? 'text-[var(--color-danger)]' : 'text-[var(--color-text-muted)]'}`}>
-                  {overallIncomeChange > 0 ? '↑' : overallIncomeChange < 0 ? '↓' : ''} {overallIncomeChange > 0 ? '+' : ''}{overallIncomeChange.toFixed(1)}% vs {previousMonth?.name}
-                </p>
-              )}
-            </div>
-            <div className="w-10 h-10 rounded-[var(--radius-md)] bg-[var(--color-success)]/10 flex items-center justify-center">
-              <ArrowUpIcon className="w-5 h-5 text-[var(--color-success)]" />
-            </div>
-          </div>
+      {/* Key Overview */}
+      <div className="grid gap-4 lg:grid-cols-3">
+        <Card variant="raised" padding="lg" className="animate-slide-up stagger-1">
+          <p className="text-small text-[var(--color-text-muted)]">Total Income</p>
+          <p className="text-display text-[var(--color-text)] mt-2 tabular-nums">
+            {formatCurrency(totalIncome)}
+          </p>
+          {overallIncomeChange != null && (
+            <p className={`text-caption mt-1 ${overallIncomeChange > 0 ? 'text-[var(--color-success)]' : overallIncomeChange < 0 ? 'text-[var(--color-danger)]' : 'text-[var(--color-text-muted)]'}`}>
+              {overallIncomeChange > 0 ? '↑' : overallIncomeChange < 0 ? '↓' : ''} {overallIncomeChange > 0 ? '+' : ''}{overallIncomeChange.toFixed(1)}% vs {previousMonth?.name}
+            </p>
+          )}
         </Card>
 
-        {/* Total Budgeted */}
-        <Card variant="raised" padding="md" className="animate-slide-up stagger-2">
-          <div className="flex items-start justify-between">
-            <div>
-              <p className="text-small text-[var(--color-text-muted)]">Total Budgeted</p>
-              <p className="text-headline text-[var(--color-text)] mt-1 tabular-nums">
-                {formatCurrency(totalBudgeted)}
-              </p>
-              {overallBudgetedChange != null && (
-                <p className={`text-caption mt-0.5 ${overallBudgetedChange > 0 ? 'text-[var(--color-warning)]' : overallBudgetedChange < 0 ? 'text-[var(--color-success)]' : 'text-[var(--color-text-muted)]'}`}>
-                  {overallBudgetedChange > 0 ? '↑' : overallBudgetedChange < 0 ? '↓' : ''} {overallBudgetedChange > 0 ? '+' : ''}{overallBudgetedChange.toFixed(1)}% vs {previousMonth?.name}
-                </p>
-              )}
-            </div>
-            <div className="w-10 h-10 rounded-[var(--radius-md)] bg-[var(--color-primary)]/10 flex items-center justify-center">
-              <PieChartIcon className="w-5 h-5 text-[var(--color-primary)]" />
-            </div>
-          </div>
+        <Card variant="raised" padding="lg" className="animate-slide-up stagger-2">
+          <p className="text-small text-[var(--color-text-muted)]">Total Budgeted</p>
+          <p className="text-display text-[var(--color-text)] mt-2 tabular-nums">
+            {formatCurrency(totalBudgeted)}
+          </p>
+          {overallBudgetedChange != null && (
+            <p className={`text-caption mt-1 ${overallBudgetedChange > 0 ? 'text-[var(--color-warning)]' : overallBudgetedChange < 0 ? 'text-[var(--color-success)]' : 'text-[var(--color-text-muted)]'}`}>
+              {overallBudgetedChange > 0 ? '↑' : overallBudgetedChange < 0 ? '↓' : ''} {overallBudgetedChange > 0 ? '+' : ''}{overallBudgetedChange.toFixed(1)}% vs {previousMonth?.name}
+            </p>
+          )}
         </Card>
 
-        {/* Fixed budgets + Subscriptions (excludes Tithe, Offering, Drawdown) */}
-        <Card variant="raised" padding="md" className="animate-slide-up stagger-2">
-          <div className="flex items-start justify-between">
-            <div>
-              <p className="text-small text-[var(--color-text-muted)]">Budget + Subscriptions</p>
-              <p className="text-caption text-[var(--color-text-subtle)] mt-0.5">Fixed categories + subscriptions</p>
-              <p className="text-headline text-[var(--color-text)] mt-1 tabular-nums">
-                {formatCurrency(fixedBudgetsPlusSubscriptions)}
-              </p>
-            </div>
-            <div className="w-10 h-10 rounded-[var(--radius-md)] bg-[var(--color-primary)]/10 flex items-center justify-center">
-              <PieChartIcon className="w-5 h-5 text-[var(--color-primary)]" />
-            </div>
-          </div>
+        <Card variant="raised" padding="lg" className="animate-slide-up stagger-3">
+          <p className="text-small text-[var(--color-text-muted)]">Unallocated</p>
+          <p className={`text-display mt-2 tabular-nums ${unallocated >= 0 ? 'text-[var(--color-accent)]' : 'text-[var(--color-danger)]'}`}>
+            {formatCurrency(unallocated)}
+          </p>
+          <p className="text-caption text-[var(--color-text-subtle)] mt-1">
+            {unallocated >= 0 ? 'Available to budget' : 'Over-budgeted'}
+          </p>
         </Card>
+      </div>
 
-        {/* Budget breakdown: Fixed + Variable */}
-        <Card variant="raised" padding="md" className="animate-slide-up stagger-2">
-          <p className="text-small text-[var(--color-text-muted)] mb-2">Budget breakdown</p>
-          <div className="space-y-2">
-            <div className="flex justify-between">
-              <span className="text-body text-[var(--color-text-muted)]">Fixed</span>
-              <span className="text-body font-medium text-[var(--color-text)] tabular-nums">
-                {formatCurrency(totalFixed ?? 0)}
-              </span>
-            </div>
-            <div className="flex justify-between">
-              <span className="text-body text-[var(--color-text-muted)]">Variable</span>
-              <span className="text-body font-medium text-[var(--color-text)] tabular-nums">
-                {formatCurrency(totalVariable ?? 0)}
-              </span>
-            </div>
-            <div className="flex justify-between pt-2 border-t border-[var(--color-border)]">
-              <span className="text-small font-medium text-[var(--color-text)]">Total</span>
-              <span className="text-small font-semibold text-[var(--color-text)] tabular-nums">
-                {formatCurrency(totalBudgeted)}
-              </span>
-            </div>
-          </div>
+      {/* Supporting Metrics */}
+      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+        <Card variant="outlined" padding="md" className="animate-slide-up stagger-4">
+          <p className="text-small text-[var(--color-text-muted)]">Total Spent</p>
+          <p className="text-title text-[var(--color-text)] mt-1 tabular-nums">{formatCurrency(totalSpent)}</p>
+          <p className="text-caption text-[var(--color-text-subtle)] mt-0.5">{spentPercent.toFixed(0)}% of budget</p>
         </Card>
-
-        {/* Total Spent */}
-        <Card variant="raised" padding="md" className="animate-slide-up stagger-3">
-          <div className="flex items-start justify-between">
-            <div>
-              <p className="text-small text-[var(--color-text-muted)]">Total Spent</p>
-              <p className="text-headline text-[var(--color-text)] mt-1 tabular-nums">
-                {formatCurrency(totalSpent)}
-              </p>
-              <p className="text-caption text-[var(--color-text-subtle)] mt-1">
-                {spentPercent.toFixed(0)}% of budget
-              </p>
-              {overallSpentChange != null && (
-                <p className={`text-caption mt-0.5 ${overallSpentChange > 0 ? 'text-[var(--color-warning)]' : overallSpentChange < 0 ? 'text-[var(--color-success)]' : 'text-[var(--color-text-muted)]'}`}>
-                  {overallSpentChange > 0 ? '↑' : overallSpentChange < 0 ? '↓' : ''} {overallSpentChange > 0 ? '+' : ''}{overallSpentChange.toFixed(1)}% vs {previousMonth?.name}
-                </p>
-              )}
-            </div>
-            <div className="w-10 h-10 rounded-[var(--radius-md)] bg-[var(--color-warning)]/10 flex items-center justify-center">
-              <CreditCardIcon className="w-5 h-5 text-[var(--color-warning)]" />
-            </div>
-          </div>
+        <Card variant="outlined" padding="md" className="animate-slide-up stagger-4">
+          <p className="text-small text-[var(--color-text-muted)]">Budget + Subscriptions</p>
+          <p className="text-title text-[var(--color-text)] mt-1 tabular-nums">{formatCurrency(fixedBudgetsPlusSubscriptions)}</p>
+          <p className="text-caption text-[var(--color-text-subtle)] mt-0.5">Fixed categories + subscriptions</p>
         </Card>
-
-        {/* Total Subscriptions */}
-        <Card variant="raised" padding="md" className="animate-slide-up stagger-3">
-          <div className="flex items-start justify-between">
-            <div>
-              <p className="text-small text-[var(--color-text-muted)]">Subscriptions</p>
-              <p className="text-headline text-[var(--color-text)] mt-1 tabular-nums">
-                {formatCurrency(totalSubscriptions ?? 0)}
-              </p>
-              <p className="text-caption text-[var(--color-text-subtle)] mt-1">
-                Due this month
-              </p>
-            </div>
-            <Link href="/subscriptions" className="w-10 h-10 rounded-[var(--radius-md)] bg-[var(--color-primary)]/10 flex items-center justify-center hover:bg-[var(--color-primary)]/20 transition-colors">
-              <RepeatIcon className="w-5 h-5 text-[var(--color-primary)]" />
-            </Link>
-          </div>
+        <Card variant="outlined" padding="md" className="animate-slide-up stagger-5">
+          <p className="text-small text-[var(--color-text-muted)]">Goal Contributions</p>
+          <p className="text-title text-[var(--color-text)] mt-1 tabular-nums">{formatCurrency(totalGoalContributions)}</p>
         </Card>
-
-        {/* Unallocated */}
-        <Card variant="raised" padding="md" className="animate-slide-up stagger-4">
-          <div className="flex items-start justify-between">
-            <div>
-              <p className="text-small text-[var(--color-text-muted)]">Unallocated</p>
-              <p className={`text-headline mt-1 tabular-nums ${
-                unallocated >= 0 ? 'text-[var(--color-accent)]' : 'text-[var(--color-danger)]'
-              }`}>
-                {formatCurrency(unallocated)}
-              </p>
-              <p className="text-caption text-[var(--color-text-subtle)] mt-1">
-                {unallocated >= 0 ? 'Available to budget' : 'Over-budgeted'}
-              </p>
-            </div>
-            <div className={`w-10 h-10 rounded-[var(--radius-md)] flex items-center justify-center ${
-              unallocated >= 0 ? 'bg-[var(--color-accent)]/10' : 'bg-[var(--color-danger)]/10'
-            }`}>
-              <BanknoteIcon className={`w-5 h-5 ${
-                unallocated >= 0 ? 'text-[var(--color-accent)]' : 'text-[var(--color-danger)]'
-              }`} />
-            </div>
-          </div>
-        </Card>
-
-        {/* Goal Contributions */}
-        <Link href="/goals">
-          <Card variant="raised" padding="md" className="animate-slide-up stagger-5 hover:border-[var(--color-primary)]/30 transition-colors cursor-pointer">
-            <div className="flex items-start justify-between">
-              <div>
-                <p className="text-small text-[var(--color-text-muted)]">Goal Contributions</p>
-                <p className="text-headline text-[var(--color-primary)] mt-1 tabular-nums">
-                  {formatCurrency(totalGoalContributions)}
-                </p>
-              </div>
-              <div className="w-10 h-10 rounded-[var(--radius-md)] bg-[var(--color-primary)]/10 flex items-center justify-center">
-                <TargetIcon className="w-5 h-5 text-[var(--color-primary)]" />
-              </div>
-            </div>
+        <Link href="/subscriptions" className="block">
+          <Card variant="outlined" padding="md" className="animate-slide-up stagger-5 hover:border-[var(--color-primary)]/30 transition-colors">
+            <p className="text-small text-[var(--color-text-muted)]">Subscriptions</p>
+            <p className="text-title text-[var(--color-text)] mt-1 tabular-nums">{formatCurrency(totalSubscriptions ?? 0)}</p>
+            <p className="text-caption text-[var(--color-text-subtle)] mt-0.5">Due this month</p>
           </Card>
         </Link>
       </div>
@@ -712,10 +608,10 @@ export default async function MonthDetailPage({
             <IncomeList income={income} monthId={id} />
           </Card>
 
-          {/* Quick Stats */}
+          {/* Month Health */}
           <Card variant="default" padding="md" className="bg-gradient-warm">
             <h3 className="text-small font-medium text-[var(--color-text-muted)] mb-4">
-              Month Summary
+              Month Health
             </h3>
             <div className="space-y-3">
               <div className="flex justify-between">
@@ -734,6 +630,12 @@ export default async function MonthDetailPage({
                 <span className="text-small text-[var(--color-text-muted)]">Avg. daily spend</span>
                 <span className="text-small font-medium text-[var(--color-text)]">
                   {formatCurrency(elapsedDays > 0 ? totalSpent / elapsedDays : 0)}
+                </span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-small text-[var(--color-text-muted)]">Fixed vs Variable</span>
+                <span className="text-small font-medium text-[var(--color-text)] tabular-nums">
+                  {formatCurrency(totalFixed ?? 0)} / {formatCurrency(totalVariable ?? 0)}
                 </span>
               </div>
             </div>
