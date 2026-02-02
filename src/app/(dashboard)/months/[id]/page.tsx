@@ -376,8 +376,8 @@ export default async function MonthDetailPage({
   // Use totals from view (more accurate than manual calculation)
   const totalIncome = month.total_income || 0;
   const totalBudgeted = month.total_budgeted || 0;
-  // Unallocated = income minus budgets minus goal contributions (money allocated to goals)
-  const unallocated = (month.total_income || 0) - (month.total_budgeted || 0) - (totalGoalContributions || 0);
+  // Unallocated = income minus budgets minus subscriptions minus goal contributions
+  const unallocated = (month.total_income || 0) - (month.total_budgeted || 0) - (totalSubscriptions || 0) - (totalGoalContributions || 0);
   
   // Calculate spent from budgets (view provides this per budget)
   const totalSpent = (budgets || []).reduce((sum, b) => sum + Number(b?.amount_spent || 0), 0);
