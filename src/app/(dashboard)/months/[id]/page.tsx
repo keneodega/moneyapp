@@ -1,7 +1,7 @@
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import dynamic from 'next/dynamic';
-import { Card, BudgetProgress, PieChart } from '@/components/ui';
+import { Card } from '@/components/ui';
 import { createSupabaseServerClient } from '@/lib/supabase/server';
 import { SubscriptionService } from '@/lib/services';
 
@@ -25,6 +25,11 @@ const TransferButton = dynamic(() => import('./TransferButton').then(mod => ({ d
 const BudgetCategoriesList = dynamic(
   () => import('./BudgetCategoriesList').then(mod => ({ default: mod.BudgetCategoriesList })),
   { loading: () => <div className="p-4 text-small text-[var(--color-text-muted)]">Loading budgets...</div> },
+);
+
+const PieChartToggle = dynamic(
+  () => import('./PieChartToggle').then(mod => ({ default: mod.PieChartToggle })),
+  { loading: () => <div className="p-4 text-small text-[var(--color-text-muted)]">Loading charts...</div> },
 );
 
 interface MonthData {
@@ -634,39 +639,11 @@ export default async function MonthDetailPage({
             </div>
           </div>
 
-          {/* Budget allocation pie chart */}
-          {pieData.length > 0 && (
-            <Card variant="outlined" padding="md">
-              <h3 className="text-small font-medium text-[var(--color-text-muted)] mb-4">
-                Budget allocation
-              </h3>
-              <PieChart
-                data={pieData}
-                showLegend={true}
-                showLabels={false}
-                height={360}
-                innerRadius={70}
-                outerRadius={120}
-              />
-            </Card>
-          )}
-
-          {/* Income breakdown pie chart */}
-          {incomeBreakdownData.length > 0 && totalIncome > 0 && (
-            <Card variant="outlined" padding="md">
-              <h3 className="text-small font-medium text-[var(--color-text-muted)] mb-4">
-                Income breakdown
-              </h3>
-              <PieChart
-                data={incomeBreakdownData}
-                showLegend={true}
-                showLabels={false}
-                height={360}
-                innerRadius={70}
-                outerRadius={120}
-              />
-            </Card>
-          )}
+          {/* Pie charts with toggle */}
+          <PieChartToggle
+            budgetData={pieData}
+            incomeData={totalIncome > 0 ? incomeBreakdownData : []}
+          />
           
           {budgets && budgets.length > 0 ? (
             <BudgetCategoriesList
