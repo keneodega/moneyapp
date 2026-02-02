@@ -145,19 +145,19 @@ export function SubscriptionsDashboard({ dateRange }: SubscriptionsDashboardProp
     <div className="space-y-6">
       {/* Summary Cards */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <Card variant="raised" padding="md">
+        <Card variant="outlined" padding="md" className="bg-[var(--color-surface-sunken)]/40">
           <p className="text-small text-[var(--color-text-muted)]">Total Monthly Cost</p>
           <p className="text-headline text-[var(--color-text)] mt-1 tabular-nums">
             {formatCurrency(totalMonthly)}
           </p>
         </Card>
-        <Card variant="raised" padding="md">
+        <Card variant="outlined" padding="md" className="bg-[var(--color-surface-sunken)]/40">
           <p className="text-small text-[var(--color-text-muted)]">Total Yearly Cost</p>
           <p className="text-headline text-[var(--color-text)] mt-1 tabular-nums">
             {formatCurrency(totalYearly)}
           </p>
         </Card>
-        <Card variant="raised" padding="md">
+        <Card variant="outlined" padding="md" className="bg-[var(--color-surface-sunken)]/40">
           <p className="text-small text-[var(--color-text-muted)]">Active Subscriptions</p>
           <p className="text-headline text-[var(--color-text)] mt-1 tabular-nums">
             {subscriptions.length}

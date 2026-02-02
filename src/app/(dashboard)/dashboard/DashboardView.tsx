@@ -86,39 +86,62 @@ export function DashboardView() {
 
   return (
     <div className="space-y-6 animate-fade-in">
-      {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-        <div>
-          <h1 className="text-display text-[var(--color-text)]">Financial Dashboard</h1>
-          <p className="text-body text-[var(--color-text-muted)] mt-1">
-            Comprehensive view of your financial data
-          </p>
+      {/* Header + Controls */}
+      <Card variant="outlined" padding="md" className="bg-[var(--color-surface-sunken)]/60">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+          <div>
+            <h1 className="text-display text-[var(--color-text)]">Financial Dashboard</h1>
+            <p className="text-body text-[var(--color-text-muted)] mt-1">
+              Comprehensive view of your financial data
+            </p>
+          </div>
+          <DateRangeFilter
+            period={period}
+            dateRange={dateRange}
+            onPeriodChange={setPeriod}
+            onDateRangeChange={setDateRange}
+          />
         </div>
-        <DateRangeFilter
-          period={period}
-          dateRange={dateRange}
-          onPeriodChange={setPeriod}
-          onDateRangeChange={setDateRange}
-        />
-      </div>
+      </Card>
 
       {/* Dashboard Sections */}
       <div className="grid gap-6">
         {/* Subscriptions Dashboard */}
         <Card variant="outlined" padding="lg">
-          <h2 className="text-title text-[var(--color-text)] mb-4">Subscriptions Overview</h2>
+          <div className="flex items-center justify-between mb-4">
+            <div>
+              <h2 className="text-title text-[var(--color-text)]">Subscriptions Overview</h2>
+              <p className="text-small text-[var(--color-text-muted)] mt-1">
+                Recurring costs and upcoming commitments
+              </p>
+            </div>
+          </div>
           <SubscriptionsDashboard dateRange={dateRange} />
         </Card>
 
         {/* Budget Dashboard */}
         <Card variant="outlined" padding="lg">
-          <h2 className="text-title text-[var(--color-text)] mb-4">Budget & Expenditure</h2>
+          <div className="flex items-center justify-between mb-4">
+            <div>
+              <h2 className="text-title text-[var(--color-text)]">Budget & Expenditure</h2>
+              <p className="text-small text-[var(--color-text-muted)] mt-1">
+                Allocation vs. actual spend across periods
+              </p>
+            </div>
+          </div>
           <BudgetDashboard dateRange={dateRange} />
         </Card>
 
         {/* Transactions Dashboard */}
         <Card variant="outlined" padding="lg">
-          <h2 className="text-title text-[var(--color-text)] mb-4">All Transactions</h2>
+          <div className="flex items-center justify-between mb-4">
+            <div>
+              <h2 className="text-title text-[var(--color-text)]">All Transactions</h2>
+              <p className="text-small text-[var(--color-text-muted)] mt-1">
+                Income and expenses within the selected range
+              </p>
+            </div>
+          </div>
           <TransactionsDashboard dateRange={dateRange} />
         </Card>
       </div>

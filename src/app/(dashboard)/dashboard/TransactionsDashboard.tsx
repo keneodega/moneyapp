@@ -179,19 +179,19 @@ export function TransactionsDashboard({ dateRange }: TransactionsDashboardProps)
     <div className="space-y-6">
       {/* Summary Cards */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <Card variant="raised" padding="md">
+        <Card variant="outlined" padding="md" className="bg-[var(--color-surface-sunken)]/40">
           <p className="text-small text-[var(--color-text-muted)]">Total Income</p>
           <p className="text-headline text-[var(--color-success)] mt-1 tabular-nums">
             {formatCurrency(totalIncome)}
           </p>
         </Card>
-        <Card variant="raised" padding="md">
+        <Card variant="outlined" padding="md" className="bg-[var(--color-surface-sunken)]/40">
           <p className="text-small text-[var(--color-text-muted)]">Total Expenses</p>
           <p className="text-headline text-[var(--color-danger)] mt-1 tabular-nums">
             {formatCurrency(totalExpenses)}
           </p>
         </Card>
-        <Card variant="raised" padding="md">
+        <Card variant="outlined" padding="md" className="bg-[var(--color-surface-sunken)]/40">
           <p className="text-small text-[var(--color-text-muted)]">Net</p>
           <p className={`text-headline mt-1 tabular-nums ${
             net >= 0 ? 'text-[var(--color-success)]' : 'text-[var(--color-danger)]'
@@ -202,33 +202,33 @@ export function TransactionsDashboard({ dateRange }: TransactionsDashboardProps)
       </div>
 
       {/* Filter Buttons */}
-      <div className="flex items-center gap-2">
+      <div className="inline-flex items-center gap-2 rounded-[var(--radius-md)] bg-[var(--color-surface-sunken)]/60 p-1 border border-[var(--color-border)]">
         <button
           onClick={() => setFilter('all')}
-          className={`px-4 py-2 rounded-[var(--radius-md)] text-small font-medium transition-colors ${
+          className={`px-3 py-1.5 rounded-[var(--radius-sm)] text-small font-medium transition-colors ${
             filter === 'all'
               ? 'bg-[var(--color-primary)] text-white'
-              : 'bg-[var(--color-surface-sunken)] text-[var(--color-text-muted)] hover:text-[var(--color-text)]'
+              : 'text-[var(--color-text-muted)] hover:text-[var(--color-text)]'
           }`}
         >
           All
         </button>
         <button
           onClick={() => setFilter('income')}
-          className={`px-4 py-2 rounded-[var(--radius-md)] text-small font-medium transition-colors ${
+          className={`px-3 py-1.5 rounded-[var(--radius-sm)] text-small font-medium transition-colors ${
             filter === 'income'
-              ? 'bg-[var(--color-success)]/20 text-[var(--color-success)]'
-              : 'bg-[var(--color-surface-sunken)] text-[var(--color-text-muted)] hover:text-[var(--color-text)]'
+              ? 'bg-[var(--color-primary)] text-white'
+              : 'text-[var(--color-text-muted)] hover:text-[var(--color-text)]'
           }`}
         >
           Income
         </button>
         <button
           onClick={() => setFilter('expenses')}
-          className={`px-4 py-2 rounded-[var(--radius-md)] text-small font-medium transition-colors ${
+          className={`px-3 py-1.5 rounded-[var(--radius-sm)] text-small font-medium transition-colors ${
             filter === 'expenses'
-              ? 'bg-[var(--color-danger)]/20 text-[var(--color-danger)]'
-              : 'bg-[var(--color-surface-sunken)] text-[var(--color-text-muted)] hover:text-[var(--color-text)]'
+              ? 'bg-[var(--color-primary)] text-white'
+              : 'text-[var(--color-text-muted)] hover:text-[var(--color-text)]'
           }`}
         >
           Expenses
