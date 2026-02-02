@@ -1,5 +1,6 @@
 import Link from 'next/link';
 import { createSupabaseServerClient } from '@/lib/supabase/server';
+import { PageHeader } from '@/components/ui';
 import { MonthsList } from './MonthsList';
 
 interface MonthData {
@@ -122,22 +123,19 @@ export default async function MonthsPage() {
 
   return (
     <div className="space-y-8 animate-fade-in">
-      {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-        <div>
-          <h1 className="text-display text-[var(--color-text)]">Monthly Budgets</h1>
-          <p className="text-body text-[var(--color-text-muted)] mt-2">
-            Track your income and expenses month by month
-          </p>
-        </div>
-        <Link
-          href="/months/new"
-          className="inline-flex items-center justify-center gap-2 h-12 px-6 rounded-[var(--radius-md)] bg-[var(--color-primary)] text-white font-medium shadow-[var(--shadow-sm)] hover:bg-[var(--color-primary-dark)] transition-colors"
-        >
-          <PlusIcon className="w-5 h-5" />
-          New Month
-        </Link>
-      </div>
+      <PageHeader
+        title="Monthly Budgets"
+        subtitle="Track your income and expenses month by month"
+        actions={
+          <Link
+            href="/months/new"
+            className="inline-flex items-center justify-center gap-2 h-12 px-6 rounded-[var(--radius-md)] bg-[var(--color-primary)] text-white font-medium shadow-[var(--shadow-sm)] hover:bg-[var(--color-primary-dark)] transition-colors"
+          >
+            <PlusIcon className="w-5 h-5" />
+            New Month
+          </Link>
+        }
+      />
 
       {/* Months by Year */}
       <MonthsList months={months} groupedByYear={groupedMonths} years={years} />

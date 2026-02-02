@@ -2,7 +2,7 @@
 
 import { useState, useMemo, use, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { Card, Button, Input, Select, Textarea } from '@/components/ui';
+import { Card, Button, Input, PageHeader, Select, Textarea } from '@/components/ui';
 import { createSupabaseBrowserClient } from '@/lib/supabase/client';
 import { SettingsService, IncomeSourceService } from '@/lib/services';
 import { DEFAULT_PAYMENT_METHODS, validateBankType } from '@/lib/utils/payment-methods';
@@ -188,22 +188,19 @@ export default function EditIncomePage({
 
   return (
     <div className="max-w-2xl mx-auto space-y-6 animate-fade-in">
-      {/* Header */}
-      <div className="flex items-center gap-4">
-        <button
-          type="button"
-          onClick={() => router.back()}
-          className="w-10 h-10 rounded-[var(--radius-md)] bg-[var(--color-surface-sunken)] flex items-center justify-center hover:bg-[var(--color-border)] transition-colors"
-        >
-          <ChevronLeftIcon className="w-5 h-5 text-[var(--color-text)]" />
-        </button>
-        <div>
-          <h1 className="text-headline text-[var(--color-text)]">Edit Income</h1>
-          <p className="text-small text-[var(--color-text-muted)]">
-            Update income details
-          </p>
-        </div>
-      </div>
+      <PageHeader
+        title="Edit Income"
+        subtitle="Update income details"
+        actions={
+          <button
+            type="button"
+            onClick={() => router.back()}
+            className="w-10 h-10 rounded-[var(--radius-md)] bg-[var(--color-surface-sunken)] flex items-center justify-center hover:bg-[var(--color-border)] transition-colors"
+          >
+            <ChevronLeftIcon className="w-5 h-5 text-[var(--color-text)]" />
+          </button>
+        }
+      />
 
       {/* Form */}
       <Card variant="raised" padding="lg">

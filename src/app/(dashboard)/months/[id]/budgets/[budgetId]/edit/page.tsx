@@ -3,7 +3,7 @@
 import { useState, useEffect, use } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { Card, Button, Input, DeleteButton } from '@/components/ui';
+import { Card, Button, Input, PageHeader, DeleteButton } from '@/components/ui';
 import { createSupabaseBrowserClient } from '@/lib/supabase/client';
 import { BudgetService, MasterBudgetService } from '@/lib/services';
 import { useFormToastActions } from '@/lib/hooks/useFormToast';
@@ -226,22 +226,19 @@ export default function EditBudgetPage({
 
   return (
     <div className="max-w-2xl mx-auto space-y-6 animate-fade-in">
-      {/* Header */}
-      <div className="flex items-center gap-4">
-        <button
-          type="button"
-          onClick={() => router.back()}
-          className="w-10 h-10 rounded-[var(--radius-md)] bg-[var(--color-surface-sunken)] flex items-center justify-center hover:bg-[var(--color-border)] transition-colors"
-        >
-          <ChevronLeftIcon className="w-5 h-5 text-[var(--color-text)]" />
-        </button>
-        <div>
-          <h1 className="text-headline text-[var(--color-text)]">Edit Budget</h1>
-          <p className="text-small text-[var(--color-text-muted)]">
-            Update budget name or amount
-          </p>
-        </div>
-      </div>
+      <PageHeader
+        title="Edit Budget"
+        subtitle="Update budget name or amount"
+        actions={
+          <button
+            type="button"
+            onClick={() => router.back()}
+            className="w-10 h-10 rounded-[var(--radius-md)] bg-[var(--color-surface-sunken)] flex items-center justify-center hover:bg-[var(--color-border)] transition-colors"
+          >
+            <ChevronLeftIcon className="w-5 h-5 text-[var(--color-text)]" />
+          </button>
+        }
+      />
 
       {/* Form */}
       <Card variant="raised" padding="lg">

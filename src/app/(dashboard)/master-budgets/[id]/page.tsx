@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { Card, Button, Skeleton, SkeletonList, useToast, PieChart, type PieChartData } from '@/components/ui';
+import { Card, Button, PageHeader, Skeleton, SkeletonList, useToast, PieChart, type PieChartData } from '@/components/ui';
 import { createSupabaseBrowserClient } from '@/lib/supabase/client';
 import { MasterBudgetService } from '@/lib/services/master-budget.service';
 import { BudgetService, BudgetHistoryEntry, BudgetTrend } from '@/lib/services/budget.service';
@@ -143,27 +143,24 @@ export default function MasterBudgetDetailPage({
 
   return (
     <div className="space-y-6 animate-fade-in">
-      {/* Header */}
-      <div className="flex items-center gap-4">
-        <Link
-          href="/master-budgets"
-          className="w-10 h-10 rounded-[var(--radius-md)] bg-[var(--color-surface-sunken)] flex items-center justify-center hover:bg-[var(--color-border)] transition-colors"
-        >
-          <ChevronLeftIcon className="w-5 h-5 text-[var(--color-text)]" />
-        </Link>
-        <div className="flex-1">
-          <div className="flex items-center gap-3 flex-wrap">
-            <h1 className="text-display text-[var(--color-text)]">{masterBudget.name}</h1>
+      <PageHeader
+        title={masterBudget.name}
+        subtitle={`€${Number(masterBudget.budget_amount).toLocaleString('en-IE', {
+          minimumFractionDigits: 2,
+          maximumFractionDigits: 2,
+        })}`}
+        actions={
+          <>
+            <Link
+              href="/master-budgets"
+              className="w-10 h-10 rounded-[var(--radius-md)] bg-[var(--color-surface-sunken)] flex items-center justify-center hover:bg-[var(--color-border)] transition-colors"
+            >
+              <ChevronLeftIcon className="w-5 h-5 text-[var(--color-text)]" />
+            </Link>
             <BudgetTypeBadge type={masterBudget.budget_type} />
-          </div>
-          <p className="text-body text-[var(--color-text-muted)] mt-1">
-            €{Number(masterBudget.budget_amount).toLocaleString('en-IE', { 
-              minimumFractionDigits: 2, 
-              maximumFractionDigits: 2 
-            })}
-          </p>
-        </div>
-      </div>
+          </>
+        }
+      />
 
       {/* Master Budget Info */}
       <Card variant="raised" padding="lg">

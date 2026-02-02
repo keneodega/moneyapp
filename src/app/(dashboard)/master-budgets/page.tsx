@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { Card, Button, Input, Select, Skeleton, SkeletonList, useToast, useConfirmDialog, PieChart, type PieChartData } from '@/components/ui';
+import { Card, Button, DashboardTile, Input, PageHeader, Select, Skeleton, SkeletonList, useToast, useConfirmDialog, PieChart, type PieChartData } from '@/components/ui';
 import { createSupabaseBrowserClient } from '@/lib/supabase/client';
 import { MasterBudgetService } from '@/lib/services';
 import type { MasterBudget, MasterBudgetHistoryEntry, BudgetType } from '@/lib/services/master-budget.service';
@@ -170,6 +170,14 @@ export default function MasterBudgetsPage() {
     { name: 'Variable Budgets', value: breakdown?.variable.total ?? 0 },
   ];
 
+  const formatCurrency = (amount: number) =>
+    new Intl.NumberFormat('en-IE', {
+      style: 'currency',
+      currency: 'EUR',
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+    }).format(amount);
+
   if (isLoading) {
     return (
       <div className="max-w-4xl mx-auto space-y-6 animate-fade-in">
@@ -187,27 +195,10 @@ export default function MasterBudgetsPage() {
 
   return (
     <div className="max-w-4xl mx-auto space-y-6 animate-fade-in">
-      {/* Header */}
-      <div>
-        <h1 className="text-display text-[var(--color-text)]">Master Budgets</h1>
-        <p className="text-body text-[var(--color-text-muted)] mt-1">
-          Manage your baseline budget categories. These amounts are copied to each new month.
-        </p>
-      </div>
-
-      {/* Total Summary */}
-      <Card variant="raised" padding="md">
-        <div className="flex items-center justify-between">
-          <div>
-            <p className="text-small text-[var(--color-text-muted)]">Total Master Budget</p>
-            <p className="text-display text-[var(--color-text)] mt-1">€{totalAmount.toLocaleString('en-IE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
-            {breakdown && (
-              <div className="flex gap-4 mt-2 text-small text-[var(--color-text-muted)]">
-                <span>Fixed: €{breakdown.fixed.total.toLocaleString('en-IE', { minimumFractionDigits: 2 })}</span>
-                <span>Variable: €{breakdown.variable.total.toLocaleString('en-IE', { minimumFractionDigits: 2 })}</span>
-              </div>
-            )}
-          </div>
+      <PageHeader
+        title="Master Budgets"
+        subtitle="Manage your baseline budget categories. These amounts are copied to each new month."
+        actions={
           <Button
             onClick={() => setShowAddForm(!showAddForm)}
             variant="primary"
@@ -215,8 +206,38 @@ export default function MasterBudgetsPage() {
             <PlusIcon className="w-5 h-5" />
             Add Budget Category
           </Button>
-        </div>
-      </Card>
+        }
+      />
+
+      {/* Total Summary */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <DashboardTile
+          title="Total Master Budget"
+          value={formatCurrency(totalAmount)}
+          helper={
+            breakdown
+              ? `Fixed: ${formatCurrency(breakdown.fixed.total)} • Variable: ${formatCurrency(breakdown.variable.total)}`
+              : 'Total across all categories'
+          }
+          tone="primary"
+        />
+        {breakdown && (
+          <>
+            <DashboardTile
+              title="Fixed Budgets"
+              value={formatCurrency(breakdown.fixed.total)}
+              helper={`${breakdown.fixed.budgets.length} ${breakdown.fixed.budgets.length === 1 ? 'budget' : 'budgets'}`}
+              tone="default"
+            />
+            <DashboardTile
+              title="Variable Budgets"
+              value={formatCurrency(breakdown.variable.total)}
+              helper={`${breakdown.variable.budgets.length} ${breakdown.variable.budgets.length === 1 ? 'budget' : 'budgets'}`}
+              tone="default"
+            />
+          </>
+        )}
+      </div>
 
       {/* Budget Type Navigation Cards */}
       {breakdown && (

@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { Card, Button, Input, Textarea } from '@/components/ui';
+import { Card, Button, Input, PageHeader, Textarea } from '@/components/ui';
 import { createSupabaseBrowserClient } from '@/lib/supabase/client';
 import { MonthlyOverviewService } from '@/lib/services';
 import { MonthlyOverviewSchema } from '@/lib/validation/schemas';
@@ -108,22 +108,19 @@ export default function NewMonthPage() {
 
   return (
     <div className="max-w-2xl mx-auto space-y-6 animate-fade-in">
-      {/* Header */}
-      <div className="flex items-center gap-4">
-        <button
-          type="button"
-          onClick={() => router.back()}
-          className="w-10 h-10 rounded-[var(--radius-md)] bg-[var(--color-surface-sunken)] flex items-center justify-center hover:bg-[var(--color-border)] transition-colors"
-        >
-          <ChevronLeftIcon className="w-5 h-5 text-[var(--color-text)]" />
-        </button>
-        <div>
-          <h1 className="text-headline text-[var(--color-text)]">New Month</h1>
-          <p className="text-small text-[var(--color-text-muted)]">
-            Create a new monthly budget period
-          </p>
-        </div>
-      </div>
+      <PageHeader
+        title="New Month"
+        subtitle="Create a new monthly budget period"
+        actions={
+          <button
+            type="button"
+            onClick={() => router.back()}
+            className="w-10 h-10 rounded-[var(--radius-md)] bg-[var(--color-surface-sunken)] flex items-center justify-center hover:bg-[var(--color-border)] transition-colors"
+          >
+            <ChevronLeftIcon className="w-5 h-5 text-[var(--color-text)]" />
+          </button>
+        }
+      />
 
       {/* Info Card */}
       <Card variant="outlined" padding="md" className="bg-[var(--color-accent)]/5 border-[var(--color-accent)]/20">

@@ -10,7 +10,7 @@ import {
   SubscriptionStatusType,
   Subscription
 } from '@/lib/supabase/database.types';
-import { Card, Button, Input } from '@/components/ui';
+import { Card, Button, Input, PageHeader } from '@/components/ui';
 
 const frequencies: FrequencyType[] = ['Weekly', 'Bi-Weekly', 'Monthly', 'Quarterly', 'Bi-Annually', 'Annually'];
 const statuses: SubscriptionStatusType[] = ['Active', 'Paused', 'Cancelled', 'Ended'];
@@ -172,21 +172,19 @@ export default function EditSubscriptionPage() {
 
   return (
     <div className="max-w-2xl mx-auto space-y-6 animate-fade-in">
-      <div className="flex items-center gap-4">
-        <button
-          type="button"
-          onClick={() => router.back()}
-          className="p-2 rounded-[var(--radius-md)] hover:bg-[var(--color-surface-sunken)] transition-colors"
-        >
-          <ArrowLeftIcon className="w-5 h-5 text-[var(--color-text-muted)]" />
-        </button>
-        <div>
-          <h1 className="text-display text-[var(--color-text)]">Edit Subscription</h1>
-          <p className="text-body text-[var(--color-text-muted)]">
-            Update {subscription.name}
-          </p>
-        </div>
-      </div>
+      <PageHeader
+        title="Edit Subscription"
+        subtitle={`Update ${subscription.name}`}
+        actions={
+          <button
+            type="button"
+            onClick={() => router.back()}
+            className="p-2 rounded-[var(--radius-md)] hover:bg-[var(--color-surface-sunken)] transition-colors"
+          >
+            <ArrowLeftIcon className="w-5 h-5 text-[var(--color-text-muted)]" />
+          </button>
+        }
+      />
 
       <Card variant="outlined" padding="lg">
         <form onSubmit={handleSubmit} className="space-y-6">

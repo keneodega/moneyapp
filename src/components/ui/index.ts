@@ -16,3 +16,4 @@ export { PieChart } from './PieChart';
 export type { PieChartData } from './PieChart';
 export { BulkActionsBar } from './BulkActionsBar';
 export { DashboardTile } from './DashboardTile';
+export { PageHeader } from './PageHeader';

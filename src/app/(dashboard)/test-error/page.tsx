@@ -10,7 +10,7 @@
  */
 
 import { useState } from 'react';
-import { Card, Button } from '@/components/ui';
+import { Card, Button, PageHeader } from '@/components/ui';
 import { getAppEnvironment } from '@/lib/config/env';
 import * as Sentry from '@sentry/nextjs';
 
@@ -98,16 +98,15 @@ export default function TestErrorPage() {
 
   return (
     <div className="max-w-2xl mx-auto space-y-6 animate-fade-in">
-      {/* Header */}
-      <div>
-        <h1 className="text-display text-[var(--color-text)]">Test Error Tracking</h1>
-        <p className="text-body text-[var(--color-text-muted)] mt-2">
-          Test Sentry error tracking and logging. Errors will be sent to your Sentry project.
-        </p>
-        <p className="text-small text-[var(--color-text-muted)] mt-2">
-          Environment: <strong>{env}</strong>
-        </p>
-      </div>
+      <PageHeader
+        title="Test Error Tracking"
+        subtitle="Test Sentry error tracking and logging. Errors will be sent to your Sentry project."
+        actions={
+          <p className="text-small text-[var(--color-text-muted)]">
+            Environment: <strong>{env}</strong>
+          </p>
+        }
+      />
 
       {/* Info Card */}
       <Card variant="outlined" padding="md" className="bg-[var(--color-accent)]/5 border-[var(--color-accent)]/20">

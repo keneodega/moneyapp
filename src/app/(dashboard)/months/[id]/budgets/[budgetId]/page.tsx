@@ -1,6 +1,6 @@
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
-import { Card, BudgetProgress } from '@/components/ui';
+import { Card, BudgetProgress, PageHeader } from '@/components/ui';
 import { createSupabaseServerClient } from '@/lib/supabase/server';
 import { BudgetService, ExpenseService } from '@/lib/services';
 import { BudgetActions } from './BudgetActions';
@@ -52,24 +52,21 @@ export default async function BudgetDetailPage({
 
   return (
     <div className="space-y-6 animate-fade-in">
-      {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-        <div className="flex items-center gap-4">
-          <Link
-            href={`/months/${monthId}`}
-            className="w-10 h-10 rounded-[var(--radius-md)] bg-[var(--color-surface-sunken)] flex items-center justify-center hover:bg-[var(--color-border)] transition-colors"
-          >
-            <ChevronLeftIcon className="w-5 h-5 text-[var(--color-text)]" />
-          </Link>
-          <div>
-            <h1 className="text-display text-[var(--color-text)]">{budget.name}</h1>
-            <p className="text-body text-[var(--color-text-muted)] mt-1">
-              Budget Category
-            </p>
-          </div>
-        </div>
-        <BudgetActions budgetId={budgetId} monthId={monthId} budgetName={budget.name} />
-      </div>
+      <PageHeader
+        title={budget.name}
+        subtitle="Budget Category"
+        actions={
+          <>
+            <Link
+              href={`/months/${monthId}`}
+              className="w-10 h-10 rounded-[var(--radius-md)] bg-[var(--color-surface-sunken)] flex items-center justify-center hover:bg-[var(--color-border)] transition-colors"
+            >
+              <ChevronLeftIcon className="w-5 h-5 text-[var(--color-text)]" />
+            </Link>
+            <BudgetActions budgetId={budgetId} monthId={monthId} budgetName={budget.name} />
+          </>
+        }
+      />
 
       {/* Budget Summary */}
       <Card variant="raised" padding="lg">

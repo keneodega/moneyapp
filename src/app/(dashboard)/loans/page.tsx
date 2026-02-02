@@ -1,6 +1,6 @@
 import { createSupabaseServerClient } from '@/lib/supabase/server';
 import { LoanService } from '@/lib/services';
-import { Card } from '@/components/ui';
+import { Card, DashboardTile, PageHeader } from '@/components/ui';
 import { Currency } from '@/components/ui/Currency';
 import Link from 'next/link';
 import { LoanList } from './LoanList';
@@ -32,76 +32,80 @@ export default async function LoansPage() {
     return nextDate >= today && nextDate <= nextWeek;
   });
 
+  const formatCurrency = (amount: number) =>
+    new Intl.NumberFormat('en-IE', {
+      style: 'currency',
+      currency: 'EUR',
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+    }).format(amount);
+
   return (
     <div className="space-y-8 animate-fade-in">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-display text-[var(--color-text)]">Loans</h1>
-          <p className="text-body text-[var(--color-text-muted)] mt-2">
-            Track your loans, debts, and payment schedules
-          </p>
-        </div>
-        <Link
-          href="/loans/new"
-          className="inline-flex items-center gap-2 px-4 py-2 rounded-[var(--radius-md)] bg-[var(--color-primary)] text-white font-medium hover:bg-[var(--color-primary-hover)] transition-colors"
-        >
-          <PlusIcon className="w-5 h-5" />
-          Add Loan
-        </Link>
-      </div>
+      <PageHeader
+        title="Loans"
+        subtitle="Track your loans, debts, and payment schedules"
+        actions={
+          <Link
+            href="/loans/new"
+            className="inline-flex items-center gap-2 px-4 py-2 rounded-[var(--radius-md)] bg-[var(--color-primary)] text-white font-medium hover:bg-[var(--color-primary-hover)] transition-colors"
+          >
+            <PlusIcon className="w-5 h-5" />
+            Add Loan
+          </Link>
+        }
+      />
 
       {/* Stats Cards */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        <Card variant="raised" padding="md">
-          <p className="text-small text-[var(--color-text-muted)] mb-1">Active Loans</p>
-          <p className="text-display text-[var(--color-text)]">{activeLoans.length}</p>
-        </Card>
-        
-        <Card variant="raised" padding="md">
-          <p className="text-small text-[var(--color-text-muted)] mb-1">Total Debt</p>
-          <p className="text-display text-[var(--color-danger)]">
-            <Currency amount={totalDebt} />
-          </p>
-        </Card>
-        
-        <Card variant="raised" padding="md">
-          <p className="text-small text-[var(--color-text-muted)] mb-1">Monthly Payments</p>
-          <p className="text-display text-[var(--color-text)]">
-            <Currency amount={totalMonthlyPayments} />
-          </p>
-        </Card>
-        
-        <Card variant="raised" padding="md">
-          <p className="text-small text-[var(--color-text-muted)] mb-1">Due This Week</p>
-          <p className="text-display text-[var(--color-warning)]">{dueSoon.length}</p>
-        </Card>
+        <DashboardTile
+          title="Active Loans"
+          value={String(activeLoans.length)}
+          helper="Currently active"
+          tone="default"
+        />
+        <DashboardTile
+          title="Total Debt"
+          value={formatCurrency(totalDebt)}
+          helper="Outstanding balance"
+          tone="danger"
+        />
+        <DashboardTile
+          title="Monthly Payments"
+          value={formatCurrency(totalMonthlyPayments)}
+          helper="Across active loans"
+          tone="primary"
+        />
+        <DashboardTile
+          title="Due This Week"
+          value={String(dueSoon.length)}
+          helper="Upcoming payments"
+          tone="warning"
+        />
       </div>
 
       {/* Additional Stats */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <Card variant="outlined" padding="md">
-          <p className="text-small text-[var(--color-text-muted)] mb-1">Total Paid Off</p>
-          <p className="text-headline text-[var(--color-success)]">
-            <Currency amount={totalPaidOff} />
-          </p>
-          <p className="text-caption text-[var(--color-text-muted)] mt-1">
-            {totalOriginalAmount > 0 
+        <DashboardTile
+          title="Total Paid Off"
+          value={formatCurrency(totalPaidOff)}
+          helper={
+            totalOriginalAmount > 0
               ? `${((totalPaidOff / totalOriginalAmount) * 100).toFixed(1)}% of total loans`
-              : 'No loans yet'}
-          </p>
-        </Card>
-        
-        <Card variant="outlined" padding="md">
-          <p className="text-small text-[var(--color-text-muted)] mb-1">Remaining Balance</p>
-          <p className="text-headline text-[var(--color-text)]">
-            <Currency amount={totalDebt} />
-          </p>
-          <p className="text-caption text-[var(--color-text-muted)] mt-1">
-            {totalOriginalAmount > 0 
+              : 'No loans yet'
+          }
+          tone="success"
+        />
+        <DashboardTile
+          title="Remaining Balance"
+          value={formatCurrency(totalDebt)}
+          helper={
+            totalOriginalAmount > 0
               ? `${((totalDebt / totalOriginalAmount) * 100).toFixed(1)}% remaining`
-              : 'No loans yet'}
-          </p>
-        </Card>
+              : 'No loans yet'
+          }
+          tone="default"
+        />
       </div>
 
       {/* Due Soon Alert */}

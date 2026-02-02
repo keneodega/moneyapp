@@ -6,7 +6,7 @@ export const dynamic = 'force-dynamic';
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { Card, Button, Input, Select, Textarea } from '@/components/ui';
+import { Card, Button, Input, PageHeader, Select, Textarea } from '@/components/ui';
 import { createSupabaseBrowserClient } from '@/lib/supabase/client';
 import { FinancialGoalService, SettingsService } from '@/lib/services';
 import { ValidationError } from '@/lib/services/errors';
@@ -152,21 +152,18 @@ export default function NewGoalPage() {
 
   return (
     <div className="max-w-2xl mx-auto space-y-6 animate-fade-in">
-      {/* Header */}
-      <div className="flex items-center gap-4">
-        <Link
-          href="/goals"
-          className="w-10 h-10 rounded-[var(--radius-md)] bg-[var(--color-surface-sunken)] flex items-center justify-center hover:bg-[var(--color-border)] transition-colors"
-        >
-          <ChevronLeftIcon className="w-5 h-5 text-[var(--color-text)]" />
-        </Link>
-        <div>
-          <h1 className="text-headline text-[var(--color-text)]">New Goal</h1>
-          <p className="text-small text-[var(--color-text-muted)]">
-            Create a new financial goal
-          </p>
-        </div>
-      </div>
+      <PageHeader
+        title="New Goal"
+        subtitle="Create a new financial goal"
+        actions={
+          <Link
+            href="/goals"
+            className="w-10 h-10 rounded-[var(--radius-md)] bg-[var(--color-surface-sunken)] flex items-center justify-center hover:bg-[var(--color-border)] transition-colors"
+          >
+            <ChevronLeftIcon className="w-5 h-5 text-[var(--color-text)]" />
+          </Link>
+        }
+      />
 
       {/* Form */}
       <Card variant="raised" padding="lg">

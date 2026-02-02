@@ -1,5 +1,5 @@
 import Link from 'next/link';
-import { Card, Button, ProgressBar, Currency } from '@/components/ui';
+import { Card, Button, PageHeader, ProgressBar, Currency } from '@/components/ui';
 import { createSupabaseServerClient } from '@/lib/supabase/server';
 import { FinancialGoalService, GoalContributionService } from '@/lib/services';
 import { NotFoundError } from '@/lib/services/errors';
@@ -135,29 +135,26 @@ export default async function GoalDetailPage({
 
   return (
     <div className="space-y-6 animate-fade-in">
-      {/* Header */}
-      <div className="flex items-center gap-4">
-        <Link
-          href="/goals"
-          className="w-10 h-10 rounded-[var(--radius-md)] bg-[var(--color-surface-sunken)] flex items-center justify-center hover:bg-[var(--color-border)] transition-colors"
-        >
-          <ChevronLeftIcon className="w-5 h-5 text-[var(--color-text)]" />
-        </Link>
-        <div className="flex-1">
-          <h1 className="text-display text-[var(--color-text)]">{goal.name}</h1>
-          {goal.goal_type && (
-            <p className="text-body text-[var(--color-text-muted)] mt-1">{goal.goal_type}</p>
-          )}
-        </div>
-        <div className="flex items-center gap-2">
-          <TransferButton 
-            goalId={id} 
-            goalName={goal.name}
-            currentAmount={goal.current_amount}
-          />
-          <GoalActions goalId={id} />
-        </div>
-      </div>
+      <PageHeader
+        title={goal.name}
+        subtitle={goal.goal_type || undefined}
+        actions={
+          <>
+            <Link
+              href="/goals"
+              className="w-10 h-10 rounded-[var(--radius-md)] bg-[var(--color-surface-sunken)] flex items-center justify-center hover:bg-[var(--color-border)] transition-colors"
+            >
+              <ChevronLeftIcon className="w-5 h-5 text-[var(--color-text)]" />
+            </Link>
+            <TransferButton 
+              goalId={id} 
+              goalName={goal.name}
+              currentAmount={goal.current_amount}
+            />
+            <GoalActions goalId={id} />
+          </>
+        }
+      />
 
       {/* Progress Overview */}
       <Card variant="raised" padding="lg">

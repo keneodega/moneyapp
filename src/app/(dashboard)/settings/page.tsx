@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { Card, Button, Input, useToast, useExportOptionsDialog, type ExportOptions } from '@/components/ui';
+import { Card, Button, Input, PageHeader, useToast, useExportOptionsDialog, type ExportOptions } from '@/components/ui';
 import { createSupabaseBrowserClient } from '@/lib/supabase/client';
 import { SettingsService } from '@/lib/services';
 import { exportAllData } from '@/lib/utils/export';
@@ -164,12 +164,10 @@ export default function SettingsPage() {
   if (!tableExists) {
     return (
       <div className="max-w-4xl mx-auto space-y-6 animate-fade-in">
-        <div>
-          <h1 className="text-display text-[var(--color-text)]">Settings</h1>
-          <p className="text-body text-[var(--color-text-muted)] mt-2">
-            Customize your app options
-          </p>
-        </div>
+        <PageHeader
+          title="Settings"
+          subtitle="Customize your app options"
+        />
 
         {/* Master Budgets Link - Always visible */}
         <Card variant="outlined" padding="lg" className="border-[var(--color-primary)]/30">
@@ -244,13 +242,10 @@ CREATE POLICY "Users can manage own settings" ON app_settings
 
   return (
     <div className="max-w-4xl mx-auto space-y-8 animate-fade-in">
-      {/* Header */}
-      <div>
-        <h1 className="text-display text-[var(--color-text)]">Settings</h1>
-        <p className="text-body text-[var(--color-text-muted)] mt-2">
-          Customize your app options. Changes are saved automatically.
-        </p>
-      </div>
+      <PageHeader
+        title="Settings"
+        subtitle="Customize your app options. Changes are saved automatically."
+      />
 
       {/* Master Budgets Link */}
       <Card variant="outlined" padding="lg" className="border-[var(--color-primary)]/30">

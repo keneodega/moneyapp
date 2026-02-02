@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { Card, Button, Input, Select, Skeleton, SkeletonList, useToast, useConfirmDialog, PieChart, type PieChartData } from '@/components/ui';
+import { Card, Button, DashboardTile, Input, PageHeader, Select, Skeleton, SkeletonList, useToast, useConfirmDialog, PieChart, type PieChartData } from '@/components/ui';
 import { createSupabaseBrowserClient } from '@/lib/supabase/client';
 import { MasterBudgetService } from '@/lib/services';
 import type { MasterBudget, MasterBudgetHistoryEntry, BudgetType } from '@/lib/services/master-budget.service';
@@ -174,6 +174,14 @@ export default function VariableBudgetsPage() {
     value: Number(b.budget_amount),
   }));
 
+  const formatCurrency = (amount: number) =>
+    new Intl.NumberFormat('en-IE', {
+      style: 'currency',
+      currency: 'EUR',
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+    }).format(amount);
+
   if (isLoading) {
     return (
       <div className="max-w-4xl mx-auto space-y-6 animate-fade-in">
@@ -191,38 +199,43 @@ export default function VariableBudgetsPage() {
 
   return (
     <div className="max-w-4xl mx-auto space-y-6 animate-fade-in">
-      {/* Header */}
-      <div className="flex items-center gap-4">
-        <Link
-          href="/master-budgets"
-          className="w-10 h-10 rounded-[var(--radius-md)] bg-[var(--color-surface-sunken)] flex items-center justify-center hover:bg-[var(--color-border)] transition-colors"
-        >
-          <ChevronLeftIcon className="w-5 h-5 text-[var(--color-text)]" />
-        </Link>
-        <div>
-          <h1 className="text-display text-[var(--color-text)]">Variable Budgets</h1>
-          <p className="text-body text-[var(--color-text-muted)] mt-1">
-            Budgets that change month-to-month (e.g., Tithe, Offering)
-          </p>
-        </div>
-      </div>
+      <PageHeader
+        title="Variable Budgets"
+        subtitle="Budgets that change month-to-month (e.g., Tithe, Offering)"
+        actions={
+          <>
+            <Link
+              href="/master-budgets"
+              className="w-10 h-10 rounded-[var(--radius-md)] bg-[var(--color-surface-sunken)] flex items-center justify-center hover:bg-[var(--color-border)] transition-colors"
+            >
+              <ChevronLeftIcon className="w-5 h-5 text-[var(--color-text)]" />
+            </Link>
+            <Button
+              onClick={() => setShowAddForm(!showAddForm)}
+              variant="primary"
+            >
+              <PlusIcon className="w-5 h-5" />
+              Add Variable Budget
+            </Button>
+          </>
+        }
+      />
 
       {/* Total Summary */}
-      <Card variant="raised" padding="md">
-        <div className="flex items-center justify-between">
-          <div>
-            <p className="text-small text-[var(--color-text-muted)]">Total Variable Budget</p>
-            <p className="text-display text-[var(--color-text)] mt-1">€{totalAmount.toLocaleString('en-IE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
-          </div>
-          <Button
-            onClick={() => setShowAddForm(!showAddForm)}
-            variant="primary"
-          >
-            <PlusIcon className="w-5 h-5" />
-            Add Variable Budget
-          </Button>
-        </div>
-      </Card>
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <DashboardTile
+          title="Total Variable Budget"
+          value={formatCurrency(totalAmount)}
+          helper={`${budgets.length} ${budgets.length === 1 ? 'budget' : 'budgets'}`}
+          tone="primary"
+        />
+        <DashboardTile
+          title="Average Budget"
+          value={formatCurrency(budgets.length > 0 ? totalAmount / budgets.length : 0)}
+          helper="Per category"
+          tone="default"
+        />
+      </div>
 
       {/* Pie Chart */}
       {budgets.length > 0 && (
@@ -237,7 +250,7 @@ export default function VariableBudgetsPage() {
             height={400}
           />
           <p className="text-center text-body font-medium text-[var(--color-text)] mt-4">
-            Total: €{totalAmount.toLocaleString('en-IE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+            Total: {formatCurrency(totalAmount)}
           </p>
         </Card>
       )}

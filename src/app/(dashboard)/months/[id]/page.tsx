@@ -1,7 +1,7 @@
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import dynamic from 'next/dynamic';
-import { Card } from '@/components/ui';
+import { Card, PageHeader } from '@/components/ui';
 import { createSupabaseServerClient } from '@/lib/supabase/server';
 import { SubscriptionService } from '@/lib/services';
 
@@ -436,24 +436,21 @@ export default async function MonthDetailPage({
 
   return (
     <div className="space-y-8 animate-fade-in">
-      {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-        <div className="flex items-center gap-4">
-          <Link
-            href="/months"
-            className="w-10 h-10 rounded-[var(--radius-md)] bg-[var(--color-surface-sunken)] flex items-center justify-center hover:bg-[var(--color-border)] transition-colors"
-          >
-            <ChevronLeftIcon className="w-5 h-5 text-[var(--color-text)]" />
-          </Link>
-          <div>
-            <h1 className="text-display text-[var(--color-text)]">{month.name}</h1>
-            <p className="text-body text-[var(--color-text-muted)] mt-1">
-              {formatDate(month.start_date)} - {formatDate(month.end_date)}
-            </p>
-          </div>
-        </div>
-        <MonthActions monthId={id} monthName={month.name} />
-      </div>
+      <PageHeader
+        title={month.name}
+        subtitle={`${formatDate(month.start_date)} - ${formatDate(month.end_date)}`}
+        actions={
+          <>
+            <Link
+              href="/months"
+              className="w-10 h-10 rounded-[var(--radius-md)] bg-[var(--color-surface-sunken)] flex items-center justify-center hover:bg-[var(--color-border)] transition-colors"
+            >
+              <ChevronLeftIcon className="w-5 h-5 text-[var(--color-text)]" />
+            </Link>
+            <MonthActions monthId={id} monthName={month.name} />
+          </>
+        }
+      />
 
       {/* Key Overview */}
       <div className="grid gap-4 lg:grid-cols-3">

@@ -3,7 +3,7 @@
 import { use, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { Card, Button } from '@/components/ui';
+import { Card, Button, PageHeader } from '@/components/ui';
 import { createSupabaseBrowserClient } from '@/lib/supabase/client';
 
 export default function NewBudgetPage({
@@ -20,6 +20,15 @@ export default function NewBudgetPage({
   }, [router]);
   return (
     <div className="max-w-2xl mx-auto space-y-6 animate-fade-in">
+      <PageHeader
+        title="Budgets via Master Budgets"
+        subtitle="Budgets are created from your master budget list"
+        actions={
+          <Link href={`/months/${monthId}`}>
+            <Button variant="secondary">Back to Month</Button>
+          </Link>
+        }
+      />
       <Card variant="raised" padding="lg">
         <div className="text-center space-y-4">
           <h2 className="text-title text-[var(--color-text)]">Budgets are Managed via Master Budgets</h2>
@@ -31,13 +40,6 @@ export default function NewBudgetPage({
             </Link>{' '}
             page.
           </p>
-          <div className="pt-4">
-            <Link href={`/months/${monthId}`}>
-              <Button variant="primary">
-                Back to Month
-              </Button>
-            </Link>
-          </div>
         </div>
       </Card>
     </div>

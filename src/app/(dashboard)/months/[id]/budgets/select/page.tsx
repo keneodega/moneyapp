@@ -3,7 +3,7 @@
 import { useState, useEffect, use, useCallback, useRef, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { Card, Button } from '@/components/ui';
+import { Card, Button, PageHeader } from '@/components/ui';
 import { createSupabaseBrowserClient } from '@/lib/supabase/client';
 import { BudgetService, MasterBudgetService } from '@/lib/services';
 import type { MasterBudget } from '@/lib/services/master-budget.service';
@@ -285,22 +285,19 @@ export default function SelectBudgetsPage({
 
   return (
     <div className="max-w-4xl mx-auto space-y-6 animate-fade-in">
-      {/* Header */}
-      <div className="flex items-center gap-4">
-        <button
-          type="button"
-          onClick={() => router.back()}
-          className="w-10 h-10 rounded-[var(--radius-md)] bg-[var(--color-surface-sunken)] flex items-center justify-center hover:bg-[var(--color-border)] transition-colors"
-        >
-          <ChevronLeftIcon className="w-5 h-5 text-[var(--color-text)]" />
-        </button>
-        <div>
-          <h1 className="text-headline text-[var(--color-text)]">Select Budgets</h1>
-          <p className="text-small text-[var(--color-text-muted)]">
-            Choose which master budgets to include in this month
-          </p>
-        </div>
-      </div>
+      <PageHeader
+        title="Select Budgets"
+        subtitle="Choose which master budgets to include in this month"
+        actions={
+          <button
+            type="button"
+            onClick={() => router.back()}
+            className="w-10 h-10 rounded-[var(--radius-md)] bg-[var(--color-surface-sunken)] flex items-center justify-center hover:bg-[var(--color-border)] transition-colors"
+          >
+            <ChevronLeftIcon className="w-5 h-5 text-[var(--color-text)]" />
+          </button>
+        }
+      />
 
       {/* Error Message */}
       {error && (

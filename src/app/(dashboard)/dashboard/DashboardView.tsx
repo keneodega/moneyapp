@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import dynamic from 'next/dynamic';
-import { Card } from '@/components/ui';
+import { Card, PageHeader } from '@/components/ui';
 
 // Code splitting: Load dashboard components dynamically
 const SubscriptionsDashboard = dynamic(() => import('./SubscriptionsDashboard').then(mod => ({ default: mod.SubscriptionsDashboard })), {
@@ -87,22 +87,18 @@ export function DashboardView() {
   return (
     <div className="space-y-6 animate-fade-in">
       {/* Header + Controls */}
-      <Card variant="outlined" padding="md" className="bg-[var(--color-surface-sunken)]/60">
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-          <div>
-            <h1 className="text-display text-[var(--color-text)]">Financial Dashboard</h1>
-            <p className="text-body text-[var(--color-text-muted)] mt-1">
-              Comprehensive view of your financial data
-            </p>
-          </div>
+      <PageHeader
+        title="Financial Dashboard"
+        subtitle="Comprehensive view of your financial data"
+        actions={
           <DateRangeFilter
             period={period}
             dateRange={dateRange}
             onPeriodChange={setPeriod}
             onDateRangeChange={setDateRange}
           />
-        </div>
-      </Card>
+        }
+      />
 
       {/* Dashboard Sections */}
       <div className="grid gap-6">

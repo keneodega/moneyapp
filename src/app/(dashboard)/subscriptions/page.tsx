@@ -1,6 +1,6 @@
 import { createSupabaseServerClient } from '@/lib/supabase/server';
 import { SubscriptionService } from '@/lib/services';
-import { Card } from '@/components/ui';
+import { Card, DashboardTile, PageHeader } from '@/components/ui';
 import { Currency } from '@/components/ui/Currency';
 import Link from 'next/link';
 import { SubscriptionList } from './SubscriptionList';
@@ -32,53 +32,56 @@ export default async function SubscriptionsPage() {
     return nextDate >= today && nextDate <= nextWeek;
   });
 
+  const formatCurrency = (amount: number) =>
+    new Intl.NumberFormat('en-IE', {
+      style: 'currency',
+      currency: 'EUR',
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+    }).format(amount);
+
   return (
     <div className="space-y-8 animate-fade-in">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-display text-[var(--color-text)]">Subscriptions</h1>
-          <p className="text-body text-[var(--color-text-muted)] mt-2">
-            Track your recurring payments and subscriptions
-          </p>
-        </div>
-        <Link
-          href="/subscriptions/new"
-          className="inline-flex items-center gap-2 px-4 py-2 rounded-[var(--radius-md)] bg-[var(--color-primary)] text-white font-medium hover:bg-[var(--color-primary-hover)] transition-colors"
-        >
-          <PlusIcon className="w-5 h-5" />
-          Add Subscription
-        </Link>
-      </div>
+      <PageHeader
+        title="Subscriptions"
+        subtitle="Track your recurring payments and subscriptions"
+        actions={
+          <Link
+            href="/subscriptions/new"
+            className="inline-flex items-center gap-2 px-4 py-2 rounded-[var(--radius-md)] bg-[var(--color-primary)] text-white font-medium hover:bg-[var(--color-primary-hover)] transition-colors"
+          >
+            <PlusIcon className="w-5 h-5" />
+            Add Subscription
+          </Link>
+        }
+      />
 
       {/* Stats Summary */}
-      <div className="grid gap-4 lg:grid-cols-3">
-        <Card variant="raised" padding="lg">
-          <p className="text-small text-[var(--color-text-muted)]">Monthly Cost</p>
-          <p className="text-display text-[var(--color-text)] mt-2">
-            <Currency amount={totalMonthly} />
-          </p>
-          <p className="text-caption text-[var(--color-text-subtle)] mt-1">Active subscriptions only</p>
-        </Card>
-        <Card variant="raised" padding="lg">
-          <p className="text-small text-[var(--color-text-muted)]">Yearly Cost</p>
-          <p className="text-display text-[var(--color-text)] mt-2">
-            <Currency amount={totalYearly} />
-          </p>
-          <p className="text-caption text-[var(--color-text-subtle)] mt-1">Projected annual spend</p>
-        </Card>
-        <Card variant="outlined" padding="lg" className="bg-[var(--color-surface-sunken)]">
-          <p className="text-small text-[var(--color-text-muted)]">Overview</p>
-          <div className="mt-3 grid grid-cols-2 gap-3">
-            <div>
-              <p className="text-caption text-[var(--color-text-muted)]">Active</p>
-              <p className="text-title text-[var(--color-text)] tabular-nums">{activeSubscriptions.length}</p>
-            </div>
-            <div>
-              <p className="text-caption text-[var(--color-text-muted)]">Due this week</p>
-              <p className="text-title text-[var(--color-warning)] tabular-nums">{dueSoon.length}</p>
-            </div>
-          </div>
-        </Card>
+      <div className="grid gap-4 lg:grid-cols-4">
+        <DashboardTile
+          title="Monthly Cost"
+          value={formatCurrency(totalMonthly)}
+          helper="Active subscriptions only"
+          tone="primary"
+        />
+        <DashboardTile
+          title="Yearly Cost"
+          value={formatCurrency(totalYearly)}
+          helper="Projected annual spend"
+          tone="default"
+        />
+        <DashboardTile
+          title="Active"
+          value={String(activeSubscriptions.length)}
+          helper="Subscriptions running"
+          tone="default"
+        />
+        <DashboardTile
+          title="Due This Week"
+          value={String(dueSoon.length)}
+          helper="Upcoming payments"
+          tone="warning"
+        />
       </div>
 
       {/* Due Soon Alert */}

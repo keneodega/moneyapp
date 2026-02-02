@@ -1,5 +1,5 @@
 import Link from 'next/link';
-import { Card, Button, ProgressBar } from '@/components/ui';
+import { Card, Button, PageHeader, ProgressBar } from '@/components/ui';
 import { createSupabaseServerClient } from '@/lib/supabase/server';
 import { FinancialGoalService } from '@/lib/services';
 
@@ -48,22 +48,19 @@ export default async function GoalsPage() {
 
   return (
     <div className="space-y-8 animate-fade-in">
-      {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-        <div>
-          <h1 className="text-display text-[var(--color-text)]">Financial Goals</h1>
-          <p className="text-body text-[var(--color-text-muted)] mt-2">
-            Track your savings goals and financial targets
-          </p>
-        </div>
-        <Link
-          href="/goals/new"
-          className="inline-flex items-center justify-center gap-2 h-12 px-6 rounded-[var(--radius-md)] bg-[var(--color-primary)] text-white font-medium shadow-[var(--shadow-sm)] hover:bg-[var(--color-primary-dark)] transition-colors"
-        >
-          <PlusIcon className="w-5 h-5" />
-          New Goal
-        </Link>
-      </div>
+      <PageHeader
+        title="Financial Goals"
+        subtitle="Track your savings goals and financial targets"
+        actions={
+          <Link
+            href="/goals/new"
+            className="inline-flex items-center justify-center gap-2 h-12 px-6 rounded-[var(--radius-md)] bg-[var(--color-primary)] text-white font-medium shadow-[var(--shadow-sm)] hover:bg-[var(--color-primary-dark)] transition-colors"
+          >
+            <PlusIcon className="w-5 h-5" />
+            New Goal
+          </Link>
+        }
+      />
 
       {/* Goals Grid */}
       {goals.length > 0 ? (
