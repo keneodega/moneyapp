@@ -1,0 +1,36 @@
+[
+  {
+    "attributes": { "type": "Subscription__c", "url": "/services/data/v65.0/sobjects/Subscription__c/a0CWU00000IypQJ2AZ" },
+    "Id": "a0CWU00000IypQJ2AZ",
+    "Amount__c": 19.13,
+    "Bank__c": "Santander",
+    "Collection_Day__c": 9,
+    "Name": "Zoom",
+    "Frequency__c": "Monthly",
+    "Status__c": "Active",
+    "Person__c": "Mum",
+    "Subscription_Type__c": "Productivity",
+    "Start_Date__c": "2024-10-09",
+    "Description__c": "Zoom for mumsi",
+    "To_be_Expensed__c": true,
+    "Paid_This_Month__c": false,
+    "IsDeleted": false
+  },
+  {
+    "attributes": { "type": "Subscription__c", "url": "/services/data/v65.0/sobjects/Subscription__c/a0CWU00000IyqCf2AJ" },
+    "Id": "a0CWU00000IyqCf2AJ",
+    "Amount__c": 16.99,
+    "Bank__c": "Revolut Kene",
+    "Collection_Day__c": 28,
+    "Name": "Spotify",
+    "Frequency__c": "Monthly",
+    "Status__c": "Deactivated",
+    "Person__c": "Family",
+    "Subscription_Type__c": "Entertainment",
+    "Start_Date__c": "2024-10-29",
+    "End_Date__c": "2025-12-24",
+    "To_be_Expensed__c": false,
+    "Paid_This_Month__c": false,
+    "IsDeleted": false
+  }
+]

@@ -89,20 +89,12 @@ async function getMonthData(id: string): Promise<{
     }
 
     // Parallelize independent queries for better performance
-    const [baseMonthResult, incomeResult, budgetResult, contributionsResult] = await Promise.all([
+    const [baseMonthResult, contributionsResult] = await Promise.all([
       supabase
         .from('monthly_overviews')
         .select('*')
         .eq('id', id)
         .single(),
-      supabase
-        .from('income_sources')
-        .select('amount')
-        .eq('monthly_overview_id', id),
-      supabase
-        .from('budgets')
-        .select('budget_amount')
-        .eq('monthly_overview_id', id),
       supabase
         .from('goal_contributions')
         .select('amount')
@@ -110,47 +102,22 @@ async function getMonthData(id: string): Promise<{
     ]);
 
     const { data: baseMonth, error: baseError } = baseMonthResult;
-    const { data: incomeAmounts, error: incomeError } = incomeResult;
-    const { data: budgetAmounts, error: budgetsError } = budgetResult;
     const { data: contributions, error: contributionsError } = contributionsResult;
 
     if (baseError || !baseMonth) {
       return null;
     }
 
-    // Calculate totals manually
-    if (incomeError) {
-      console.error(`Error fetching income for month ${id}:`, incomeError);
-    }
-    
-    const totalIncome = incomeAmounts && !incomeError
-      ? incomeAmounts.reduce((sum, i) => {
-          const amount = typeof i.amount === 'string' ? parseFloat(i.amount) : Number(i.amount || 0);
-          return sum + (isNaN(amount) ? 0 : amount);
-        }, 0)
-      : 0;
-    
-    if (budgetsError) {
-      console.error(`Error fetching budgets for month ${id}:`, budgetsError);
-    }
-    
-    const totalBudgeted = budgetAmounts && !budgetsError
-      ? budgetAmounts.reduce((sum, b) => {
-          const amount = typeof b.budget_amount === 'string' ? parseFloat(b.budget_amount) : Number(b.budget_amount || 0);
-          return sum + (isNaN(amount) ? 0 : amount);
-        }, 0)
-      : 0;
-
     const month = {
       ...baseMonth,
-      total_income: totalIncome,
-      total_budgeted: totalBudgeted,
+      total_income: 0,
+      total_budgeted: 0,
       total_spent: 0, // Will be calculated from budget_summary below
-      amount_unallocated: totalIncome - totalBudgeted,
+      amount_unallocated: 0,
     };
 
     // Fetch budget_summary (transfer-aware amount_spent, amount_left) and budgets with master_budget
-    const [summaryResult, budgetsWithMasterResult] = await Promise.all([
+    const [summaryResult, budgetsWithMasterResult, incomeResult] = await Promise.all([
       supabase
         .from('budget_summary')
         .select('id, amount_spent, amount_left, percent_used')
@@ -163,10 +130,16 @@ async function getMonthData(id: string): Promise<{
         `)
         .eq('monthly_overview_id', id)
         .order('name'),
+      supabase
+        .from('income_sources')
+        .select('*')
+        .eq('monthly_overview_id', id)
+        .order('date_paid', { ascending: false }),
     ]);
 
     const { data: summaryRows } = summaryResult;
     const { data: budgetsWithMaster, error: budgetsWithMasterError } = budgetsWithMasterResult;
+    const { data: income, error: incomeError } = incomeResult;
 
     let budgetsData: any[] | null = null;
     if (budgetsWithMasterError) {
@@ -197,8 +170,8 @@ async function getMonthData(id: string): Promise<{
       const summary = summaryByBudgetId.get(budget.id);
       const amount_spent = summary?.amount_spent ?? 0;
       const amount_left = summary != null ? summary.amount_left : Number(budget.budget_amount) - amount_spent;
-      const percent_used = summary?.percent_used ?? (Number(budget.budget_amount) > 0 ? (amount_spent / Number(budget.budget_amount)) * 100 : 0);
       const effectiveAmount = Number(budget.override_amount ?? budget.budget_amount ?? 0);
+      const percent_used = summary?.percent_used ?? (effectiveAmount > 0 ? (amount_spent / effectiveAmount) * 100 : 0);
       return {
         id: budget.id,
         monthly_overview_id: budget.monthly_overview_id,
@@ -219,6 +192,12 @@ async function getMonthData(id: string): Promise<{
       };
     });
 
+    // Calculate totals from effective amounts
+    const totalBudgeted = budgets.reduce((sum, b) => {
+      const amount = Number(b.effectiveAmount || 0);
+      return sum + (isNaN(amount) ? 0 : amount);
+    }, 0);
+
     // Compute fixed vs variable totals
     let totalFixed = 0;
     let totalVariable = 0;
@@ -231,12 +210,16 @@ async function getMonthData(id: string): Promise<{
       }
     }
 
-    // Fetch income
-    const { data: income } = await supabase
-      .from('income_sources')
-      .select('*')
-      .eq('monthly_overview_id', id)
-      .order('date_paid', { ascending: false });
+    // Calculate total income
+    if (incomeError) {
+      console.error(`Error fetching income for month ${id}:`, incomeError);
+    }
+    const totalIncome = income && !incomeError
+      ? income.reduce((sum, i) => {
+          const amount = typeof i.amount === 'string' ? parseFloat(i.amount) : Number(i.amount || 0);
+          return sum + (isNaN(amount) ? 0 : amount);
+        }, 0)
+      : 0;
 
     // Calculate total spent from budgets
     const totalSpent = budgets && budgets.length > 0
@@ -259,6 +242,9 @@ async function getMonthData(id: string): Promise<{
       : 0;
 
     // Update month with total_spent
+    month.total_income = totalIncome;
+    month.total_budgeted = totalBudgeted;
+    month.amount_unallocated = totalIncome - totalBudgeted;
     month.total_spent = totalSpent;
 
     // Fetch previous month for comparison (same user, start_date < current)
@@ -305,10 +291,17 @@ async function getMonthData(id: string): Promise<{
       for (const b of prevBudgetsRes.data || []) {
         const spent = prevSummaryMap.get(b.id) ?? 0;
         prevTotalSpent += spent;
-        prevBudgetsByName[b.name] = {
-          amount_spent: spent,
-          budget_amount: Number(b.budget_amount || 0),
-        };
+        const nameKey = b.name;
+        const prevEntry = prevBudgetsByName[nameKey];
+        if (prevEntry) {
+          prevEntry.amount_spent += spent;
+          prevEntry.budget_amount += Number(b.budget_amount || 0);
+        } else {
+          prevBudgetsByName[nameKey] = {
+            amount_spent: spent,
+            budget_amount: Number(b.budget_amount || 0),
+          };
+        }
       }
 
       previousMonth = {
@@ -364,6 +357,23 @@ function formatDate(date: string): string {
   });
 }
 
+function getMonthTimeStats(startDate: string, endDate: string) {
+  const msPerDay = 1000 * 60 * 60 * 24;
+  const start = new Date(startDate).getTime();
+  const end = new Date(endDate).getTime();
+  const now = Date.now();
+
+  if (Number.isNaN(start) || Number.isNaN(end)) {
+    return { daysRemaining: 0, elapsedDays: 1 };
+  }
+
+  const clampedNow = Math.min(Math.max(now, start), end);
+  const elapsedDays = Math.max(1, Math.ceil((clampedNow - start) / msPerDay));
+  const daysRemaining = Math.max(0, Math.ceil((end - Math.max(now, start)) / msPerDay));
+
+  return { daysRemaining, elapsedDays };
+}
+
 export default async function MonthDetailPage({
   params,
 }: {
@@ -387,6 +397,7 @@ export default async function MonthDetailPage({
   // Calculate spent from budgets (view provides this per budget)
   const totalSpent = (budgets || []).reduce((sum, b) => sum + Number(b?.amount_spent || 0), 0);
   const spentPercent = totalBudgeted > 0 ? (totalSpent / totalBudgeted) * 100 : 0;
+  const { daysRemaining, elapsedDays } = getMonthTimeStats(month.start_date, month.end_date);
 
   // Month-over-month changes
   const pctChange = (curr: number, prev: number) =>
@@ -710,7 +721,7 @@ export default async function MonthDetailPage({
               <div className="flex justify-between">
                 <span className="text-small text-[var(--color-text-muted)]">Days remaining</span>
                 <span className="text-small font-medium text-[var(--color-text)]">
-                  {Math.max(0, Math.ceil((new Date(month.end_date).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24)))}
+                  {daysRemaining}
                 </span>
               </div>
               <div className="flex justify-between">
@@ -722,7 +733,7 @@ export default async function MonthDetailPage({
               <div className="flex justify-between">
                 <span className="text-small text-[var(--color-text-muted)]">Avg. daily spend</span>
                 <span className="text-small font-medium text-[var(--color-text)]">
-                  {formatCurrency(totalSpent / Math.max(1, Math.ceil((new Date().getTime() - new Date(month.start_date).getTime()) / (1000 * 60 * 60 * 24))))}
+                  {formatCurrency(elapsedDays > 0 ? totalSpent / elapsedDays : 0)}
                 </span>
               </div>
             </div>
