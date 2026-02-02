@@ -56,10 +56,14 @@ export class IncomeSourceService {
 
   /**
    * Create a new income source
-   * 
+   *
    * @param data - Income source data
+   * @param options - Additional options for budget creation
    */
-  async create(data: Omit<IncomeSourceInsert, 'user_id'>): Promise<IncomeSource> {
+  async create(
+    data: Omit<IncomeSourceInsert, 'user_id'>,
+    options?: { createTithe?: boolean; createOffering?: boolean }
+  ): Promise<IncomeSource> {
     const userId = await this.getUserId();
 
     // Validate amount is positive
@@ -138,15 +142,17 @@ export class IncomeSourceService {
       }
     }
 
-    // If tithe/offering is selected, ensure Tithe and Offering budgets exist with calculated amounts (10% and 5%); no expenses created
-    if (incomeSource.tithe_deduction) {
+    // Determine which budgets to create based on options (if provided) or tithe_deduction flag
+    const shouldCreateTithe = options?.createTithe ?? incomeSource.tithe_deduction;
+    const shouldCreateOffering = options?.createOffering ?? false; // Only create offering if explicitly requested
+
+    // If tithe is selected, create/update Tithe budget (10%)
+    if (shouldCreateTithe) {
       const titheAmount = incomeSource.amount * 0.1;
-      const offeringAmount = incomeSource.amount * 0.05;
       try {
         const budgetService = new BudgetService(this.supabase);
         const masterBudgetService = new MasterBudgetService(this.supabase);
 
-        // Tithe budget: create or add 10% of this income to existing
         const { data: titheBudget } = await this.supabase
           .from('budgets')
           .select('id, budget_amount')
@@ -185,8 +191,18 @@ export class IncomeSourceService {
             }
           }
         }
+      } catch (err) {
+        console.error('Failed to create/update Tithe budget:', err);
+      }
+    }
 
-        // Offering budget: create or add 5% of this income to existing
+    // If offering is selected, create/update Offering budget (5%)
+    if (shouldCreateOffering) {
+      const offeringAmount = incomeSource.amount * 0.05;
+      try {
+        const budgetService = new BudgetService(this.supabase);
+        const masterBudgetService = new MasterBudgetService(this.supabase);
+
         const { data: offeringBudget } = await this.supabase
           .from('budgets')
           .select('id, budget_amount')
@@ -226,8 +242,7 @@ export class IncomeSourceService {
           }
         }
       } catch (err) {
-        // Don't fail income creation if budget creation fails
-        console.error('Failed to create/update Tithe/Offering budgets:', err);
+        console.error('Failed to create/update Offering budget:', err);
       }
     }
 

@@ -165,16 +165,22 @@ export default function NewIncomePage({
 
       // 1. Insert the income source using the service (which will auto-create/update Tithe/Offering budgets)
       const incomeService = new IncomeSourceService(supabase);
-      await incomeService.create({
-        monthly_overview_id: monthId,
-        amount: calculations.amount,
-        source: sourceValue as any,
-        person: formData.person || null,
-        bank: validateBankType(formData.bank) ?? null,
-        date_paid: formData.date_paid,
-        tithe_deduction: formData.auto_tithe || formData.auto_offering,
-        description: formData.description || null,
-      });
+      await incomeService.create(
+        {
+          monthly_overview_id: monthId,
+          amount: calculations.amount,
+          source: sourceValue as any,
+          person: formData.person || null,
+          bank: validateBankType(formData.bank) ?? null,
+          date_paid: formData.date_paid,
+          tithe_deduction: formData.auto_tithe,
+          description: formData.description || null,
+        },
+        {
+          createTithe: formData.auto_tithe,
+          createOffering: formData.auto_offering,
+        }
+      );
 
       router.push(`/months/${monthId}`);
       router.refresh();
