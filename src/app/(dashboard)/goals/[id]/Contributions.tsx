@@ -146,7 +146,7 @@ export function Contributions({ contributions }: ContributionsProps) {
                   ) : (
                     <button
                       onClick={() => setConfirmDelete(contrib.id)}
-                      className="opacity-0 group-hover:opacity-100 p-1.5 rounded text-[var(--color-text-muted)] hover:text-red-400 hover:bg-red-500/10 transition-all"
+                      className="opacity-100 md:opacity-0 md:group-hover:opacity-100 p-1.5 rounded text-[var(--color-text-muted)] hover:text-red-400 hover:bg-red-500/10 transition-all"
                       title="Delete contribution"
                     >
                       <TrashIcon className="w-4 h-4" />

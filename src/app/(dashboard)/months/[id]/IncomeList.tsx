@@ -105,14 +105,14 @@ export const IncomeList = memo(function IncomeList({ income, monthId }: IncomeLi
                 <div className="flex items-center gap-1">
                   <Link
                     href={`/months/${monthId}/income/${item.id}/edit`}
-                    className="opacity-0 group-hover:opacity-100 p-1.5 rounded text-[var(--color-text-muted)] hover:text-[var(--color-primary)] hover:bg-[var(--color-primary)]/10 transition-all"
+                    className="opacity-100 md:opacity-0 md:group-hover:opacity-100 p-1.5 rounded text-[var(--color-text-muted)] hover:text-[var(--color-primary)] hover:bg-[var(--color-primary)]/10 transition-all"
                     title="Edit income"
                   >
                     <EditIcon className="w-4 h-4" />
                   </Link>
                   <button
                     onClick={() => setConfirmDelete(item.id)}
-                    className="opacity-0 group-hover:opacity-100 p-1.5 rounded text-[var(--color-text-muted)] hover:text-red-400 hover:bg-red-500/10 transition-all"
+                    className="opacity-100 md:opacity-0 md:group-hover:opacity-100 p-1.5 rounded text-[var(--color-text-muted)] hover:text-red-400 hover:bg-red-500/10 transition-all"
                     title="Delete income"
                   >
                     <TrashIcon className="w-4 h-4" />
