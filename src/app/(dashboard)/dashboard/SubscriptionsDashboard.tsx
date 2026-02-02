@@ -30,6 +30,7 @@ export function SubscriptionsDashboard({ dateRange }: SubscriptionsDashboardProp
   const [totalMonthly, setTotalMonthly] = useState(0);
   const [totalYearly, setTotalYearly] = useState(0);
   const [loading, setLoading] = useState(true);
+  const [expandedMonth, setExpandedMonth] = useState<string | null>(null);
 
   const loadSubscriptions = useCallback(async () => {
     try {
@@ -174,34 +175,55 @@ export function SubscriptionsDashboard({ dateRange }: SubscriptionsDashboardProp
           <div className="space-y-3">
             {monthlyData.map((monthData, idx) => (
               <Card key={idx} variant="outlined" padding="md">
-                <div className="flex items-center justify-between mb-3">
-                  <h4 className="text-body font-medium text-[var(--color-text)]">
-                    {monthData.month}
-                  </h4>
-                  <p className="text-body font-medium text-[var(--color-primary)] tabular-nums">
-                    {formatCurrency(monthData.total)}
-                  </p>
-                </div>
-                <div className="space-y-2">
-                  {monthData.subscriptions.map(({ subscription, monthlyCost }) => (
-                    <div
-                      key={subscription.id}
-                      className="flex items-center justify-between p-2 rounded-[var(--radius-md)] bg-[var(--color-surface-sunken)]"
-                    >
-                      <div className="flex-1">
-                        <p className="text-small font-medium text-[var(--color-text)]">
-                          {subscription.name}
-                        </p>
-                        <p className="text-caption text-[var(--color-text-muted)]">
-                          {subscription.frequency} • {formatCurrency(subscription.amount)}
-                        </p>
-                      </div>
-                      <p className="text-small font-medium text-[var(--color-text)] tabular-nums ml-4">
-                        {formatCurrency(monthlyCost)}/mo
+                <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                  <div>
+                    <h4 className="text-body font-medium text-[var(--color-text)]">
+                      {monthData.month}
+                    </h4>
+                    <p className="text-caption text-[var(--color-text-muted)] mt-1">
+                      {monthData.subscriptions.length} active subscription{monthData.subscriptions.length === 1 ? '' : 's'}
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <div className="text-right">
+                      <p className="text-body font-medium text-[var(--color-primary)] tabular-nums">
+                        {formatCurrency(monthData.total)}
+                      </p>
+                      <p className="text-caption text-[var(--color-text-muted)]">
+                        Avg {formatCurrency(monthData.subscriptions.length > 0 ? monthData.total / monthData.subscriptions.length : 0)}
                       </p>
                     </div>
-                  ))}
+                    <button
+                      onClick={() => setExpandedMonth(expandedMonth === monthData.month ? null : monthData.month)}
+                      className="text-small font-medium text-[var(--color-primary)] hover:underline"
+                    >
+                      {expandedMonth === monthData.month ? 'Hide details' : 'View details'}
+                    </button>
+                  </div>
                 </div>
+
+                {expandedMonth === monthData.month && (
+                  <div className="mt-4 pt-4 border-t border-[var(--color-border)] grid gap-2">
+                    {monthData.subscriptions.map(({ subscription, monthlyCost }) => (
+                      <div
+                        key={subscription.id}
+                        className="flex items-center justify-between p-2 rounded-[var(--radius-md)] bg-[var(--color-surface-sunken)]"
+                      >
+                        <div className="flex-1">
+                          <p className="text-small font-medium text-[var(--color-text)]">
+                            {subscription.name}
+                          </p>
+                          <p className="text-caption text-[var(--color-text-muted)]">
+                            {subscription.frequency} • {formatCurrency(subscription.amount)}
+                          </p>
+                        </div>
+                        <p className="text-small font-medium text-[var(--color-text)] tabular-nums ml-4">
+                          {formatCurrency(monthlyCost)}/mo
+                        </p>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </Card>
             ))}
           </div>
