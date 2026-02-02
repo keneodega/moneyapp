@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { createSupabaseBrowserClient } from '@/lib/supabase/client';
-import { Card, SkeletonCard, SkeletonTable } from '@/components/ui';
+import { Card, DashboardTile, SkeletonCard, SkeletonTable } from '@/components/ui';
 
 interface DateRange {
   start: Date;
@@ -179,26 +179,24 @@ export function TransactionsDashboard({ dateRange }: TransactionsDashboardProps)
     <div className="space-y-6">
       {/* Summary Cards */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <Card variant="outlined" padding="md" className="bg-[var(--color-surface-sunken)]/40">
-          <p className="text-small text-[var(--color-text-muted)]">Total Income</p>
-          <p className="text-headline text-[var(--color-success)] mt-1 tabular-nums">
-            {formatCurrency(totalIncome)}
-          </p>
-        </Card>
-        <Card variant="outlined" padding="md" className="bg-[var(--color-surface-sunken)]/40">
-          <p className="text-small text-[var(--color-text-muted)]">Total Expenses</p>
-          <p className="text-headline text-[var(--color-danger)] mt-1 tabular-nums">
-            {formatCurrency(totalExpenses)}
-          </p>
-        </Card>
-        <Card variant="outlined" padding="md" className="bg-[var(--color-surface-sunken)]/40">
-          <p className="text-small text-[var(--color-text-muted)]">Net</p>
-          <p className={`text-headline mt-1 tabular-nums ${
-            net >= 0 ? 'text-[var(--color-success)]' : 'text-[var(--color-danger)]'
-          }`}>
-            {formatCurrency(net)}
-          </p>
-        </Card>
+        <DashboardTile
+          title="Total Income"
+          value={formatCurrency(totalIncome)}
+          helper="Incoming cashflow"
+          tone="success"
+        />
+        <DashboardTile
+          title="Total Expenses"
+          value={formatCurrency(totalExpenses)}
+          helper="Outgoing cashflow"
+          tone="danger"
+        />
+        <DashboardTile
+          title="Net"
+          value={formatCurrency(net)}
+          helper="Income minus expenses"
+          tone={net >= 0 ? 'success' : 'danger'}
+        />
       </div>
 
       {/* Filter Buttons */}

@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import Link from 'next/link';
 import { createSupabaseBrowserClient } from '@/lib/supabase/client';
-import { Card, ProgressBar, SkeletonCard } from '@/components/ui';
+import { Card, DashboardTile, ProgressBar, SkeletonCard } from '@/components/ui';
 
 interface DateRange {
   start: Date;
@@ -245,32 +245,30 @@ export function BudgetDashboard({ dateRange }: BudgetDashboardProps) {
     <div className="space-y-6">
       {/* Summary Cards */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        <Card variant="outlined" padding="md" className="bg-[var(--color-surface-sunken)]/40">
-          <p className="text-small text-[var(--color-text-muted)]">Total Budgeted</p>
-          <p className="text-headline text-[var(--color-text)] mt-1 tabular-nums">
-            {formatCurrency(totalBudgeted)}
-          </p>
-        </Card>
-        <Card variant="outlined" padding="md" className="bg-[var(--color-surface-sunken)]/40">
-          <p className="text-small text-[var(--color-text-muted)]">Total Spent</p>
-          <p className="text-headline text-[var(--color-text)] mt-1 tabular-nums">
-            {formatCurrency(totalSpent)}
-          </p>
-        </Card>
-        <Card variant="outlined" padding="md" className="bg-[var(--color-surface-sunken)]/40">
-          <p className="text-small text-[var(--color-text-muted)]">Total Income</p>
-          <p className="text-headline text-[var(--color-success)] mt-1 tabular-nums">
-            {formatCurrency(totalIncome)}
-          </p>
-        </Card>
-        <Card variant="outlined" padding="md" className="bg-[var(--color-surface-sunken)]/40">
-          <p className="text-small text-[var(--color-text-muted)]">Savings</p>
-          <p className={`text-headline mt-1 tabular-nums ${
-            savings >= 0 ? 'text-[var(--color-success)]' : 'text-[var(--color-danger)]'
-          }`}>
-            {formatCurrency(savings)}
-          </p>
-        </Card>
+        <DashboardTile
+          title="Total Budgeted"
+          value={formatCurrency(totalBudgeted)}
+          helper="Across selected months"
+          tone="primary"
+        />
+        <DashboardTile
+          title="Total Spent"
+          value={formatCurrency(totalSpent)}
+          helper="Actual expenditures"
+          tone="warning"
+        />
+        <DashboardTile
+          title="Total Income"
+          value={formatCurrency(totalIncome)}
+          helper="Reported income"
+          tone="success"
+        />
+        <DashboardTile
+          title="Savings"
+          value={formatCurrency(savings)}
+          helper="Income minus spend"
+          tone={savings >= 0 ? 'success' : 'danger'}
+        />
       </div>
 
       {/* Monthly Breakdown */}

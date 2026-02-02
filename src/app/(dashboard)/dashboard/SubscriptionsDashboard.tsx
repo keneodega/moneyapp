@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { createSupabaseBrowserClient } from '@/lib/supabase/client';
 import { SubscriptionService } from '@/lib/services';
-import { Card, SkeletonCard } from '@/components/ui';
+import { Card, DashboardTile, SkeletonCard } from '@/components/ui';
 import type { Subscription } from '@/lib/supabase/database.types';
 
 interface DateRange {
@@ -146,24 +146,24 @@ export function SubscriptionsDashboard({ dateRange }: SubscriptionsDashboardProp
     <div className="space-y-6">
       {/* Summary Cards */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <Card variant="outlined" padding="md" className="bg-[var(--color-surface-sunken)]/40">
-          <p className="text-small text-[var(--color-text-muted)]">Total Monthly Cost</p>
-          <p className="text-headline text-[var(--color-text)] mt-1 tabular-nums">
-            {formatCurrency(totalMonthly)}
-          </p>
-        </Card>
-        <Card variant="outlined" padding="md" className="bg-[var(--color-surface-sunken)]/40">
-          <p className="text-small text-[var(--color-text-muted)]">Total Yearly Cost</p>
-          <p className="text-headline text-[var(--color-text)] mt-1 tabular-nums">
-            {formatCurrency(totalYearly)}
-          </p>
-        </Card>
-        <Card variant="outlined" padding="md" className="bg-[var(--color-surface-sunken)]/40">
-          <p className="text-small text-[var(--color-text-muted)]">Active Subscriptions</p>
-          <p className="text-headline text-[var(--color-text)] mt-1 tabular-nums">
-            {subscriptions.length}
-          </p>
-        </Card>
+        <DashboardTile
+          title="Total Monthly Cost"
+          value={formatCurrency(totalMonthly)}
+          helper="Active subscriptions only"
+          tone="primary"
+        />
+        <DashboardTile
+          title="Total Yearly Cost"
+          value={formatCurrency(totalYearly)}
+          helper="Projected annual spend"
+          tone="default"
+        />
+        <DashboardTile
+          title="Active Subscriptions"
+          value={String(subscriptions.length)}
+          helper="Within selected range"
+          tone="default"
+        />
       </div>
 
       {/* Monthly Breakdown */}
