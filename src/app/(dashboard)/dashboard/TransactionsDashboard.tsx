@@ -240,60 +240,72 @@ export function TransactionsDashboard({ dateRange }: TransactionsDashboardProps)
         {filteredTransactions.length === 0 ? (
           <p className="text-body text-[var(--color-text-muted)]">No transactions in this period</p>
         ) : (
-          filteredTransactions.map((transaction) => (
-            <Card
-              key={`${transaction.type}-${transaction.id}`}
-              variant="outlined"
-              padding="md"
-              hover
-            >
-              <div className="flex items-center justify-between">
-                <div className="flex-1">
-                  <div className="flex items-center gap-2">
-                    <span
-                      className={`w-2 h-2 rounded-full ${
-                        transaction.type === 'income'
-                          ? 'bg-[var(--color-success)]'
-                          : 'bg-[var(--color-danger)]'
-                      }`}
-                    />
-                    <p className="text-body font-medium text-[var(--color-text)]">
-                      {transaction.description}
-                    </p>
+          <>
+            <div className="hidden sm:grid sm:grid-cols-[minmax(0,2fr)_minmax(0,1fr)_minmax(0,1fr)_minmax(0,0.8fr)] gap-4 px-4 py-2 text-caption text-[var(--color-text-muted)]">
+              <span>Description</span>
+              <span>Category</span>
+              <span>Date</span>
+              <span className="text-right">Amount</span>
+            </div>
+            {filteredTransactions.map((transaction) => (
+              <Card
+                key={`${transaction.type}-${transaction.id}`}
+                variant="outlined"
+                padding="md"
+                hover
+              >
+                <div className="flex items-center justify-between gap-4">
+                  <div className="flex-1 space-y-1">
+                    <div className="flex items-center gap-2">
+                      <span
+                        className={`w-2 h-2 rounded-full ${
+                          transaction.type === 'income'
+                            ? 'bg-[var(--color-success)]'
+                            : 'bg-[var(--color-danger)]'
+                        }`}
+                      />
+                      <p className="text-body font-medium text-[var(--color-text)]">
+                        {transaction.description}
+                      </p>
+                    </div>
+                    <div className="flex items-center gap-2 text-caption text-[var(--color-text-muted)]">
+                      {transaction.category && <span>{transaction.category}</span>}
+                      {transaction.monthName && (
+                        <>
+                          <span>•</span>
+                          <span>{transaction.monthName}</span>
+                        </>
+                      )}
+                      <span>•</span>
+                      <span>{formatDate(transaction.date)}</span>
+                    </div>
                   </div>
-                  <div className="flex items-center gap-2 mt-1">
-                    {transaction.category && (
-                      <span className="text-caption text-[var(--color-text-muted)]">
-                        {transaction.category}
-                      </span>
-                    )}
-                    {transaction.monthName && (
-                      <>
-                        <span className="text-caption text-[var(--color-text-muted)]">•</span>
-                        <span className="text-caption text-[var(--color-text-muted)]">
-                          {transaction.monthName}
-                        </span>
-                      </>
-                    )}
-                    <span className="text-caption text-[var(--color-text-muted)]">•</span>
-                    <span className="text-caption text-[var(--color-text-muted)]">
-                      {formatDate(transaction.date)}
+                  <div className="hidden sm:grid sm:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_minmax(0,0.8fr)] gap-4 items-center text-caption text-[var(--color-text-muted)] min-w-[340px]">
+                    <span>{transaction.category || '-'}</span>
+                    <span>{formatDate(transaction.date)}</span>
+                    <span className={`text-right text-body font-medium tabular-nums ${
+                      transaction.type === 'income'
+                        ? 'text-[var(--color-success)]'
+                        : 'text-[var(--color-danger)]'
+                    }`}>
+                      {transaction.type === 'income' ? '+' : '-'}
+                      {formatCurrency(transaction.amount)}
                     </span>
                   </div>
+                  <p
+                    className={`sm:hidden text-body font-medium tabular-nums ml-4 ${
+                      transaction.type === 'income'
+                        ? 'text-[var(--color-success)]'
+                        : 'text-[var(--color-danger)]'
+                    }`}
+                  >
+                    {transaction.type === 'income' ? '+' : '-'}
+                    {formatCurrency(transaction.amount)}
+                  </p>
                 </div>
-                <p
-                  className={`text-body font-medium tabular-nums ml-4 ${
-                    transaction.type === 'income'
-                      ? 'text-[var(--color-success)]'
-                      : 'text-[var(--color-danger)]'
-                  }`}
-                >
-                  {transaction.type === 'income' ? '+' : '-'}
-                  {formatCurrency(transaction.amount)}
-                </p>
-              </div>
-            </Card>
-          ))
+              </Card>
+            ))}
+          </>
         )}
       </div>
     </div>

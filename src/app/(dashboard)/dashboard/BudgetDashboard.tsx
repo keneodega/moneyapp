@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import Link from 'next/link';
 import { createSupabaseBrowserClient } from '@/lib/supabase/client';
-import { Card, SkeletonCard } from '@/components/ui';
+import { Card, ProgressBar, SkeletonCard } from '@/components/ui';
 
 interface DateRange {
   start: Date;
@@ -280,7 +280,12 @@ export function BudgetDashboard({ dateRange }: BudgetDashboardProps) {
           <p className="text-body text-[var(--color-text-muted)]">No budget data in this period</p>
         ) : (
           <div className="space-y-3">
-            {budgetData.map((month) => (
+            {budgetData.map((month) => {
+              const spentPercent = month.totalBudgeted > 0
+                ? (month.totalSpent / month.totalBudgeted) * 100
+                : 0;
+              const isExpanded = selectedMonth === month.monthId;
+              return (
               <Card key={month.monthId} variant="outlined" padding="md">
                 <div className="flex items-center justify-between mb-4">
                   <div>
@@ -294,33 +299,46 @@ export function BudgetDashboard({ dateRange }: BudgetDashboardProps) {
                       {month.budgets.length} budget categories
                     </p>
                   </div>
-                  <div className="text-right">
-                    <p className="text-body font-medium text-[var(--color-text)] tabular-nums">
-                      {formatCurrency(month.totalSpent)} / {formatCurrency(month.totalBudgeted)}
-                    </p>
-                    <p className="text-caption text-[var(--color-text-muted)]">
-                      {month.totalBudgeted > 0
-                        ? ((month.totalSpent / month.totalBudgeted) * 100).toFixed(1)
-                        : 0}% spent
-                    </p>
+                  <div className="flex items-center gap-3">
+                    <div className="text-right">
+                      <p className="text-body font-medium text-[var(--color-text)] tabular-nums">
+                        {formatCurrency(month.totalSpent)} / {formatCurrency(month.totalBudgeted)}
+                      </p>
+                      <p className="text-caption text-[var(--color-text-muted)]">
+                        {spentPercent.toFixed(1)}% spent
+                      </p>
+                    </div>
+                    <button
+                      onClick={() => setSelectedMonth(isExpanded ? null : month.monthId)}
+                      className="text-small font-medium text-[var(--color-primary)] hover:underline"
+                    >
+                      {isExpanded ? 'Hide details' : 'View details'}
+                    </button>
                   </div>
                 </div>
+                <ProgressBar value={month.totalSpent} max={Math.max(1, month.totalBudgeted)} colorMode="budget" />
 
                 {/* Budget Categories (collapsible) */}
-                {selectedMonth === month.monthId ? (
+                {isExpanded ? (
                   <div className="space-y-2 mt-4 pt-4 border-t border-[var(--color-border)]">
                     {month.budgets.map((budget) => (
                       <div
                         key={budget.id}
                         className="flex items-center justify-between p-2 rounded-[var(--radius-md)] bg-[var(--color-surface-sunken)]"
                       >
-                        <div className="flex-1">
+                        <div className="flex-1 space-y-1">
                           <p className="text-small font-medium text-[var(--color-text)]">
                             {budget.name}
                           </p>
                           <p className="text-caption text-[var(--color-text-muted)]">
                             {formatCurrency(budget.spent)} / {formatCurrency(budget.budgetAmount)}
                           </p>
+                          <ProgressBar
+                            value={budget.spent}
+                            max={Math.max(1, budget.budgetAmount)}
+                            colorMode="budget"
+                            size="sm"
+                          />
                         </div>
                         <div className="text-right">
                           <p className="text-small font-medium text-[var(--color-text)] tabular-nums">
@@ -334,23 +352,11 @@ export function BudgetDashboard({ dateRange }: BudgetDashboardProps) {
                         </div>
                       </div>
                     ))}
-                    <button
-                      onClick={() => setSelectedMonth(null)}
-                      className="text-small text-[var(--color-primary)] hover:underline mt-2"
-                    >
-                      Hide details
-                    </button>
                   </div>
-                ) : (
-                  <button
-                    onClick={() => setSelectedMonth(month.monthId)}
-                    className="text-small text-[var(--color-primary)] hover:underline mt-2"
-                  >
-                    View details
-                  </button>
-                )}
+                ) : null}
               </Card>
-            ))}
+              );
+            })}
           </div>
         )}
       </div>
