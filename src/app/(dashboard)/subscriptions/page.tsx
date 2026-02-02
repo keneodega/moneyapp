@@ -50,30 +50,34 @@ export default async function SubscriptionsPage() {
         </Link>
       </div>
 
-      {/* Stats Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        <Card variant="raised" padding="md">
-          <p className="text-small text-[var(--color-text-muted)] mb-1">Active</p>
-          <p className="text-display text-[var(--color-text)]">{activeSubscriptions.length}</p>
-        </Card>
-        
-        <Card variant="raised" padding="md">
-          <p className="text-small text-[var(--color-text-muted)] mb-1">Monthly Cost</p>
-          <p className="text-display text-[var(--color-text)]">
+      {/* Stats Summary */}
+      <div className="grid gap-4 lg:grid-cols-3">
+        <Card variant="raised" padding="lg">
+          <p className="text-small text-[var(--color-text-muted)]">Monthly Cost</p>
+          <p className="text-display text-[var(--color-text)] mt-2">
             <Currency amount={totalMonthly} />
           </p>
+          <p className="text-caption text-[var(--color-text-subtle)] mt-1">Active subscriptions only</p>
         </Card>
-        
-        <Card variant="raised" padding="md">
-          <p className="text-small text-[var(--color-text-muted)] mb-1">Yearly Cost</p>
-          <p className="text-display text-[var(--color-text)]">
+        <Card variant="raised" padding="lg">
+          <p className="text-small text-[var(--color-text-muted)]">Yearly Cost</p>
+          <p className="text-display text-[var(--color-text)] mt-2">
             <Currency amount={totalYearly} />
           </p>
+          <p className="text-caption text-[var(--color-text-subtle)] mt-1">Projected annual spend</p>
         </Card>
-        
-        <Card variant="raised" padding="md">
-          <p className="text-small text-[var(--color-text-muted)] mb-1">Due This Week</p>
-          <p className="text-display text-[var(--color-warning)]">{dueSoon.length}</p>
+        <Card variant="outlined" padding="lg" className="bg-[var(--color-surface-sunken)]">
+          <p className="text-small text-[var(--color-text-muted)]">Overview</p>
+          <div className="mt-3 grid grid-cols-2 gap-3">
+            <div>
+              <p className="text-caption text-[var(--color-text-muted)]">Active</p>
+              <p className="text-title text-[var(--color-text)] tabular-nums">{activeSubscriptions.length}</p>
+            </div>
+            <div>
+              <p className="text-caption text-[var(--color-text-muted)]">Due this week</p>
+              <p className="text-title text-[var(--color-warning)] tabular-nums">{dueSoon.length}</p>
+            </div>
+          </div>
         </Card>
       </div>
 

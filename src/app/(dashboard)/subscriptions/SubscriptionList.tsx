@@ -38,17 +38,17 @@ const SORT_OPTIONS: { value: SortOption; label: string }[] = [
   { value: 'frequency_desc', label: 'Frequency (Longest–Shortest)' },
 ];
 
-const typeIcons: Record<string, string> = {
-  Streaming: '🎬',
-  Software: '💻',
-  Membership: '🏋️',
-  Insurance: '🛡️',
-  Utility: '💡',
-  News: '📰',
-  Gaming: '🎮',
-  Health: '❤️',
-  Other: '📦',
-};
+function getTypeBadge(type: string | null | undefined) {
+  const label = (type || 'Other').trim();
+  const initials = label
+    .split(' ')
+    .filter(Boolean)
+    .map((part) => part[0])
+    .join('')
+    .slice(0, 2)
+    .toUpperCase();
+  return { label, initials: initials || 'OT' };
+}
 
 export function SubscriptionList({ subscriptions }: SubscriptionListProps) {
   const [filter, setFilter] = useState<'all' | SubscriptionStatusType>('all');
@@ -259,7 +259,7 @@ export function SubscriptionList({ subscriptions }: SubscriptionListProps) {
         </div>
       )}
       {/* Sort and filters */}
-      <div className="space-y-3">
+      <Card variant="outlined" padding="md" className="space-y-4 bg-[var(--color-surface-sunken)]/60">
         <div className="flex flex-wrap items-center gap-4">
           <div className="flex items-center gap-2">
             <label htmlFor="subscriptions-sort" className="text-small text-[var(--color-text-muted)] whitespace-nowrap">
@@ -321,50 +321,56 @@ export function SubscriptionList({ subscriptions }: SubscriptionListProps) {
         </div>
 
         {/* Status Filter */}
-        <div className="flex gap-2 flex-wrap">
-          {(['all', 'Active', 'Paused', 'Cancelled'] as const).map((status) => (
-            <button
-              key={status}
-              onClick={() => setFilter(status)}
-              className={`px-4 py-2 rounded-[var(--radius-md)] text-small font-medium transition-colors ${
-                filter === status
-                  ? 'bg-[var(--color-primary)] text-white'
-                  : 'bg-[var(--color-surface-sunken)] text-[var(--color-text-muted)] hover:text-[var(--color-text)]'
-              }`}
-            >
-              {status === 'all' ? 'All' : status}
-              <span className="ml-1 opacity-60">
-                ({status === 'all' ? subscriptions.length : subscriptions.filter(s => s.status === status).length})
-              </span>
-            </button>
-          ))}
+        <div>
+          <p className="text-small text-[var(--color-text-muted)] mb-2">Status</p>
+          <div className="inline-flex flex-wrap items-center gap-2 rounded-[var(--radius-md)] bg-[var(--color-surface)] p-1 border border-[var(--color-border)]">
+            {(['all', 'Active', 'Paused', 'Cancelled', 'Ended'] as const).map((status) => (
+              <button
+                key={status}
+                onClick={() => setFilter(status)}
+                className={`px-3 py-1.5 rounded-[var(--radius-sm)] text-small font-medium transition-colors ${
+                  filter === status
+                    ? 'bg-[var(--color-primary)] text-white'
+                    : 'text-[var(--color-text-muted)] hover:text-[var(--color-text)]'
+                }`}
+              >
+                {status === 'all' ? 'All' : status}
+                <span className="ml-1 opacity-60">
+                  ({status === 'all' ? subscriptions.length : subscriptions.filter(s => s.status === status).length})
+                </span>
+              </button>
+            ))}
+          </div>
         </div>
-        
+
         {/* Essential Filter */}
-        <div className="flex gap-2 flex-wrap">
-          {(['all', 'essential', 'non-essential'] as const).map((filterType) => (
-            <button
-              key={filterType}
-              onClick={() => setEssentialFilter(filterType)}
-              className={`px-4 py-2 rounded-[var(--radius-md)] text-small font-medium transition-colors ${
-                essentialFilter === filterType
-                  ? 'bg-blue-500 text-white'
-                  : 'bg-[var(--color-surface-sunken)] text-[var(--color-text-muted)] hover:text-[var(--color-text)]'
-              }`}
-            >
-              {filterType === 'all' ? 'All Types' : filterType === 'essential' ? 'Essential' : 'Non-Essential'}
-              <span className="ml-1 opacity-60">
-                ({filterType === 'all' 
-                  ? subscriptions.length 
-                  : filterType === 'essential'
-                    ? subscriptions.filter(s => s.is_essential).length
-                    : subscriptions.filter(s => !s.is_essential).length
-                })
-              </span>
-            </button>
-          ))}
+        <div>
+          <p className="text-small text-[var(--color-text-muted)] mb-2">Essential</p>
+          <div className="inline-flex flex-wrap items-center gap-2 rounded-[var(--radius-md)] bg-[var(--color-surface)] p-1 border border-[var(--color-border)]">
+            {(['all', 'essential', 'non-essential'] as const).map((filterType) => (
+              <button
+                key={filterType}
+                onClick={() => setEssentialFilter(filterType)}
+                className={`px-3 py-1.5 rounded-[var(--radius-sm)] text-small font-medium transition-colors ${
+                  essentialFilter === filterType
+                    ? 'bg-[var(--color-primary)] text-white'
+                    : 'text-[var(--color-text-muted)] hover:text-[var(--color-text)]'
+                }`}
+              >
+                {filterType === 'all' ? 'All' : filterType === 'essential' ? 'Essential' : 'Non-Essential'}
+                <span className="ml-1 opacity-60">
+                  ({filterType === 'all' 
+                    ? subscriptions.length 
+                    : filterType === 'essential'
+                      ? subscriptions.filter(s => s.is_essential).length
+                      : subscriptions.filter(s => !s.is_essential).length
+                  })
+                </span>
+              </button>
+            ))}
+          </div>
         </div>
-      </div>
+      </Card>
 
       {/* Subscription Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -389,8 +395,8 @@ export function SubscriptionList({ subscriptions }: SubscriptionListProps) {
             
             <div className="flex items-start justify-between pl-8">
               <div className="flex items-start gap-3">
-                <div className="w-10 h-10 rounded-[var(--radius-md)] bg-[var(--color-surface-sunken)] flex items-center justify-center text-xl">
-                  {typeIcons[subscription.subscription_type || 'Other']}
+                <div className="w-10 h-10 rounded-[var(--radius-md)] bg-[var(--color-surface-sunken)] flex items-center justify-center text-small font-semibold text-[var(--color-text)]">
+                  {getTypeBadge(subscription.subscription_type).initials}
                 </div>
                 <div>
                   <div className="flex items-center gap-2">
