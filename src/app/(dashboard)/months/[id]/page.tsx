@@ -471,8 +471,18 @@ export default async function MonthDetailPage({
           <p className="text-display text-[var(--color-text)] mt-2 tabular-nums">
             {formatCurrency(totalBudgeted)}
           </p>
+          <div className="mt-3 grid grid-cols-2 gap-3 text-small text-[var(--color-text-muted)]">
+            <div className="flex items-center justify-between">
+              <span>Fixed</span>
+              <span className="text-[var(--color-text)] tabular-nums">{formatCurrency(totalFixed ?? 0)}</span>
+            </div>
+            <div className="flex items-center justify-between">
+              <span>Variable</span>
+              <span className="text-[var(--color-text)] tabular-nums">{formatCurrency(totalVariable ?? 0)}</span>
+            </div>
+          </div>
           {overallBudgetedChange != null && (
-            <p className={`text-caption mt-1 ${overallBudgetedChange > 0 ? 'text-[var(--color-warning)]' : overallBudgetedChange < 0 ? 'text-[var(--color-success)]' : 'text-[var(--color-text-muted)]'}`}>
+            <p className={`text-caption mt-2 ${overallBudgetedChange > 0 ? 'text-[var(--color-warning)]' : overallBudgetedChange < 0 ? 'text-[var(--color-success)]' : 'text-[var(--color-text-muted)]'}`}>
               {overallBudgetedChange > 0 ? '↑' : overallBudgetedChange < 0 ? '↓' : ''} {overallBudgetedChange > 0 ? '+' : ''}{overallBudgetedChange.toFixed(1)}% vs {previousMonth?.name}
             </p>
           )}
