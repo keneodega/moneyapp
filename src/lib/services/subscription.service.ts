@@ -110,50 +110,70 @@ export class SubscriptionService {
 
   /**
    * Calculate monthly equivalent cost
+   * Rounds to 2 decimal places to avoid floating-point precision issues
    */
   static calculateMonthlyCost(amount: number, frequency: FrequencyType): number {
+    let result: number;
     switch (frequency) {
       case 'Weekly':
-        return amount * 4.33; // Average weeks per month
+        result = amount * 4.33; // Average weeks per month
+        break;
       case 'Bi-Weekly':
-        return amount * 2.17;
+        result = amount * 2.17;
+        break;
       case 'Monthly':
-        return amount;
+        result = amount;
+        break;
       case 'Quarterly':
-        return amount / 3;
+        result = amount / 3;
+        break;
       case 'Bi-Annually':
-        return amount / 6;
+        result = amount / 6;
+        break;
       case 'Annually':
-        return amount / 12;
+        result = amount / 12;
+        break;
       case 'One-Time':
-        return 0; // One-time payments don't count toward monthly
+        result = 0; // One-time payments don't count toward monthly
+        break;
       default:
-        return amount;
+        result = amount;
     }
+    return Math.round(result * 100) / 100;
   }
 
   /**
    * Calculate yearly equivalent cost
+   * Rounds to 2 decimal places to avoid floating-point precision issues
    */
   static calculateYearlyCost(amount: number, frequency: FrequencyType): number {
+    let result: number;
     switch (frequency) {
       case 'Weekly':
-        return amount * 52;
+        result = amount * 52;
+        break;
       case 'Bi-Weekly':
-        return amount * 26;
+        result = amount * 26;
+        break;
       case 'Monthly':
-        return amount * 12;
+        result = amount * 12;
+        break;
       case 'Quarterly':
-        return amount * 4;
+        result = amount * 4;
+        break;
       case 'Bi-Annually':
-        return amount * 2;
+        result = amount * 2;
+        break;
       case 'Annually':
-        return amount;
+        result = amount;
+        break;
       case 'One-Time':
-        return amount;
+        result = amount;
+        break;
       default:
-        return amount * 12;
+        result = amount * 12;
     }
+    return Math.round(result * 100) / 100;
   }
 
   /**
