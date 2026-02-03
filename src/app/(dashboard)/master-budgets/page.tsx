@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { Card, Button, DashboardTile, Input, PageHeader, Select, Skeleton, SkeletonList, useToast, useConfirmDialog, PieChart, type PieChartData } from '@/components/ui';
 import { createSupabaseBrowserClient } from '@/lib/supabase/client';
-import { MasterBudgetService } from '@/lib/services';
+import { MasterBudgetService, SubscriptionService } from '@/lib/services';
 import type { MasterBudget, MasterBudgetHistoryEntry, BudgetType } from '@/lib/services/master-budget.service';
 
 export default function MasterBudgetsPage() {
@@ -29,6 +29,11 @@ export default function MasterBudgetsPage() {
   const [saving, setSaving] = useState(false);
   const [history, setHistory] = useState<MasterBudgetHistoryEntry[]>([]);
   const [historyLoading, setHistoryLoading] = useState(true);
+  const [subscriptionSummary, setSubscriptionSummary] = useState<{
+    activeCount: number;
+    totalMonthly: number;
+    totalYearly: number;
+  } | null>(null);
 
   const loadBudgets = useCallback(async () => {
     try {
@@ -74,8 +79,35 @@ export default function MasterBudgetsPage() {
     }
   }, []);
 
+  const loadSubscriptions = useCallback(async () => {
+    try {
+      const supabase = createSupabaseBrowserClient();
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+      const subscriptionService = new SubscriptionService(supabase);
+      const allSubscriptions = await subscriptionService.getAll();
+      const activeSubscriptions = allSubscriptions.filter(s => s.status === 'Active');
+      const totalMonthly = activeSubscriptions.reduce(
+        (sum, s) => sum + SubscriptionService.calculateMonthlyCost(s.amount, s.frequency),
+        0
+      );
+      const totalYearly = activeSubscriptions.reduce(
+        (sum, s) => sum + SubscriptionService.calculateYearlyCost(s.amount, s.frequency),
+        0
+      );
+      setSubscriptionSummary({
+        activeCount: activeSubscriptions.length,
+        totalMonthly,
+        totalYearly,
+      });
+    } catch (err) {
+      console.error('Failed to load subscription summary:', err);
+    }
+  }, []);
+
   useEffect(() => {
     loadBudgets();
+    loadSubscriptions();
   }, [loadBudgets]);
 
   useEffect(() => {
@@ -238,6 +270,30 @@ export default function MasterBudgetsPage() {
           </>
         )}
       </div>
+
+      {/* Subscription Summary */}
+      {subscriptionSummary && (
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <DashboardTile
+            title="Active Subscriptions"
+            value={String(subscriptionSummary.activeCount)}
+            helper="Recurring payments"
+            tone="default"
+          />
+          <DashboardTile
+            title="Monthly Subscriptions"
+            value={formatCurrency(subscriptionSummary.totalMonthly)}
+            helper="Monthly run rate"
+            tone="primary"
+          />
+          <DashboardTile
+            title="Yearly Subscriptions"
+            value={formatCurrency(subscriptionSummary.totalYearly)}
+            helper="Projected annual cost"
+            tone="default"
+          />
+        </div>
+      )}
 
       {/* Budget Type Navigation Cards */}
       {breakdown && (
