@@ -96,12 +96,21 @@ export default async function SubscriptionsPage() {
               </p>
               <div className="mt-2 flex flex-wrap gap-2">
                 {dueSoon.map(sub => (
-                  <span 
+                  <Link
                     key={sub.id}
-                    className="inline-flex items-center gap-1 px-2 py-1 rounded-full bg-[var(--color-warning)]/10 text-[var(--color-warning)] text-small"
+                    href={`/subscriptions/${sub.id}/edit`}
+                    className="inline-flex items-center gap-2 px-2.5 py-1.5 rounded-full bg-[var(--color-warning)]/10 text-[var(--color-warning)] text-small hover:bg-[var(--color-warning)]/20 transition-colors"
                   >
-                    {sub.name} - <Currency amount={sub.amount} />
-                  </span>
+                    <span className="font-medium">{sub.name}</span>
+                    <span className="opacity-70">•</span>
+                    <Currency amount={sub.amount} />
+                    {sub.bank && (
+                      <>
+                        <span className="opacity-70">•</span>
+                        <span className="text-[var(--color-text-muted)]">{sub.bank}</span>
+                      </>
+                    )}
+                  </Link>
                 ))}
               </div>
             </div>
