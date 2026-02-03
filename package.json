@@ -25,13 +25,17 @@
     "check:subscriptions": "node scripts/check-subscriptions.mjs",
     "fix:subscriptions": "node scripts/fix-subscription-user-ids.mjs",
     "delete:subscriptions": "node scripts/delete-all-subscriptions.mjs",
-    "get:user-id": "node scripts/get-user-id.mjs"
+    "get:user-id": "node scripts/get-user-id.mjs",
+    "seed:test-data": "node scripts/seed-test-data.mjs"
   },
   "dependencies": {
+    "@ai-sdk/anthropic": "^3.0.36",
+    "@ai-sdk/openai": "^3.0.25",
     "@sentry/nextjs": "^10.36.0",
     "@supabase/ssr": "^0.8.0",
     "@supabase/supabase-js": "^2.91.0",
     "@vercel/analytics": "^1.6.1",
+    "ai": "^6.0.69",
     "next": "^16.1.6",
     "react": "19.2.3",
     "react-dom": "19.2.3",

@@ -2,7 +2,6 @@
 
 import { useState, useEffect, use } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import Link from 'next/link';
 import { Card, Button, Input, PageHeader, Select, Textarea } from '@/components/ui';
 import { createSupabaseBrowserClient } from '@/lib/supabase/client';
 import { SettingsService } from '@/lib/services';
@@ -10,6 +9,7 @@ import { DEFAULT_PAYMENT_METHODS, validateBankType } from '@/lib/utils/payment-m
 import { ExpenseSchema } from '@/lib/validation/schemas';
 import { useFormValidation } from '@/lib/hooks/useFormValidation';
 import { useFormToastActions } from '@/lib/hooks/useFormToast';
+import { useExpenseCategorization } from '@/lib/hooks/useExpenseCategorization';
 
 interface BudgetOption {
   id: string;
@@ -36,6 +36,7 @@ export default function NewExpensePage({
   const searchParams = useSearchParams();
   const { showSuccessToast, showErrorToast } = useFormToastActions();
   const { errors, validateField, validateAll, clearError } = useFormValidation(ExpenseSchema);
+  const { categorize, suggestion, isLoading: isCategorizingAI, clearSuggestion } = useExpenseCategorization();
 
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -102,6 +103,24 @@ export default function NewExpensePage({
     // Clear error when user types
     if (errors[name as keyof FormData]) {
       clearError(name as keyof FormData);
+    }
+
+    // Trigger AI categorization when description changes
+    if (name === 'description' && budgets.length > 0) {
+      const categoryNames = budgets.map(b => b.name);
+      categorize(value, categoryNames);
+    }
+  };
+
+  // Apply AI suggestion to select the recommended budget
+  const applySuggestion = () => {
+    if (!suggestion) return;
+    const matchingBudget = budgets.find(
+      b => b.name.toLowerCase() === suggestion.category.toLowerCase()
+    );
+    if (matchingBudget) {
+      setFormData(prev => ({ ...prev, budget_id: matchingBudget.id }));
+      clearSuggestion();
     }
   };
 
@@ -321,15 +340,59 @@ export default function NewExpensePage({
           />
 
           {/* Description */}
-          <Textarea
-            label="Description (optional)"
-            name="description"
-            placeholder="Add any notes about this expense..."
-            value={formData.description}
-            onChange={handleChange}
-            onBlur={() => handleBlur('description')}
-            error={errors.description}
-          />
+          <div>
+            <Textarea
+              label="Description (optional)"
+              name="description"
+              placeholder="Type what you bought (e.g., 'Groceries at Tesco') for AI category suggestion..."
+              value={formData.description}
+              onChange={handleChange}
+              onBlur={() => handleBlur('description')}
+              error={errors.description}
+            />
+
+            {/* AI Suggestion */}
+            {isCategorizingAI && (
+              <div className="mt-2 p-3 rounded-[var(--radius-sm)] bg-[var(--color-primary)]/5 border border-[var(--color-primary)]/20 animate-pulse">
+                <div className="flex items-center gap-2">
+                  <SparklesIcon className="w-4 h-4 text-[var(--color-primary)]" />
+                  <span className="text-small text-[var(--color-text-muted)]">Analyzing expense...</span>
+                </div>
+              </div>
+            )}
+
+            {suggestion && !isCategorizingAI && (
+              <div className="mt-2 p-3 rounded-[var(--radius-sm)] bg-[var(--color-primary)]/5 border border-[var(--color-primary)]/20">
+                <div className="flex items-start justify-between gap-3">
+                  <div className="flex-1">
+                    <div className="flex items-center gap-2 mb-1">
+                      <SparklesIcon className="w-4 h-4 text-[var(--color-primary)]" />
+                      <span className="text-small font-medium text-[var(--color-text)]">
+                        AI suggests: {suggestion.category}
+                      </span>
+                      <span className={`text-xs px-1.5 py-0.5 rounded ${
+                        suggestion.confidence === 'high'
+                          ? 'bg-[var(--color-success)]/10 text-[var(--color-success)]'
+                          : suggestion.confidence === 'medium'
+                          ? 'bg-[var(--color-warning)]/10 text-[var(--color-warning)]'
+                          : 'bg-[var(--color-text-muted)]/10 text-[var(--color-text-muted)]'
+                      }`}>
+                        {suggestion.confidence}
+                      </span>
+                    </div>
+                    <p className="text-xs text-[var(--color-text-muted)]">{suggestion.reasoning}</p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={applySuggestion}
+                    className="shrink-0 px-3 py-1.5 rounded-[var(--radius-sm)] bg-[var(--color-primary)] text-white text-small font-medium hover:bg-[var(--color-primary-dark)] transition-colors"
+                  >
+                    Apply
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
 
           {/* Actions */}
           <div className="flex flex-col-reverse sm:flex-row gap-3 pt-4">
@@ -369,6 +432,14 @@ function PlusIcon({ className }: { className?: string }) {
   return (
     <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
       <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
+    </svg>
+  );
+}
+
+function SparklesIcon({ className }: { className?: string }) {
+  return (
+    <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+      <path strokeLinecap="round" strokeLinejoin="round" d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09zM18.259 8.715L18 9.75l-.259-1.035a3.375 3.375 0 00-2.455-2.456L14.25 6l1.036-.259a3.375 3.375 0 002.455-2.456L18 2.25l.259 1.035a3.375 3.375 0 002.456 2.456L21.75 6l-1.035.259a3.375 3.375 0 00-2.456 2.456zM16.894 20.567L16.5 21.75l-.394-1.183a2.25 2.25 0 00-1.423-1.423L13.5 18.75l1.183-.394a2.25 2.25 0 001.423-1.423l.394-1.183.394 1.183a2.25 2.25 0 001.423 1.423l1.183.394-1.183.394a2.25 2.25 0 00-1.423 1.423z" />
     </svg>
   );
 }
