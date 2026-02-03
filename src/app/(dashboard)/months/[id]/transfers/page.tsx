@@ -84,7 +84,12 @@ export default async function TransfersPage({ params }: { params: Promise<{ id: 
     .eq('monthly_overview_id', id)
     .order('date', { ascending: false });
 
-  const rows = (transfers ?? []) as TransferRow[];
+  const rows = (transfers ?? []).map((row: any) => ({
+    ...row,
+    from_budget: Array.isArray(row.from_budget) ? row.from_budget[0] ?? null : row.from_budget ?? null,
+    to_budget: Array.isArray(row.to_budget) ? row.to_budget[0] ?? null : row.to_budget ?? null,
+    from_goal: Array.isArray(row.from_goal) ? row.from_goal[0] ?? null : row.from_goal ?? null,
+  })) as TransferRow[];
   const totalAmount = rows.reduce((sum, t) => sum + Number(t.amount || 0), 0);
   const byType = rows.reduce<Record<TransferType, number>>((acc, t) => {
     acc[t.transfer_type] = (acc[t.transfer_type] || 0) + 1;
