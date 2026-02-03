@@ -268,6 +268,7 @@ export function TransferDialogProvider({ children }: { children: ReactNode }) {
               <Link
                 href={`/months/${options.monthlyOverviewId}/transfers`}
                 className="text-small text-[var(--color-primary)] hover:underline"
+                onClick={handleCancel}
               >
                 View transfers
               </Link>
