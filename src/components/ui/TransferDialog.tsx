@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback, ReactNode, createContext, useContext } from 'react';
+import Link from 'next/link';
 import { Button } from './Button';
 import { Card } from './Card';
 import { Input, Select, Textarea } from './Input';
@@ -260,9 +261,17 @@ export function TransferDialogProvider({ children }: { children: ReactNode }) {
             className="max-w-lg w-full mx-4 max-h-[90vh] overflow-y-auto animate-scale-in"
             onClick={e => e.stopPropagation()}
           >
-            <h2 id="transfer-dialog-title" className="text-title text-[var(--color-text)] mb-2">
-              Transfer
-            </h2>
+            <div className="flex items-center justify-between mb-2">
+              <h2 id="transfer-dialog-title" className="text-title text-[var(--color-text)]">
+                Transfer
+              </h2>
+              <Link
+                href={`/months/${options.monthlyOverviewId}/transfers`}
+                className="text-small text-[var(--color-primary)] hover:underline"
+              >
+                View transfers
+              </Link>
+            </div>
 
             {mode === null ? (
               <>
