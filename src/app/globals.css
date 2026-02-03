@@ -102,10 +102,22 @@ body {
 
 /* Typography scale */
 .text-display {
-  font-size: 2.5rem;
+  font-size: 1.75rem;
   font-weight: 700;
-  line-height: 1.1;
-  letter-spacing: -0.02em;
+  line-height: 1.2;
+  letter-spacing: 0;
+}
+
+@media (min-width: 640px) {
+  .text-display {
+    font-size: 2rem;
+  }
+}
+
+@media (min-width: 1024px) {
+  .text-display {
+    font-size: 2.25rem;
+  }
 }
 
 .text-headline {
