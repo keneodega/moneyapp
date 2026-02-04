@@ -36,15 +36,13 @@ export function DashboardTile({
   return (
     <Card
       variant="outlined"
-      padding="lg"
-      className={`relative overflow-hidden bg-gradient-to-br from-[var(--color-surface)] to-[var(--color-surface-sunken)]/60 ${className}`}
+      padding="md"
+      className={`relative overflow-hidden bg-gradient-to-br from-[var(--color-surface)] to-[var(--color-surface-sunken)]/60 h-full flex flex-col ${className}`}
     >
       <div className={`absolute inset-x-0 top-0 h-1 ${toneAccent[tone]}`} />
       <p className="text-small text-[var(--color-text-muted)]">{title}</p>
-      <p className={`text-display mt-2 tabular-nums ${toneValue[tone]}`}>{value}</p>
-      {helper ? (
-        <p className="text-caption text-[var(--color-text-subtle)] mt-1">{helper}</p>
-      ) : null}
+      <p className={`text-display mt-1 tabular-nums ${toneValue[tone]}`}>{value}</p>
+      <p className="text-caption text-[var(--color-text-subtle)] mt-auto pt-1">{helper || '\u00A0'}</p>
     </Card>
   );
 }
