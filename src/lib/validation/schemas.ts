@@ -143,8 +143,8 @@ export type IncomeSourceInput = z.infer<typeof IncomeSourceSchema>;
 
 export const FinancialGoalSchema = z.object({
   name: z.string()
-    .min(1, 'Goal name is required')
-    .max(200, 'Goal name must be less than 200 characters'),
+    .min(1, 'Savings name is required')
+    .max(200, 'Savings name must be less than 200 characters'),
   target_amount: currencySchema,
   current_amount: nonNegativeNumberSchema.optional().default(0),
   start_date: dateSchema,

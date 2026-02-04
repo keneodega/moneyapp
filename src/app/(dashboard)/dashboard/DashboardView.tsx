@@ -38,6 +38,25 @@ const AIInsightsWidget = dynamic(() => import('./AIInsightsWidget').then(mod => 
   ),
 });
 
+const FinancialHealthWidget = dynamic(() => import('./FinancialHealthWidget').then(mod => ({ default: mod.FinancialHealthWidget })), {
+  loading: () => (
+    <div className="space-y-4">
+      <div className="flex items-center gap-2">
+        <div className="w-5 h-5 rounded-full bg-[var(--color-success)]/20 animate-pulse" />
+        <div className="h-4 w-32 bg-[var(--color-surface-sunken)] rounded animate-pulse" />
+      </div>
+      <div className="flex justify-center py-4">
+        <div className="w-24 h-24 rounded-full bg-[var(--color-surface-sunken)] animate-pulse" />
+      </div>
+      <div className="space-y-2">
+        {[1, 2, 3].map((i) => (
+          <div key={i} className="h-8 bg-[var(--color-surface-sunken)] rounded animate-pulse" />
+        ))}
+      </div>
+    </div>
+  ),
+});
+
 type PeriodType = 'week' | 'month' | 'quarter' | 'year' | 'custom';
 
 interface DateRange {
@@ -163,9 +182,14 @@ export function DashboardView() {
 
         {/* AI Insights Sidebar */}
         <div className="order-1 lg:order-2">
-          <Card variant="raised" padding="lg" className="lg:sticky lg:top-4">
-            <AIInsightsWidget />
-          </Card>
+          <div className="space-y-4 lg:sticky lg:top-4">
+            <Card variant="raised" padding="lg">
+              <FinancialHealthWidget />
+            </Card>
+            <Card variant="raised" padding="lg">
+              <AIInsightsWidget />
+            </Card>
+          </div>
         </div>
       </div>
     </div>

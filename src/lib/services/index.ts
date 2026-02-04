@@ -34,6 +34,7 @@ export { IncomeSourceService } from './income-source.service';
 export { FinancialGoalService } from './financial-goal.service';
 export { SubscriptionService } from './subscription.service';
 export { LoanService } from './loan.service';
+export { FinancialHealthService } from './financial-health.service';
 export { GoalContributionService } from './goal-contribution.service';
 export { GoalDrawdownService } from './goal-drawdown.service';
 export { TransferService } from './transfer.service';

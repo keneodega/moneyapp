@@ -101,9 +101,9 @@ export default function NewSubGoalPage({
         setGoalName(goal.name);
       } catch (err) {
         if (err instanceof NotFoundError) {
-          setError('Goal not found');
+          setError('Savings goal not found');
         } else {
-          setError(err instanceof Error ? err.message : 'Failed to load goal');
+          setError(err instanceof Error ? err.message : 'Failed to load savings goal');
         }
       } finally {
         setIsLoading(false);
@@ -162,7 +162,7 @@ export default function NewSubGoalPage({
       if (err instanceof ValidationError) {
         setError(err.message);
       } else {
-        setError(err instanceof Error ? err.message : 'Failed to create sub-goal');
+        setError(err instanceof Error ? err.message : 'Failed to create sub-savings');
       }
     } finally {
       setIsSaving(false);
@@ -189,7 +189,7 @@ export default function NewSubGoalPage({
             href="/goals"
             className="inline-flex items-center justify-center gap-2 h-10 px-4 rounded-[var(--radius-md)] bg-[var(--color-primary)] text-white font-medium hover:bg-[var(--color-primary-dark)] transition-colors"
           >
-            Back to Goals
+            Back to Savings
           </Link>
         </Card>
       </div>
@@ -200,8 +200,8 @@ export default function NewSubGoalPage({
     <div className="max-w-2xl mx-auto space-y-6 animate-fade-in">
       {/* Header */}
       <PageHeader
-        title="New Sub-Goal"
-        subtitle={`Add a sub-goal to ${goalName || 'this goal'}`}
+        title="New Sub-savings"
+        subtitle={`Add sub-savings to ${goalName || 'this savings goal'}`}
         actions={
           <Link
             href={goalId ? `/goals/${goalId}` : '/goals'}
@@ -223,7 +223,7 @@ export default function NewSubGoalPage({
 
           {/* Name */}
           <Input
-            label="Sub-Goal Name"
+            label="Sub-savings Name"
             name="name"
             placeholder="e.g., Research destinations, Save for flight tickets"
             value={formData.name}
@@ -328,7 +328,7 @@ export default function NewSubGoalPage({
           <Textarea
             label="Description (Optional)"
             name="description"
-            placeholder="Add any notes about this sub-goal..."
+            placeholder="Add any notes about this sub-savings..."
             value={formData.description}
             onChange={handleChange}
             rows={4}
@@ -358,7 +358,7 @@ export default function NewSubGoalPage({
               isLoading={isSaving}
               className="flex-1"
             >
-              Create Sub-Goal
+              Create Sub-savings
             </Button>
           </div>
         </form>

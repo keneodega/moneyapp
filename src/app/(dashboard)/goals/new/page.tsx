@@ -143,7 +143,7 @@ export default function NewGoalPage() {
       if (err instanceof ValidationError) {
         setError(err.message);
       } else {
-        setError(err instanceof Error ? err.message : 'Failed to create goal');
+        setError(err instanceof Error ? err.message : 'Failed to create savings goal');
       }
     } finally {
       setIsLoading(false);
@@ -153,8 +153,8 @@ export default function NewGoalPage() {
   return (
     <div className="max-w-2xl mx-auto space-y-6 animate-fade-in">
       <PageHeader
-        title="New Goal"
-        subtitle="Create a new financial goal"
+        title="New Savings Goal"
+        subtitle="Create a new savings goal"
         actions={
           <Link
             href="/goals"
@@ -176,7 +176,7 @@ export default function NewGoalPage() {
 
           {/* Name */}
           <Input
-            label="Goal Name"
+            label="Savings Name"
             name="name"
             placeholder="e.g., Emergency Fund, Vacation to Paris"
             value={formData.name}
@@ -235,10 +235,10 @@ export default function NewGoalPage() {
             />
           </div>
 
-          {/* Goal Type and Person */}
+          {/* Savings Type and Person */}
           <div className="grid gap-4 sm:grid-cols-2">
             <Select
-              label="Goal Type"
+              label="Savings Type"
               name="goal_type"
               options={GOAL_TYPE_OPTIONS}
               value={formData.goal_type}
@@ -310,7 +310,7 @@ export default function NewGoalPage() {
               isLoading={isLoading}
               className="flex-1"
             >
-              Create Goal
+              Create Savings Goal
             </Button>
           </div>
         </form>

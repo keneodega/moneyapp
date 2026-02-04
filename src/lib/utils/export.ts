@@ -185,10 +185,10 @@ export function exportToPDF(data: ExportableData, title: string): void {
     html += '</table>';
   }
 
-  // Add goals section
+  // Add savings section
   if (data.goals && data.goals.length > 0) {
-    html += '<h2>Financial Goals</h2><table>';
-    html += '<tr><th>Goal</th><th>Target</th><th>Current</th><th>Progress</th></tr>';
+    html += '<h2>Savings</h2><table>';
+    html += '<tr><th>Savings Goal</th><th>Target</th><th>Current</th><th>Progress</th></tr>';
     data.goals.forEach((goal: any) => {
       const target = Number(goal.target_amount || 0);
       const current = Number(goal.current_amount || 0);

@@ -133,7 +133,7 @@ export function ExportOptionsDialogProvider({ children }: { children: ReactNode 
   const exportOptions: Array<{ key: keyof ExportOptions; label: string; description: string }> = [
     { key: 'months', label: 'Months', description: 'Monthly overviews and periods' },
     { key: 'masterBudgets', label: 'Master Budgets', description: 'Baseline budget categories' },
-    { key: 'goals', label: 'Financial Goals', description: 'Savings goals and targets' },
+    { key: 'goals', label: 'Savings', description: 'Savings goals and targets' },
     { key: 'subscriptions', label: 'Subscriptions', description: 'Recurring payments' },
     { key: 'expenses', label: 'Expenses', description: 'All expense transactions' },
     { key: 'income', label: 'Income', description: 'All income sources' },

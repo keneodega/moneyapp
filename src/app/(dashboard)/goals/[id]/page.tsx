@@ -112,15 +112,15 @@ export default async function GoalDetailPage({
     return (
       <div className="max-w-2xl mx-auto space-y-6">
         <Card variant="outlined" padding="lg" className="text-center">
-          <h2 className="text-headline text-[var(--color-text)] mb-2">Goal Not Found</h2>
+          <h2 className="text-headline text-[var(--color-text)] mb-2">Savings Not Found</h2>
           <p className="text-body text-[var(--color-text-muted)] mb-6">
-            The goal you're looking for doesn't exist or you don't have permission to view it.
+            The savings goal you're looking for doesn't exist or you don't have permission to view it.
           </p>
           <Link
             href="/goals"
             className="inline-flex items-center justify-center gap-2 h-10 px-4 rounded-[var(--radius-md)] bg-[var(--color-primary)] text-white font-medium hover:bg-[var(--color-primary-dark)] transition-colors"
           >
-            Back to Goals
+            Back to Savings
           </Link>
         </Card>
       </div>
@@ -294,16 +294,16 @@ export default async function GoalDetailPage({
             <Drawdowns goalId={id} />
           </Card>
 
-          {/* Sub-Goals */}
+          {/* Sub-savings */}
           <Card variant="outlined" padding="md">
             <div className="flex items-center justify-between mb-4">
-              <h3 className="text-title text-[var(--color-text)]">Sub-Goals</h3>
+              <h3 className="text-title text-[var(--color-text)]">Sub-savings</h3>
               <Link
                 href={`/goals/${id}/sub-goals/new`}
                 className="inline-flex items-center justify-center gap-1.5 h-8 px-3 rounded-[var(--radius-sm)] bg-[var(--color-primary)] text-white text-small font-medium hover:bg-[var(--color-primary-dark)] transition-colors"
               >
                 <PlusIcon className="w-3.5 h-3.5" />
-                Add Sub-Goal
+                Add Sub-savings
               </Link>
             </div>
 
@@ -344,14 +344,14 @@ export default async function GoalDetailPage({
             ) : (
               <div className="text-center py-8">
                 <p className="text-body text-[var(--color-text-muted)] mb-4">
-                  No sub-goals yet. Break down your goal into smaller steps.
+                  No sub-savings yet. Break down your savings into smaller steps.
                 </p>
                 <Link
                   href={`/goals/${id}/sub-goals/new`}
                   className="inline-flex items-center justify-center gap-2 h-9 px-4 rounded-[var(--radius-md)] bg-[var(--color-primary)] text-white text-small font-medium hover:bg-[var(--color-primary-dark)] transition-colors"
                 >
                   <PlusIcon className="w-4 h-4" />
-                  Create First Sub-Goal
+                  Create First Sub-savings
                 </Link>
               </div>
             )}

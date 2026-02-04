@@ -295,21 +295,21 @@ export default function EditExpensePage({
             options={paymentMethods}
           />
 
-          {/* Financial Goal (Optional) */}
+          {/* Savings Goal (Optional) */}
           {goals.length > 0 && (
             <Select
-              label="Link to Financial Goal (Optional)"
+              label="Link to Savings Goal (Optional)"
               name="financial_goal_id"
               value={formData.financial_goal_id}
               onChange={handleChange}
               options={[
-                { value: '', label: 'No goal' },
+                { value: '', label: 'No savings goal' },
                 ...goals.map(goal => ({
                   value: goal.id,
                   label: `${goal.name} (${((goal.current_amount / goal.target_amount) * 100).toFixed(0)}% complete)`,
                 })),
               ]}
-              hint="Link this expense to a financial goal to track progress"
+              hint="Link this expense to a savings goal to track progress"
             />
           )}
 

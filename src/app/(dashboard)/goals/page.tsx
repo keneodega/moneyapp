@@ -49,7 +49,7 @@ export default async function GoalsPage() {
   return (
     <div className="space-y-8 animate-fade-in">
       <PageHeader
-        title="Financial Goals"
+        title="Savings"
         subtitle="Track your savings goals and financial targets"
         actions={
           <Link
@@ -57,7 +57,7 @@ export default async function GoalsPage() {
             className="inline-flex items-center justify-center gap-2 h-12 px-6 rounded-[var(--radius-md)] bg-[var(--color-primary)] text-white font-medium shadow-[var(--shadow-sm)] hover:bg-[var(--color-primary-dark)] transition-colors"
           >
             <PlusIcon className="w-5 h-5" />
-            New Goal
+            New Savings Goal
           </Link>
         }
       />
@@ -154,12 +154,12 @@ export default async function GoalsPage() {
                       </div>
                     )}
 
-                    {/* Sub-goals indicator */}
+                    {/* Sub-savings indicator */}
                     {goal.has_sub_goals && (
                       <div className="pt-2 border-t border-[var(--color-border)]">
                         <div className="flex items-center gap-2 text-caption text-[var(--color-primary)]">
                           <ListIcon className="w-3.5 h-3.5" />
-                          <span>Has sub-goals</span>
+                          <span>Has sub-savings</span>
                         </div>
                       </div>
                     )}
@@ -174,16 +174,16 @@ export default async function GoalsPage() {
           <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-[var(--color-surface-sunken)] flex items-center justify-center">
             <TargetIcon className="w-8 h-8 text-[var(--color-text-subtle)]" />
           </div>
-          <h3 className="text-title text-[var(--color-text)] mb-2">No goals yet</h3>
+          <h3 className="text-title text-[var(--color-text)] mb-2">No savings yet</h3>
           <p className="text-body text-[var(--color-text-muted)] mb-6 max-w-md mx-auto">
-            Create your first financial goal to start tracking your savings targets, emergency funds, and major purchases.
+            Create your first savings goal to start tracking your savings targets, emergency funds, and major purchases.
           </p>
           <Link
             href="/goals/new"
             className="inline-flex items-center justify-center gap-2 h-10 px-4 rounded-[var(--radius-md)] bg-[var(--color-primary)] text-white font-medium hover:bg-[var(--color-primary-dark)] transition-colors"
           >
             <PlusIcon className="w-4 h-4" />
-            Create Goal
+            Create Savings Goal
           </Link>
         </Card>
       )}

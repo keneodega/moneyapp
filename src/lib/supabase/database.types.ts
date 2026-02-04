@@ -859,3 +859,80 @@ export interface InvestmentHoldingWithTransactions extends InvestmentHoldingSumm
   transactions?: InvestmentTransaction[];
   gain_loss_percent?: number;
 }
+
+// ============================================
+// FINANCIAL HEALTH SCORE TYPES
+// ============================================
+
+export type HealthScoreLabel =
+  | 'Excellent' | 'Very Good' | 'Good' | 'Fair' | 'Needs Improvement' | 'Critical';
+
+export type RecommendationCategory =
+  | 'savings' | 'debt' | 'budget' | 'general';
+
+export interface AIHealthRecommendation {
+  category: RecommendationCategory;
+  priority: number; // 1-5, 1 = highest
+  title: string;
+  description: string;
+  actionable_steps: string[];
+  potential_impact: string;
+}
+
+export interface FinancialHealthScore {
+  id: string;
+  user_id: string;
+  monthly_overview_id: string | null;
+  overall_score: number;
+  score_label: HealthScoreLabel;
+  savings_rate_score: number;
+  debt_to_income_score: number;
+  budget_adherence_score: number;
+  savings_rate: number | null;
+  debt_to_income_ratio: number | null;
+  budget_adherence_rate: number | null;
+  total_income: number;
+  total_spent: number;
+  total_debt_payments: number;
+  ai_recommendations: AIHealthRecommendation[] | null;
+  recommendations_generated_at: string | null;
+  calculated_for_month: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface FinancialHealthScoreInsert {
+  id?: string;
+  user_id: string;
+  monthly_overview_id?: string | null;
+  overall_score: number;
+  score_label: HealthScoreLabel;
+  savings_rate_score: number;
+  debt_to_income_score: number;
+  budget_adherence_score: number;
+  savings_rate?: number | null;
+  debt_to_income_ratio?: number | null;
+  budget_adherence_rate?: number | null;
+  total_income: number;
+  total_spent: number;
+  total_debt_payments: number;
+  ai_recommendations?: AIHealthRecommendation[] | null;
+  recommendations_generated_at?: string | null;
+  calculated_for_month: string;
+}
+
+export interface FinancialHealthScoreUpdate {
+  overall_score?: number;
+  score_label?: HealthScoreLabel;
+  savings_rate_score?: number;
+  debt_to_income_score?: number;
+  budget_adherence_score?: number;
+  savings_rate?: number | null;
+  debt_to_income_ratio?: number | null;
+  budget_adherence_rate?: number | null;
+  total_income?: number;
+  total_spent?: number;
+  total_debt_payments?: number;
+  ai_recommendations?: AIHealthRecommendation[] | null;
+  recommendations_generated_at?: string | null;
+}

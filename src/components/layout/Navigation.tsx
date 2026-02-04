@@ -10,7 +10,7 @@ const navItems = [
   { href: '/dashboard', label: 'Dashboard', icon: ChartBarIcon },
   { href: '/months', label: 'Months', icon: CalendarIcon },
   { href: '/master-budgets', label: 'Master Budgets', icon: PieChartIcon },
-  { href: '/goals', label: 'Goals', icon: TargetIcon },
+  { href: '/goals', label: 'Savings', icon: TargetIcon },
   { href: '/subscriptions', label: 'Subscriptions', icon: RepeatIcon },
   { href: '/loans', label: 'Loans', icon: BankIcon },
   { href: '/settings', label: 'Settings', icon: SettingsIcon },

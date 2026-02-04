@@ -162,7 +162,7 @@ export function FundGoalDialogProvider({ children }: { children: ReactNode }) {
       }
 
       if (!formData.goalId) {
-        setError('Please select a goal');
+        setError('Please select a savings goal');
         setIsLoading(false);
         return;
       }
@@ -183,7 +183,7 @@ export function FundGoalDialogProvider({ children }: { children: ReactNode }) {
       }
     } catch (err) {
       console.error('Error creating goal contribution:', err);
-      setError(err instanceof Error ? err.message : 'Failed to fund goal');
+      setError(err instanceof Error ? err.message : 'Failed to fund savings');
     } finally {
       setIsLoading(false);
     }
@@ -237,10 +237,10 @@ export function FundGoalDialogProvider({ children }: { children: ReactNode }) {
               id="fund-goal-dialog-title"
               className="text-title text-[var(--color-text)] mb-2"
             >
-              Fund Goal
+              Fund Savings
             </h2>
             <p className="text-small text-[var(--color-text-muted)] mb-6">
-              Add money to a financial goal from your available income.
+              Add money to a savings goal from your available income.
             </p>
 
             {error && (
@@ -269,10 +269,10 @@ export function FundGoalDialogProvider({ children }: { children: ReactNode }) {
             </div>
 
             <form onSubmit={handleSubmit}>
-              {/* Goal Selection */}
+              {/* Savings Selection */}
               <div className="mb-4">
                 <label htmlFor="goalId" className="block text-small font-medium text-[var(--color-text)] mb-2">
-                  Goal <span className="text-[var(--color-danger)]">*</span>
+                  Savings Goal <span className="text-[var(--color-danger)]">*</span>
                 </label>
                 <Select
                   id="goalId"
@@ -395,7 +395,7 @@ export function FundGoalDialogProvider({ children }: { children: ReactNode }) {
                   isLoading={isLoading}
                   disabled={!formData.goalId || !formData.amount || contributionAmount <= 0 || contributionAmount > availableIncome}
                 >
-                  Fund Goal
+                  Fund Savings
                 </Button>
               </div>
             </form>

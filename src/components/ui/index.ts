@@ -17,3 +17,4 @@ export type { PieChartData } from './PieChart';
 export { BulkActionsBar } from './BulkActionsBar';
 export { DashboardTile } from './DashboardTile';
 export { PageHeader } from './PageHeader';
+export { ScoreGauge } from './ScoreGauge';

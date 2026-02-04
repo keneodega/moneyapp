@@ -103,7 +103,7 @@ export default function EditSubGoalPage({
         const subGoal = goal.sub_goals?.find(sg => sg.id === subId);
 
         if ( !subGoal) {
-          setError('Sub-goal not found');
+          setError('Sub-savings not found');
           setIsLoading(false);
           return;
         }
@@ -124,9 +124,9 @@ export default function EditSubGoalPage({
         });
       } catch (err) {
         if (err instanceof NotFoundError) {
-          setError('Sub-goal not found');
+          setError('Sub-savings not found');
         } else {
-          setError(err instanceof Error ? err.message : 'Failed to load sub-goal');
+          setError(err instanceof Error ? err.message : 'Failed to load sub-savings');
         }
       } finally {
         setIsLoading(false);
@@ -185,7 +185,7 @@ export default function EditSubGoalPage({
       if (err instanceof ValidationError) {
         setError(err.message);
       } else {
-        setError(err instanceof Error ? err.message : 'Failed to update sub-goal');
+        setError(err instanceof Error ? err.message : 'Failed to update sub-savings');
       }
     } finally {
       setIsSaving(false);
@@ -196,7 +196,7 @@ export default function EditSubGoalPage({
     return (
       <div className="max-w-2xl mx-auto space-y-6">
         <Card variant="outlined" padding="lg" className="text-center">
-          <p className="text-body text-[var(--color-text-muted)]">Loading sub-goal...</p>
+          <p className="text-body text-[var(--color-text-muted)]">Loading sub-savings...</p>
         </Card>
       </div>
     );
@@ -212,7 +212,7 @@ export default function EditSubGoalPage({
             href={goalId ? `/goals/${goalId}` : '/goals'}
             className="inline-flex items-center justify-center gap-2 h-10 px-4 rounded-[var(--radius-md)] bg-[var(--color-primary)] text-white font-medium hover:bg-[var(--color-primary-dark)] transition-colors"
           >
-            Back to Goal
+            Back to Savings
           </Link>
         </Card>
       </div>
@@ -222,8 +222,8 @@ export default function EditSubGoalPage({
   return (
     <div className="max-w-2xl mx-auto space-y-6 animate-fade-in">
       <PageHeader
-        title="Edit Sub-Goal"
-        subtitle="Update sub-goal details"
+        title="Edit Sub-savings"
+        subtitle="Update sub-savings details"
         actions={
           <Link
             href={goalId ? `/goals/${goalId}` : '/goals'}
@@ -245,7 +245,7 @@ export default function EditSubGoalPage({
 
           {/* Name */}
           <Input
-            label="Sub-Goal Name"
+            label="Sub-savings Name"
             name="name"
             placeholder="e.g., Research destinations, Save for flight tickets"
             value={formData.name}
@@ -350,7 +350,7 @@ export default function EditSubGoalPage({
           <Textarea
             label="Description (Optional)"
             name="description"
-            placeholder="Add any notes about this sub-goal..."
+            placeholder="Add any notes about this sub-savings..."
             value={formData.description}
             onChange={handleChange}
             rows={4}
@@ -394,7 +394,7 @@ export default function EditSubGoalPage({
                 const goalService = new FinancialGoalService(supabase);
                 await goalService.deleteSubGoal(subGoalId);
               }}
-              itemName="sub-goal"
+              itemName="sub-savings"
               redirectTo={goalId ? `/goals/${goalId}` : '/goals'}
             />
           </div>

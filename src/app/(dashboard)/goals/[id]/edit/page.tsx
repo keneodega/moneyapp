@@ -123,9 +123,9 @@ export default function EditGoalPage({
         });
       } catch (err) {
         if (err instanceof NotFoundError) {
-          setError('Goal not found');
+          setError('Savings goal not found');
         } else {
-          setError(err instanceof Error ? err.message : 'Failed to load goal');
+          setError(err instanceof Error ? err.message : 'Failed to load savings goal');
         }
       } finally {
         setIsLoading(false);
@@ -185,7 +185,7 @@ export default function EditGoalPage({
       if (err instanceof ValidationError) {
         setError(err.message);
       } else {
-        setError(err instanceof Error ? err.message : 'Failed to update goal');
+        setError(err instanceof Error ? err.message : 'Failed to update savings goal');
       }
     } finally {
       setIsSaving(false);
@@ -196,7 +196,7 @@ export default function EditGoalPage({
     return (
       <div className="max-w-2xl mx-auto space-y-6">
         <Card variant="outlined" padding="lg" className="text-center">
-          <p className="text-body text-[var(--color-text-muted)]">Loading goal...</p>
+          <p className="text-body text-[var(--color-text-muted)]">Loading savings goal...</p>
         </Card>
       </div>
     );
@@ -212,7 +212,7 @@ export default function EditGoalPage({
             href="/goals"
             className="inline-flex items-center justify-center gap-2 h-10 px-4 rounded-[var(--radius-md)] bg-[var(--color-primary)] text-white font-medium hover:bg-[var(--color-primary-dark)] transition-colors"
           >
-            Back to Goals
+            Back to Savings
           </Link>
         </Card>
       </div>
@@ -222,8 +222,8 @@ export default function EditGoalPage({
   return (
     <div className="max-w-2xl mx-auto space-y-6 animate-fade-in">
       <PageHeader
-        title="Edit Goal"
-        subtitle="Update goal details"
+        title="Edit Savings Goal"
+        subtitle="Update savings goal details"
         actions={
           <Link
             href={goalId ? `/goals/${goalId}` : '/goals'}
@@ -245,7 +245,7 @@ export default function EditGoalPage({
 
           {/* Name */}
           <Input
-            label="Goal Name"
+            label="Savings Name"
             name="name"
             placeholder="e.g., Emergency Fund, Vacation to Paris"
             value={formData.name}
@@ -317,10 +317,10 @@ export default function EditGoalPage({
             />
           </div>
 
-          {/* Goal Type and Person */}
+          {/* Savings Type and Person */}
           <div className="grid gap-4 sm:grid-cols-2">
             <Select
-              label="Goal Type"
+              label="Savings Type"
               name="goal_type"
               options={GOAL_TYPE_OPTIONS}
               value={formData.goal_type}
