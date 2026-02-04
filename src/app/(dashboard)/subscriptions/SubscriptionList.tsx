@@ -55,6 +55,7 @@ export function SubscriptionList({ subscriptions }: SubscriptionListProps) {
   const [essentialFilter, setEssentialFilter] = useState<'all' | 'essential' | 'non-essential'>('all');
   const [typeFilter, setTypeFilter] = useState<string>('all');
   const [personFilter, setPersonFilter] = useState<string>('all');
+  const [paymentMethodFilter, setPaymentMethodFilter] = useState<string>('all');
   const [sortBy, setSortBy] = useState<SortOption>('name_asc');
   const [loading, setLoading] = useState<string | null>(null);
   const [bulkDeleting, setBulkDeleting] = useState(false);
@@ -79,6 +80,15 @@ export function SubscriptionList({ subscriptions }: SubscriptionListProps) {
     return Array.from(set).sort();
   }, [subscriptions]);
 
+  const uniquePaymentMethods = useMemo(() => {
+    const set = new Set<string>();
+    subscriptions.forEach(s => {
+      const method = (s.bank || '').trim();
+      if (method) set.add(method);
+    });
+    return Array.from(set).sort();
+  }, [subscriptions]);
+
   const filteredSubscriptions = useMemo(() => {
     let list = subscriptions.filter(s => {
       if (filter !== 'all' && s.status !== filter) return false;
@@ -86,6 +96,7 @@ export function SubscriptionList({ subscriptions }: SubscriptionListProps) {
       if (essentialFilter === 'non-essential' && s.is_essential) return false;
       if (typeFilter !== 'all' && (s.subscription_type || 'Other').trim() !== typeFilter) return false;
       if (personFilter !== 'all' && (s.person || '').trim() !== personFilter) return false;
+      if (paymentMethodFilter !== 'all' && (s.bank || '').trim() !== paymentMethodFilter) return false;
       return true;
     });
 
@@ -142,7 +153,7 @@ export function SubscriptionList({ subscriptions }: SubscriptionListProps) {
         break;
     }
     return list;
-  }, [subscriptions, filter, essentialFilter, typeFilter, personFilter, sortBy]);
+  }, [subscriptions, filter, essentialFilter, typeFilter, personFilter, paymentMethodFilter, sortBy]);
 
   const selection = useSelection(filteredSubscriptions);
 
@@ -313,6 +324,26 @@ export function SubscriptionList({ subscriptions }: SubscriptionListProps) {
                 {uniquePersons.map((p) => (
                   <option key={p} value={p}>
                     {p}
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
+          {uniquePaymentMethods.length > 0 && (
+            <div className="flex items-center gap-2">
+              <label htmlFor="subscriptions-payment-method" className="text-small text-[var(--color-text-muted)] whitespace-nowrap">
+                Payment method
+              </label>
+              <select
+                id="subscriptions-payment-method"
+                value={paymentMethodFilter}
+                onChange={(e) => setPaymentMethodFilter(e.target.value)}
+                className="h-9 px-3 rounded-[var(--radius-md)] border border-[var(--color-border)] bg-[var(--color-surface)] text-[var(--color-text)] text-small font-medium focus:outline-none focus:ring-2 focus:ring-[var(--color-primary)]"
+              >
+                <option value="all">All</option>
+                {uniquePaymentMethods.map((method) => (
+                  <option key={method} value={method}>
+                    {method}
                   </option>
                 ))}
               </select>
@@ -528,7 +559,7 @@ export function SubscriptionList({ subscriptions }: SubscriptionListProps) {
       {filteredSubscriptions.length === 0 && (
         <Card variant="outlined" padding="lg" className="text-center">
           <p className="text-body text-[var(--color-text-muted)]">
-            {filter !== 'all' || essentialFilter !== 'all' || typeFilter !== 'all' || personFilter !== 'all'
+            {filter !== 'all' || essentialFilter !== 'all' || typeFilter !== 'all' || personFilter !== 'all' || paymentMethodFilter !== 'all'
               ? 'No subscriptions match your filters. Try changing the filters above.'
               : 'No subscriptions found.'}
           </p>
