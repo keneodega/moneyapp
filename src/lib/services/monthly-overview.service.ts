@@ -103,6 +103,19 @@ export class MonthlyOverviewService {
       console.warn('Budgets table does not exist. Please run the database schema migration.');
     }
 
+    // Snapshot subscription costs for this new month
+    try {
+      const { SubscriptionService } = await import('./subscription.service');
+      const subscriptionService = new SubscriptionService(this.supabase);
+      await subscriptionService.snapshotForMonth(
+        monthlyOverview.id,
+        monthlyOverview.start_date,
+        monthlyOverview.end_date
+      );
+    } catch {
+      // Non-fatal: snapshot can be taken on next page load
+    }
+
     // Log successful month creation
     logMonthCreated({
       monthlyOverviewId: monthlyOverview.id,

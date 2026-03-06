@@ -314,14 +314,32 @@ async function getMonthData(id: string): Promise<{
       };
     }
 
-    // Total subscriptions due this month (monthly equivalent cost)
+    // Subscription total: use snapshot for past months, live-calculate for current/future
     let totalSubscriptions = 0;
     try {
-      const subscriptionService = new SubscriptionService(supabase);
-      totalSubscriptions = await subscriptionService.getTotalMonthlyCostForDateRange(
-        baseMonth.start_date,
-        baseMonth.end_date
-      );
+      const today = new Date().toISOString().split('T')[0];
+      const isPastMonth = baseMonth.end_date < today;
+
+      if (isPastMonth && baseMonth.total_subscriptions != null) {
+        // Past month with existing snapshot — use stored value
+        totalSubscriptions = Number(baseMonth.total_subscriptions);
+      } else {
+        // Current/future month, or past month without snapshot — calculate live
+        const subscriptionService = new SubscriptionService(supabase);
+        totalSubscriptions = await subscriptionService.getTotalMonthlyCostForDateRange(
+          baseMonth.start_date,
+          baseMonth.end_date
+        );
+
+        // If past month and no snapshot yet, persist it now (lazy backfill)
+        if (isPastMonth && baseMonth.total_subscriptions == null) {
+          await subscriptionService.snapshotForMonth(
+            baseMonth.id,
+            baseMonth.start_date,
+            baseMonth.end_date
+          );
+        }
+      }
     } catch {
       // Non-fatal; leave at 0
     }
