@@ -115,15 +115,22 @@ export class GoalContributionService {
       return sum + (isNaN(amount) ? 0 : amount);
     }, 0) || 0;
 
-    // Total subscriptions due this month (monthly equivalent cost)
+    // Total subscriptions: use snapshot for past months, live-calculate for current/future
     let totalSubscriptions = 0;
     try {
-      const { SubscriptionService } = await import('./subscription.service');
-      const subscriptionService = new SubscriptionService(this.supabase);
-      totalSubscriptions = await subscriptionService.getTotalMonthlyCostForDateRange(
-        overview.start_date,
-        overview.end_date
-      );
+      const today = new Date().toISOString().split('T')[0];
+      const isPastMonth = overview.end_date < today;
+
+      if (isPastMonth && overview.total_subscriptions != null) {
+        totalSubscriptions = Number(overview.total_subscriptions);
+      } else {
+        const { SubscriptionService } = await import('./subscription.service');
+        const subscriptionService = new SubscriptionService(this.supabase);
+        totalSubscriptions = await subscriptionService.getTotalMonthlyCostForDateRange(
+          overview.start_date,
+          overview.end_date
+        );
+      }
     } catch {
       // Non-fatal; leave at 0
     }

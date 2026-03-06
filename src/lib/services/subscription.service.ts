@@ -490,6 +490,26 @@ export class SubscriptionService {
   }
 
   /**
+   * Snapshot the total subscription cost for a monthly overview.
+   * Calculates the cost and persists it to the monthly_overviews row
+   * so that future loads of past months use the stored value.
+   */
+  async snapshotForMonth(monthlyOverviewId: string, startDate: string, endDate: string): Promise<number> {
+    const total = await this.getTotalMonthlyCostForDateRange(startDate, endDate);
+
+    const { error } = await this.supabase
+      .from('monthly_overviews')
+      .update({ total_subscriptions: total })
+      .eq('id', monthlyOverviewId);
+
+    if (error) {
+      throw new Error(`Failed to snapshot subscriptions: ${error.message}`);
+    }
+
+    return total;
+  }
+
+  /**
    * Count how many times a subscription payment occurs within a date range
    */
   private countPaymentOccurrences(subscription: Subscription, startDate: Date, endDate: Date): number {

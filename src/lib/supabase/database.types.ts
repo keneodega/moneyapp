@@ -68,6 +68,7 @@ export interface MonthlyOverview {
   start_date: string;
   end_date: string;
   notes?: string | null;
+  total_subscriptions?: number | null;
   created_at: string;
   updated_at: string;
 }
@@ -79,6 +80,7 @@ export interface MonthlyOverviewInsert {
   start_date: string;
   end_date: string;
   notes?: string | null;
+  total_subscriptions?: number | null;
 }
 
 export interface MonthlyOverviewUpdate {
@@ -86,6 +88,7 @@ export interface MonthlyOverviewUpdate {
   start_date?: string;
   end_date?: string;
   notes?: string | null;
+  total_subscriptions?: number | null;
 }
 
 // Monthly Overview with computed fields (from view)
