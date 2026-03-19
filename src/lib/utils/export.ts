@@ -351,3 +351,71 @@ export async function exportAllData(
     throw new Error('Failed to export data');
   }
 }
+
+/**
+ * Export a report for specific months
+ */
+export async function exportMonthReport(
+  supabase: any,
+  userId: string,
+  monthIds: string[],
+  format: 'csv' | 'json' | 'pdf'
+): Promise<void> {
+  try {
+    // Fetch data for the selected months
+    const { data: months } = await supabase
+      .from('monthly_overviews')
+      .select('*')
+      .in('id', monthIds)
+      .eq('user_id', userId)
+      .order('start_date', { ascending: false });
+
+    const { data: budgets } = await supabase
+      .from('budget_summary')
+      .select('*')
+      .in('monthly_overview_id', monthIds);
+
+    const { data: expenses } = await supabase
+      .from('expenses')
+      .select('*, budgets(name, monthly_overview_id)')
+      .eq('user_id', userId);
+
+    const { data: income } = await supabase
+      .from('income_sources')
+      .select('*')
+      .in('monthly_overview_id', monthIds);
+
+    // Filter expenses to only selected months
+    const filteredExpenses = (expenses || []).filter((e: any) =>
+      monthIds.includes(e.budgets?.monthly_overview_id)
+    );
+
+    const data: ExportableData = {
+      months: months || [],
+      budgets: budgets || [],
+      expenses: filteredExpenses,
+      income: income || [],
+    };
+
+    const timestamp = new Date().toISOString().split('T')[0];
+    const filename = `month-report-${timestamp}`;
+
+    switch (format) {
+      case 'csv':
+        if (data.expenses?.length) exportToCSV(data.expenses, `${filename}-expenses`);
+        if (data.income?.length) exportToCSV(data.income, `${filename}-income`);
+        if (data.budgets?.length) exportToCSV(data.budgets, `${filename}-budgets`);
+        if (data.months?.length) exportToCSV(data.months, `${filename}-months`);
+        break;
+      case 'json':
+        exportToJSON(data, filename);
+        break;
+      case 'pdf':
+        exportToPDF(data, `Monthly Report - ${timestamp}`);
+        break;
+    }
+  } catch (error) {
+    console.error('Month report export error:', error);
+    throw new Error('Failed to export month report');
+  }
+}

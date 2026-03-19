@@ -2,6 +2,7 @@ import Link from 'next/link';
 import { createSupabaseServerClient } from '@/lib/supabase/server';
 import { PageHeader } from '@/components/ui';
 import { MonthsList } from './MonthsList';
+import { ReportButton } from './ReportButton';
 
 interface MonthData {
   id: string;
@@ -127,13 +128,16 @@ export default async function MonthsPage() {
         title="Monthly Budgets"
         subtitle="Track your income and expenses month by month"
         actions={
-          <Link
-            href="/months/new"
-            className="inline-flex items-center justify-center gap-2 h-12 px-6 rounded-[var(--radius-md)] bg-[var(--color-primary)] text-white font-medium shadow-[var(--shadow-sm)] hover:bg-[var(--color-primary-dark)] transition-colors"
-          >
-            <PlusIcon className="w-5 h-5" />
-            New Month
-          </Link>
+          <div className="flex gap-2">
+            <ReportButton months={months.map(m => ({ id: m.id, name: m.name, start_date: m.start_date }))} />
+            <Link
+              href="/months/new"
+              className="inline-flex items-center justify-center gap-2 h-12 px-6 rounded-[var(--radius-md)] bg-[var(--color-primary)] text-white font-medium shadow-[var(--shadow-sm)] hover:bg-[var(--color-primary-dark)] transition-colors"
+            >
+              <PlusIcon className="w-5 h-5" />
+              New Month
+            </Link>
+          </div>
         }
       />
 

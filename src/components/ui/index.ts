@@ -18,3 +18,4 @@ export { BulkActionsBar } from './BulkActionsBar';
 export { DashboardTile } from './DashboardTile';
 export { PageHeader } from './PageHeader';
 export { ScoreGauge } from './ScoreGauge';
+export { ReportExportDialogProvider, useReportExportDialog } from './ReportExportDialog';
