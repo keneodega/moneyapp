@@ -137,9 +137,9 @@ export function DashboardView() {
       />
 
       {/* Dashboard Sections */}
-      <div className="grid gap-6 lg:grid-cols-[1fr_320px]">
+      <div className="grid gap-6 md:grid-cols-[1fr_280px] lg:grid-cols-[1fr_320px]">
         {/* Main Content */}
-        <div className="space-y-6 order-2 lg:order-1">
+        <div className="space-y-6 order-2 md:order-1">
           {/* Subscriptions Dashboard */}
           <Card variant="outlined" padding="lg">
             <div className="flex items-center justify-between mb-4">
@@ -181,8 +181,8 @@ export function DashboardView() {
         </div>
 
         {/* AI Insights Sidebar */}
-        <div className="order-1 lg:order-2">
-          <div className="space-y-4 lg:sticky lg:top-4">
+        <div className="order-1 md:order-2">
+          <div className="space-y-4 md:sticky md:top-4">
             <Card variant="raised" padding="lg">
               <FinancialHealthWidget />
             </Card>

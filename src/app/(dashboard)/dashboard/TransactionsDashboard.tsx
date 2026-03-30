@@ -26,7 +26,7 @@ interface Transaction {
 export function TransactionsDashboard({ dateRange }: TransactionsDashboardProps) {
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [loading, setLoading] = useState(true);
-  const [filter, setFilter] = useState<'all' | 'income' | 'expenses'>('all');
+  const [filter, setFilter] = useState<'all' | 'income' | 'expense'>('all');
 
   const loadTransactions = useCallback(async () => {
     try {
@@ -38,43 +38,51 @@ export function TransactionsDashboard({ dateRange }: TransactionsDashboardProps)
 
       const allTransactions: Transaction[] = [];
 
-      // Load income
+      // Load income — match by monthly overview date range, not date_paid.
+      // Income is recorded against a monthly overview whose period may not align
+      // exactly with the calendar filter (e.g. salary paid Jan 25 for a Feb overview).
       if (filter === 'all' || filter === 'income') {
-        const { data: income } = await supabase
-          .from('income_sources')
-          .select(`
-            id,
-            amount,
-            date_paid,
-            description,
-            source,
-            monthly_overviews(
-              name
-            )
-          `)
-          .eq('user_id', user.id)
-          .gte('date_paid', dateRange.start.toISOString().split('T')[0])
-          .lte('date_paid', dateRange.end.toISOString().split('T')[0])
-          .order('date_paid', { ascending: false });
+        const startStr = dateRange.start.toISOString().split('T')[0];
+        const endStr = dateRange.end.toISOString().split('T')[0];
 
-        if (income) {
-          income.forEach((inc: any) => {
-            const monthlyOverview = inc.monthly_overviews as any;
-            allTransactions.push({
-              id: inc.id,
-              type: 'income',
-              amount: Number(inc.amount || 0),
-              date: inc.date_paid,
-              description: inc.description || inc.source || 'Income',
-              category: inc.source,
-              monthName: monthlyOverview?.name,
+        // Step 1: get monthly overview IDs whose date range overlaps the filter period
+        const { data: months } = await supabase
+          .from('monthly_overviews')
+          .select('id, name')
+          .eq('user_id', user.id)
+          .lte('start_date', endStr)
+          .gte('end_date', startStr);
+
+        const monthIds = (months || []).map((m: any) => m.id);
+        const monthNames = new Map((months || []).map((m: any) => [m.id, m.name]));
+
+        if (monthIds.length > 0) {
+          // Step 2: fetch income for those months
+          const { data: income } = await supabase
+            .from('income_sources')
+            .select('id, amount, date_paid, description, source, monthly_overview_id')
+            .eq('user_id', user.id)
+            .in('monthly_overview_id', monthIds)
+            .order('date_paid', { ascending: false });
+
+          if (income) {
+            income.forEach((inc: any) => {
+              allTransactions.push({
+                id: inc.id,
+                type: 'income',
+                amount: Number(inc.amount || 0),
+                date: inc.date_paid,
+                description: inc.description || inc.source || 'Income',
+                category: inc.source,
+                monthName: monthNames.get(inc.monthly_overview_id),
+              });
             });
-          });
+          }
         }
       }
 
       // Load expenses
-      if (filter === 'all' || filter === 'expenses') {
+      if (filter === 'all' || filter === 'expense') {
         const { data: expenses } = await supabase
           .from('expenses')
           .select(`
@@ -222,9 +230,9 @@ export function TransactionsDashboard({ dateRange }: TransactionsDashboardProps)
           Income
         </button>
         <button
-          onClick={() => setFilter('expenses')}
+          onClick={() => setFilter('expense')}
           className={`px-3 py-1.5 rounded-[var(--radius-sm)] text-small font-medium transition-colors ${
-            filter === 'expenses'
+            filter === 'expense'
               ? 'bg-[var(--color-primary)] text-white'
               : 'text-[var(--color-text-muted)] hover:text-[var(--color-text)]'
           }`}

@@ -7,8 +7,8 @@
 // ENUM TYPES
 // ============================================
 
-export type BankType = 
-  | 'AIB' | 'Revolut' | 'N26' | 'Wise' | 'Bank of Ireland' | 'Ulster Bank' | 'Cash' | 'Other';
+// Bank columns were migrated from enum to TEXT — accepts any string value
+export type BankType = string;
 
 export type PersonType = 
   | 'Kene' | 'Ify' | 'Joint' | 'Other';
@@ -22,8 +22,11 @@ export type StatusType =
 export type SubscriptionStatusType = 
   | 'Active' | 'Paused' | 'Cancelled' | 'Ended';
 
-export type LoanStatusType = 
+export type LoanStatusType =
   | 'Active' | 'Paid Off' | 'Defaulted' | 'Refinanced' | 'Closed';
+
+export type DebtorStatusType =
+  | 'Active' | 'Partially Paid' | 'Paid Off' | 'Written Off';
 
 export type LoanType = 
   | 'Mortgage' | 'Car Loan' | 'Personal Loan' | 'Student Loan' | 'Credit Card' | 'Other';
@@ -376,6 +379,7 @@ export interface Subscription {
   bank?: string | null;
   subscription_type?: SubscriptionType | null;
   is_essential: boolean;
+  is_company_paid: boolean;
   start_date?: string | null;
   end_date?: string | null;
   collection_day?: number | null;
@@ -398,6 +402,7 @@ export interface SubscriptionInsert {
   bank?: string | null;
   subscription_type?: SubscriptionType | null;
   is_essential?: boolean;
+  is_company_paid?: boolean;
   start_date?: string | null;
   end_date?: string | null;
   collection_day?: number | null;
@@ -416,6 +421,7 @@ export interface SubscriptionUpdate {
   bank?: string | null;
   subscription_type?: SubscriptionType | null;
   is_essential?: boolean;
+  is_company_paid?: boolean;
   start_date?: string | null;
   end_date?: string | null;
   collection_day?: number | null;
@@ -423,6 +429,43 @@ export interface SubscriptionUpdate {
   next_collection_date?: string | null;
   paid_this_period?: boolean;
   description?: string | null;
+}
+
+export interface MonthSubscription {
+  id: string;
+  month_id: string;
+  subscription_id: string | null;
+  user_id: string;
+  name: string;
+  amount: number;
+  frequency: FrequencyType;
+  status: SubscriptionStatusType;
+  is_company_paid: boolean;
+  is_essential: boolean;
+  collection_day?: number | null;
+  start_date?: string | null;
+  end_date?: string | null;
+  next_collection_date?: string | null;
+  total_due: number;
+  created_at: string;
+}
+
+export interface MonthSubscriptionInsert {
+  id?: string;
+  month_id: string;
+  subscription_id?: string | null;
+  user_id: string;
+  name: string;
+  amount: number;
+  frequency: FrequencyType;
+  status: SubscriptionStatusType;
+  is_company_paid?: boolean;
+  is_essential?: boolean;
+  collection_day?: number | null;
+  start_date?: string | null;
+  end_date?: string | null;
+  next_collection_date?: string | null;
+  total_due: number;
 }
 
 export interface Loan {
@@ -526,6 +569,83 @@ export interface LoanPaymentUpdate {
   payment_date?: string;
   payment_method?: string | null;
   linked_expense_id?: string | null;
+  notes?: string | null;
+}
+
+export interface Debtor {
+  id: string;
+  user_id: string;
+  debtor_name: string;
+  amount_owed: number;
+  amount_repaid: number;
+  date_lent: string;
+  expected_repayment_date?: string | null;
+  status: DebtorStatusType;
+  person?: string | null;
+  bank?: string | null;
+  payment_method?: string | null;
+  description?: string | null;
+  notes?: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface DebtorInsert {
+  id?: string;
+  user_id: string;
+  debtor_name: string;
+  amount_owed: number;
+  amount_repaid?: number;
+  date_lent: string;
+  expected_repayment_date?: string | null;
+  status?: DebtorStatusType;
+  person?: string | null;
+  bank?: string | null;
+  payment_method?: string | null;
+  description?: string | null;
+  notes?: string | null;
+}
+
+export interface DebtorUpdate {
+  debtor_name?: string;
+  amount_owed?: number;
+  amount_repaid?: number;
+  date_lent?: string;
+  expected_repayment_date?: string | null;
+  status?: DebtorStatusType;
+  person?: string | null;
+  bank?: string | null;
+  payment_method?: string | null;
+  description?: string | null;
+  notes?: string | null;
+}
+
+export interface DebtorPayment {
+  id: string;
+  debtor_id: string;
+  user_id: string;
+  payment_amount: number;
+  payment_date: string;
+  payment_method?: string | null;
+  notes?: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface DebtorPaymentInsert {
+  id?: string;
+  debtor_id: string;
+  user_id: string;
+  payment_amount: number;
+  payment_date: string;
+  payment_method?: string | null;
+  notes?: string | null;
+}
+
+export interface DebtorPaymentUpdate {
+  payment_amount?: number;
+  payment_date?: string;
+  payment_method?: string | null;
   notes?: string | null;
 }
 
@@ -647,6 +767,11 @@ export interface Database {
         Insert: SubscriptionInsert;
         Update: SubscriptionUpdate;
       };
+      month_subscriptions: {
+        Row: MonthSubscription;
+        Insert: MonthSubscriptionInsert;
+        Update: Partial<MonthSubscriptionInsert>;
+      };
       loans: {
         Row: Loan;
         Insert: LoanInsert;
@@ -656,6 +781,16 @@ export interface Database {
         Row: LoanPayment;
         Insert: LoanPaymentInsert;
         Update: LoanPaymentUpdate;
+      };
+      debtors: {
+        Row: Debtor;
+        Insert: DebtorInsert;
+        Update: DebtorUpdate;
+      };
+      debtor_payments: {
+        Row: DebtorPayment;
+        Insert: DebtorPaymentInsert;
+        Update: DebtorPaymentUpdate;
       };
       investment_holdings: {
         Row: InvestmentHolding;
@@ -691,6 +826,7 @@ export interface Database {
       status_type: StatusType;
       subscription_status_type: SubscriptionStatusType;
       loan_status_type: LoanStatusType;
+      debtor_status_type: DebtorStatusType;
       loan_type: LoanType;
       priority_type: PriorityType;
       goal_type: GoalType;
@@ -935,4 +1071,74 @@ export interface FinancialHealthScoreUpdate {
   total_debt_payments?: number;
   ai_recommendations?: AIHealthRecommendation[] | null;
   recommendations_generated_at?: string | null;
+}
+
+// ============================================================
+// Life Events (Forecast)
+// ============================================================
+export type LifeEventCategory = 'baby' | 'property' | 'vehicle' | 'career' | 'education' | 'other';
+export type LifeEventStatus = 'planned' | 'in_progress' | 'completed' | 'cancelled';
+export type DateConfidence = 'year' | 'quarter' | 'month';
+
+export interface LifeEvent {
+  id: string;
+  user_id: string;
+  name: string;
+  description?: string | null;
+  icon?: string | null;
+  category: LifeEventCategory;
+  expected_date: string;
+  date_confidence: DateConfidence;
+  status: LifeEventStatus;
+  one_time_cost: number;
+  one_time_income: number;
+  recurring_monthly_change: number;
+  recurring_description?: string | null;
+  income_monthly_change: number;
+  income_change_duration_months?: number | null;
+  income_change_description?: string | null;
+  linked_goal_id?: string | null;
+  notes?: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface LifeEventInsert {
+  id?: string;
+  user_id: string;
+  name: string;
+  description?: string | null;
+  icon?: string | null;
+  category: LifeEventCategory;
+  expected_date: string;
+  date_confidence?: DateConfidence;
+  status?: LifeEventStatus;
+  one_time_cost?: number;
+  one_time_income?: number;
+  recurring_monthly_change?: number;
+  recurring_description?: string | null;
+  income_monthly_change?: number;
+  income_change_duration_months?: number | null;
+  income_change_description?: string | null;
+  linked_goal_id?: string | null;
+  notes?: string | null;
+}
+
+export interface LifeEventUpdate {
+  name?: string;
+  description?: string | null;
+  icon?: string | null;
+  category?: LifeEventCategory;
+  expected_date?: string;
+  date_confidence?: DateConfidence;
+  status?: LifeEventStatus;
+  one_time_cost?: number;
+  one_time_income?: number;
+  recurring_monthly_change?: number;
+  recurring_description?: string | null;
+  income_monthly_change?: number;
+  income_change_duration_months?: number | null;
+  income_change_description?: string | null;
+  linked_goal_id?: string | null;
+  notes?: string | null;
 }

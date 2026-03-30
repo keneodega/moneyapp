@@ -280,6 +280,7 @@ export function FundGoalDialogProvider({ children }: { children: ReactNode }) {
                   value={formData.goalId}
                   onChange={handleChange}
                   options={goalOptions}
+                  placeholder="Select a savings goal"
                   required
                   disabled={isLoading}
                 />

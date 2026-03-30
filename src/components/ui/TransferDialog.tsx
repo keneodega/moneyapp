@@ -113,7 +113,7 @@ export function TransferDialogProvider({ children }: { children: ReactNode }) {
         if (budgetRes.data) setBudgets(budgetRes.data as BudgetOption[]);
         if (allBudgetsRes.data) setAllBudgetsForDestination(allBudgetsRes.data as BudgetOptionBasic[]);
         if (goalRes.data) setGoals(goalRes.data as GoalOption[]);
-        const methods = settingsRes.length > 0 ? filterValidPaymentMethods(settingsRes) : DEFAULT_PAYMENT_METHODS;
+        const methods = settingsRes.length > 0 ? settingsRes : DEFAULT_PAYMENT_METHODS;
         setPaymentMethods(methods);
         setFormData(prev => ({
           ...prev,

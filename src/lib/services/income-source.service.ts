@@ -301,6 +301,114 @@ export class IncomeSourceService {
   }
 
   /**
+   * Update an income source, adjusting Tithe/Offering budget amounts for the delta.
+   *
+   * Old logic: tithe_deduction=true implies both tithe (10%) and offering (5%) were applied.
+   */
+  async updateWithGiving(
+    id: string,
+    data: IncomeSourceUpdate,
+    giving: {
+      oldAmount: number;
+      wasOldTithe: boolean;
+      newTithe: boolean;
+      newOffering: boolean;
+    },
+  ): Promise<IncomeSource> {
+    const income = await this.getById(id);
+    const monthlyOverviewId = income.monthly_overview_id;
+    const newAmount = data.amount ?? income.amount;
+
+    const oldTitheAmt = giving.wasOldTithe ? giving.oldAmount * 0.10 : 0;
+    const oldOfferingAmt = giving.wasOldTithe ? giving.oldAmount * 0.05 : 0;
+    const newTitheAmt = giving.newTithe ? newAmount * 0.10 : 0;
+    const newOfferingAmt = giving.newOffering ? newAmount * 0.05 : 0;
+
+    const titheDelta = newTitheAmt - oldTitheAmt;
+    const offeringDelta = newOfferingAmt - oldOfferingAmt;
+
+    if (titheDelta !== 0 || (newTitheAmt > 0 && !giving.wasOldTithe)) {
+      try {
+        const { data: titheBudget } = await this.supabase
+          .from('budgets')
+          .select('id, budget_amount')
+          .eq('monthly_overview_id', monthlyOverviewId)
+          .eq('name', 'Tithe')
+          .maybeSingle();
+
+        if (titheBudget) {
+          const newAmt = Math.max(0, Number(titheBudget.budget_amount ?? 0) + titheDelta);
+          await this.supabase.from('budgets').update({ budget_amount: newAmt }).eq('id', titheBudget.id);
+        } else if (newTitheAmt > 0) {
+          const budgetService = new BudgetService(this.supabase);
+          const masterBudgetService = new MasterBudgetService(this.supabase);
+          const masterBudgets = await masterBudgetService.getAll(true);
+          const titheMaster = masterBudgets.find(mb => mb.name.toLowerCase() === 'tithe');
+          if (titheMaster) {
+            await budgetService.create({
+              monthly_overview_id: monthlyOverviewId,
+              name: titheMaster.name,
+              budget_amount: newTitheAmt,
+              master_budget_id: titheMaster.id,
+              description: titheMaster.description || null,
+            });
+          } else {
+            await budgetService.create({
+              monthly_overview_id: monthlyOverviewId,
+              name: 'Tithe',
+              budget_amount: newTitheAmt,
+              description: '10% of all income - giving back to God',
+            });
+          }
+        }
+      } catch (err) {
+        console.error('Failed to adjust Tithe budget on income update:', err);
+      }
+    }
+
+    if (offeringDelta !== 0 || (newOfferingAmt > 0 && !giving.wasOldTithe)) {
+      try {
+        const { data: offeringBudget } = await this.supabase
+          .from('budgets')
+          .select('id, budget_amount')
+          .eq('monthly_overview_id', monthlyOverviewId)
+          .eq('name', 'Offering')
+          .maybeSingle();
+
+        if (offeringBudget) {
+          const newAmt = Math.max(0, Number(offeringBudget.budget_amount ?? 0) + offeringDelta);
+          await this.supabase.from('budgets').update({ budget_amount: newAmt }).eq('id', offeringBudget.id);
+        } else if (newOfferingAmt > 0) {
+          const budgetService = new BudgetService(this.supabase);
+          const masterBudgetService = new MasterBudgetService(this.supabase);
+          const masterBudgets = await masterBudgetService.getAll(true);
+          const offeringMaster = masterBudgets.find(mb => mb.name.toLowerCase() === 'offering');
+          if (offeringMaster) {
+            await budgetService.create({
+              monthly_overview_id: monthlyOverviewId,
+              name: offeringMaster.name,
+              budget_amount: newOfferingAmt,
+              master_budget_id: offeringMaster.id,
+              description: offeringMaster.description || null,
+            });
+          } else {
+            await budgetService.create({
+              monthly_overview_id: monthlyOverviewId,
+              name: 'Offering',
+              budget_amount: newOfferingAmt,
+              description: '5% of main income - additional giving',
+            });
+          }
+        }
+      } catch (err) {
+        console.error('Failed to adjust Offering budget on income update:', err);
+      }
+    }
+
+    return this.update(id, { ...data, tithe_deduction: giving.newTithe });
+  }
+
+  /**
    * Update an income source
    */
   async update(id: string, data: IncomeSourceUpdate): Promise<IncomeSource> {

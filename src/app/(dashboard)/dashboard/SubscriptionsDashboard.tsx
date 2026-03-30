@@ -27,8 +27,9 @@ interface MonthlySubscriptionData {
 export function SubscriptionsDashboard({ dateRange }: SubscriptionsDashboardProps) {
   const [subscriptions, setSubscriptions] = useState<Subscription[]>([]);
   const [monthlyData, setMonthlyData] = useState<MonthlySubscriptionData[]>([]);
-  const [totalMonthly, setTotalMonthly] = useState(0);
-  const [totalYearly, setTotalYearly] = useState(0);
+  const [personalMonthly, setPersonalMonthly] = useState(0);
+  const [companyPaidMonthly, setCompanyPaidMonthly] = useState(0);
+  const [personalYearly, setPersonalYearly] = useState(0);
   const [loading, setLoading] = useState(true);
   const [expandedMonth, setExpandedMonth] = useState<string | null>(null);
 
@@ -37,7 +38,7 @@ export function SubscriptionsDashboard({ dateRange }: SubscriptionsDashboardProp
       setLoading(true);
       const supabase = createSupabaseBrowserClient();
       const service = new SubscriptionService(supabase);
-      const allSubscriptions = await service.getActive();
+      const allSubscriptions = await service.getEffectivelyActive();
 
       // Filter subscriptions that are active during the date range
       const filtered = allSubscriptions.filter((sub) => {
@@ -71,16 +72,13 @@ export function SubscriptionsDashboard({ dateRange }: SubscriptionsDashboardProp
 
       setMonthlyData(monthlyBreakdown);
 
-      // Calculate totals
-      const monthlyTotal = filtered.reduce((sum, sub) => {
-        return sum + SubscriptionService.calculateMonthlyCost(sub.amount, sub.frequency);
-      }, 0);
-      const yearlyTotal = filtered.reduce((sum, sub) => {
-        return sum + SubscriptionService.calculateYearlyCost(sub.amount, sub.frequency);
-      }, 0);
+      // Calculate totals split by personal vs company-paid
+      const personal = filtered.filter(sub => !sub.is_company_paid);
+      const companyPaid = filtered.filter(sub => sub.is_company_paid);
 
-      setTotalMonthly(monthlyTotal);
-      setTotalYearly(yearlyTotal);
+      setPersonalMonthly(personal.reduce((sum, sub) => sum + SubscriptionService.calculateMonthlyCost(sub.amount, sub.frequency), 0));
+      setCompanyPaidMonthly(companyPaid.reduce((sum, sub) => sum + SubscriptionService.calculateMonthlyCost(sub.amount, sub.frequency), 0));
+      setPersonalYearly(personal.reduce((sum, sub) => sum + SubscriptionService.calculateYearlyCost(sub.amount, sub.frequency), 0));
     } catch (error) {
       console.error('Failed to load subscriptions:', error);
     } finally {
@@ -106,7 +104,7 @@ export function SubscriptionsDashboard({ dateRange }: SubscriptionsDashboardProp
   }
 
   function isSubscriptionActiveInMonth(sub: Subscription, month: Date): boolean {
-    if (!sub.start_date) return true;
+    if (!sub.start_date) return SubscriptionService.isEffectivelyActive(sub, month);
     const startDate = new Date(sub.start_date);
     const endDate = sub.end_date ? new Date(sub.end_date) : null;
 
@@ -116,7 +114,7 @@ export function SubscriptionsDashboard({ dateRange }: SubscriptionsDashboardProp
     return (
       startDate <= monthEnd &&
       (!endDate || endDate >= monthStart) &&
-      sub.status === 'Active'
+      SubscriptionService.isEffectivelyActive(sub, month)
     );
   }
 
@@ -145,17 +143,29 @@ export function SubscriptionsDashboard({ dateRange }: SubscriptionsDashboardProp
   return (
     <div className="space-y-6">
       {/* Summary Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+      <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
         <DashboardTile
-          title="Total Monthly Cost"
-          value={formatCurrency(totalMonthly)}
-          helper="Active subscriptions only"
+          title="Monthly Cost (Personal)"
+          value={formatCurrency(personalMonthly)}
+          helper="Excludes KHO subscriptions"
           tone="primary"
         />
         <DashboardTile
-          title="Total Yearly Cost"
-          value={formatCurrency(totalYearly)}
-          helper="Projected annual spend"
+          title="KHO Monthly Cost"
+          value={formatCurrency(companyPaidMonthly)}
+          helper="Paid by KHO before salary"
+          tone="default"
+        />
+        <DashboardTile
+          title="Total Monthly Cost"
+          value={formatCurrency(personalMonthly + companyPaidMonthly)}
+          helper="Personal + KHO combined"
+          tone="default"
+        />
+        <DashboardTile
+          title="Yearly Cost (Personal)"
+          value={formatCurrency(personalYearly)}
+          helper="Excludes KHO subscriptions"
           tone="default"
         />
         <DashboardTile
@@ -212,6 +222,11 @@ export function SubscriptionsDashboard({ dateRange }: SubscriptionsDashboardProp
                         <div className="flex-1">
                           <p className="text-small font-medium text-[var(--color-text)]">
                             {subscription.name}
+                            {subscription.is_company_paid && (
+                              <span className="ml-2 px-1.5 py-0.5 rounded text-caption bg-blue-500/15 text-blue-400 font-medium">
+                                KHO
+                              </span>
+                            )}
                           </p>
                           <p className="text-caption text-[var(--color-text-muted)]">
                             {subscription.frequency} • {formatCurrency(subscription.amount)}

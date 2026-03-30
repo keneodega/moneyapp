@@ -122,7 +122,8 @@ export class GoalContributionService {
       const subscriptionService = new SubscriptionService(this.supabase);
       totalSubscriptions = await subscriptionService.getTotalMonthlyCostForDateRange(
         overview.start_date,
-        overview.end_date
+        overview.end_date,
+        true // Exclude company-paid (KHO) subscriptions from available income
       );
     } catch {
       // Non-fatal; leave at 0

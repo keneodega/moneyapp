@@ -62,6 +62,9 @@ const DEFAULT_SUBSCRIPTION_TYPES = [
   { value: 'Membership', label: 'Membership' },
   { value: 'Insurance', label: 'Insurance' },
   { value: 'Utility', label: 'Utility' },
+  { value: 'News', label: 'News' },
+  { value: 'Gaming', label: 'Gaming' },
+  { value: 'Health', label: 'Health' },
   { value: 'Other', label: 'Other' },
 ];
 

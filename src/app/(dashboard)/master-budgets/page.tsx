@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { Card, Button, DashboardTile, Input, PageHeader, Select, Skeleton, SkeletonList, useToast, useConfirmDialog, PieChart, type PieChartData } from '@/components/ui';
 import { createSupabaseBrowserClient } from '@/lib/supabase/client';
-import { MasterBudgetService, SubscriptionService } from '@/lib/services';
+import { MasterBudgetService } from '@/lib/services';
 import type { MasterBudget, MasterBudgetHistoryEntry, BudgetType } from '@/lib/services/master-budget.service';
 
 export default function MasterBudgetsPage() {
@@ -29,12 +29,6 @@ export default function MasterBudgetsPage() {
   const [saving, setSaving] = useState(false);
   const [history, setHistory] = useState<MasterBudgetHistoryEntry[]>([]);
   const [historyLoading, setHistoryLoading] = useState(true);
-  const [subscriptionSummary, setSubscriptionSummary] = useState<{
-    activeCount: number;
-    totalMonthly: number;
-    totalYearly: number;
-  } | null>(null);
-
   const loadBudgets = useCallback(async () => {
     try {
       const supabase = createSupabaseBrowserClient();
@@ -79,35 +73,8 @@ export default function MasterBudgetsPage() {
     }
   }, []);
 
-  const loadSubscriptions = useCallback(async () => {
-    try {
-      const supabase = createSupabaseBrowserClient();
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
-      const subscriptionService = new SubscriptionService(supabase);
-      const allSubscriptions = await subscriptionService.getAll();
-      const activeSubscriptions = allSubscriptions.filter(s => s.status === 'Active');
-      const totalMonthly = activeSubscriptions.reduce(
-        (sum, s) => sum + SubscriptionService.calculateMonthlyCost(s.amount, s.frequency),
-        0
-      );
-      const totalYearly = activeSubscriptions.reduce(
-        (sum, s) => sum + SubscriptionService.calculateYearlyCost(s.amount, s.frequency),
-        0
-      );
-      setSubscriptionSummary({
-        activeCount: activeSubscriptions.length,
-        totalMonthly,
-        totalYearly,
-      });
-    } catch (err) {
-      console.error('Failed to load subscription summary:', err);
-    }
-  }, []);
-
   useEffect(() => {
     loadBudgets();
-    loadSubscriptions();
   }, [loadBudgets]);
 
   useEffect(() => {
@@ -242,7 +209,7 @@ export default function MasterBudgetsPage() {
       />
 
       {/* Total Summary */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         <DashboardTile
           title="Total Master Budget"
           value={formatCurrency(totalAmount)}
@@ -271,33 +238,9 @@ export default function MasterBudgetsPage() {
         )}
       </div>
 
-      {/* Subscription Summary */}
-      {subscriptionSummary && (
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <DashboardTile
-            title="Active Subscriptions"
-            value={String(subscriptionSummary.activeCount)}
-            helper="Recurring payments"
-            tone="default"
-          />
-          <DashboardTile
-            title="Monthly Subscriptions"
-            value={formatCurrency(subscriptionSummary.totalMonthly)}
-            helper="Monthly run rate"
-            tone="primary"
-          />
-          <DashboardTile
-            title="Yearly Subscriptions"
-            value={formatCurrency(subscriptionSummary.totalYearly)}
-            helper="Projected annual cost"
-            tone="default"
-          />
-        </div>
-      )}
-
       {/* Budget Type Navigation Cards */}
       {breakdown && (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <Link href="/master-budgets/fixed">
             <Card variant="raised" padding="lg" className="hover:shadow-[var(--shadow-lg)] transition-shadow cursor-pointer h-full">
               <div className="flex items-center justify-between mb-4">
@@ -337,24 +280,6 @@ export default function MasterBudgetsPage() {
             </Card>
           </Link>
         </div>
-      )}
-
-      {/* Combined Pie Chart */}
-      {breakdown && breakdown.grandTotal > 0 && (
-        <Card variant="raised" padding="lg">
-          <h3 className="text-headline text-[var(--color-text)] mb-4">Combined Budget Breakdown</h3>
-          <PieChart
-            data={combinedChartData}
-            showLegend={true}
-            showLabels={false}
-            innerRadius={80}
-            outerRadius={150}
-            height={400}
-          />
-          <p className="text-center text-body font-medium text-[var(--color-text)] mt-4">
-            Total: €{breakdown.grandTotal.toLocaleString('en-IE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-          </p>
-        </Card>
       )}
 
       {/* Add Form */}
@@ -418,6 +343,24 @@ export default function MasterBudgetsPage() {
               </Button>
             </div>
           </form>
+        </Card>
+      )}
+
+      {/* Combined Pie Chart */}
+      {breakdown && breakdown.grandTotal > 0 && (
+        <Card variant="raised" padding="lg">
+          <h3 className="text-headline text-[var(--color-text)] mb-4">Combined Budget Breakdown</h3>
+          <PieChart
+            data={combinedChartData}
+            showLegend={true}
+            showLabels={false}
+            innerRadius={80}
+            outerRadius={150}
+            height={400}
+          />
+          <p className="text-center text-body font-medium text-[var(--color-text)] mt-4">
+            Total: €{breakdown.grandTotal.toLocaleString('en-IE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+          </p>
         </Card>
       )}
 

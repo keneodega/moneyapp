@@ -78,10 +78,10 @@ export default async function BudgetDetailPage({
                 Spending Progress
               </span>
               <span className="text-body font-medium text-[var(--color-text)] tabular-nums">
-                {((budget.amount_spent / budget.budget_amount) * 100).toFixed(0)}%
+                {((budget.amount_spent / (budget.amount_spent + budget.amount_left || 1)) * 100).toFixed(0)}%
               </span>
             </div>
-            <BudgetProgress spent={budget.amount_spent} total={budget.budget_amount} remaining={budget.amount_left} />
+            <BudgetProgress spent={budget.amount_spent} total={budget.amount_spent + budget.amount_left} remaining={budget.amount_left} />
           </div>
 
           {/* Stats Grid */}

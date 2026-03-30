@@ -30,6 +30,9 @@ const DEFAULT_PERSONS = [
 
 const DEFAULT_BANKS = DEFAULT_PAYMENT_METHODS;
 
+const TITHE_RATE = 0.10;
+const OFFERING_RATE = 0.05;
+
 interface FormData {
   amount: string;
   source: string;
@@ -37,6 +40,8 @@ interface FormData {
   bank: string;
   date_paid: string;
   description: string;
+  auto_tithe: boolean;
+  auto_offering: boolean;
 }
 
 export default function EditIncomePage({
@@ -52,6 +57,7 @@ export default function EditIncomePage({
   const [persons, setPersons] = useState(DEFAULT_PERSONS);
   const [banks, setBanks] = useState(DEFAULT_BANKS);
   const [incomeSources, setIncomeSources] = useState<{ value: string; label: string }[]>(DEFAULT_INCOME_SOURCES);
+  const [originalIncome, setOriginalIncome] = useState<{ amount: number; tithe_deduction: boolean } | null>(null);
   const [formData, setFormData] = useState<FormData>({
     amount: '',
     source: 'Salary',
@@ -59,6 +65,8 @@ export default function EditIncomePage({
     bank: '',
     date_paid: new Date().toISOString().split('T')[0],
     description: '',
+    auto_tithe: false,
+    auto_offering: false,
   });
 
   // Load existing income and settings
@@ -89,6 +97,12 @@ export default function EditIncomePage({
           setIncomeSources(loadedIncomeSources);
         }
 
+        // Remember original values for delta calculation
+        setOriginalIncome({
+          amount: existingIncome.amount,
+          tithe_deduction: existingIncome.tithe_deduction,
+        });
+
         // Set form data from existing income
         setFormData({
           amount: String(existingIncome.amount),
@@ -97,6 +111,9 @@ export default function EditIncomePage({
           bank: existingIncome.bank || banksToUse[0]?.value || '',
           date_paid: existingIncome.date_paid || new Date().toISOString().split('T')[0],
           description: existingIncome.description || '',
+          auto_tithe: existingIncome.tithe_deduction,
+          // Offering is assumed to follow tithe (per existing create/delete logic)
+          auto_offering: existingIncome.tithe_deduction,
         });
       } catch (err) {
         console.error('Failed to load data:', err);
@@ -109,13 +126,20 @@ export default function EditIncomePage({
     loadData();
   }, [incomeId]);
 
+  const calculations = useMemo(() => {
+    const amount = parseFloat(formData.amount) || 0;
+    const titheAmount = formData.auto_tithe ? amount * TITHE_RATE : 0;
+    const offeringAmount = formData.auto_offering ? amount * OFFERING_RATE : 0;
+    return { amount, titheAmount, offeringAmount, totalGiving: titheAmount + offeringAmount };
+  }, [formData.amount, formData.auto_tithe, formData.auto_offering]);
+
   const handleChange = (
     e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>
   ) => {
-    const { name, value } = e.target;
+    const { name, value, type } = e.target;
     setFormData((prev) => ({
       ...prev,
-      [name]: value,
+      [name]: type === 'checkbox' ? (e.target as HTMLInputElement).checked : value,
     }));
   };
 
@@ -139,14 +163,23 @@ export default function EditIncomePage({
         : 'Other';
 
       const incomeService = new IncomeSourceService(supabase);
-      await incomeService.update(incomeId, {
-        amount: parseFloat(formData.amount),
-        source: sourceValue as any,
-        person: formData.person || null,
-        bank: validateBankType(formData.bank) ?? null,
-        date_paid: formData.date_paid,
-        description: formData.description || null,
-      });
+      await incomeService.updateWithGiving(
+        incomeId,
+        {
+          amount: parseFloat(formData.amount),
+          source: sourceValue as any,
+          person: formData.person || null,
+          bank: validateBankType(formData.bank) ?? null,
+          date_paid: formData.date_paid,
+          description: formData.description || null,
+        },
+        {
+          oldAmount: originalIncome?.amount ?? parseFloat(formData.amount),
+          wasOldTithe: originalIncome?.tithe_deduction ?? false,
+          newTithe: formData.auto_tithe,
+          newOffering: formData.auto_offering,
+        },
+      );
 
       router.push(`/months/${monthId}`);
       router.refresh();
@@ -263,14 +296,119 @@ export default function EditIncomePage({
             />
           </div>
 
-          {/* Note about Tithe/Offering */}
-          <div className="flex gap-3 p-4 rounded-[var(--radius-md)] bg-[var(--color-warning)]/5 border border-[var(--color-warning)]/10">
-            <InfoIcon className="w-5 h-5 text-[var(--color-warning)] flex-shrink-0 mt-0.5" />
-            <p className="text-small text-[var(--color-text-muted)]">
-              Note: Editing the amount will not automatically adjust Tithe/Offering budgets.
-              If needed, please update those budgets manually.
-            </p>
+          {/* Tithe & Offering Section */}
+          <div className="space-y-4">
+            <h3 className="text-body font-medium text-[var(--color-text)]">Giving</h3>
+
+            {/* Tithe Checkbox */}
+            <label className="flex items-start gap-3 p-4 rounded-[var(--radius-md)] border border-[var(--color-border)] cursor-pointer hover:border-[var(--color-primary)]/50 transition-colors">
+              <input
+                type="checkbox"
+                name="auto_tithe"
+                checked={formData.auto_tithe}
+                onChange={handleChange}
+                className="w-5 h-5 mt-0.5 rounded-[var(--radius-sm)] border-[var(--color-border)] text-[var(--color-primary)] focus:ring-[var(--color-primary)] cursor-pointer"
+              />
+              <div className="flex-1">
+                <div className="flex items-center justify-between">
+                  <span className="text-body font-medium text-[var(--color-text)]">Tithe</span>
+                  <span className="text-small font-medium text-[var(--color-primary)] bg-[var(--color-primary)]/10 px-2 py-0.5 rounded-full">
+                    10%
+                  </span>
+                </div>
+                <p className="text-small text-[var(--color-text-muted)] mt-1">
+                  Giving back to God - 10% of all income
+                </p>
+                {formData.auto_tithe && calculations.amount > 0 && (
+                  <p className="text-body font-semibold text-[var(--color-success)] mt-2">
+                    {formatCurrency(calculations.titheAmount)}
+                  </p>
+                )}
+              </div>
+            </label>
+
+            {/* Offering Checkbox */}
+            <label className="flex items-start gap-3 p-4 rounded-[var(--radius-md)] border border-[var(--color-border)] cursor-pointer hover:border-[var(--color-accent)]/50 transition-colors">
+              <input
+                type="checkbox"
+                name="auto_offering"
+                checked={formData.auto_offering}
+                onChange={handleChange}
+                className="w-5 h-5 mt-0.5 rounded-[var(--radius-sm)] border-[var(--color-border)] text-[var(--color-accent)] focus:ring-[var(--color-accent)] cursor-pointer"
+              />
+              <div className="flex-1">
+                <div className="flex items-center justify-between">
+                  <span className="text-body font-medium text-[var(--color-text)]">Offering</span>
+                  <span className="text-small font-medium text-[var(--color-accent)] bg-[var(--color-accent)]/10 px-2 py-0.5 rounded-full">
+                    5%
+                  </span>
+                </div>
+                <p className="text-small text-[var(--color-text-muted)] mt-1">
+                  Additional giving - 5% of income
+                </p>
+                {formData.auto_offering && calculations.amount > 0 && (
+                  <p className="text-body font-semibold text-[var(--color-success)] mt-2">
+                    {formatCurrency(calculations.offeringAmount)}
+                  </p>
+                )}
+              </div>
+            </label>
           </div>
+
+          {/* Calculation Summary */}
+          {calculations.amount > 0 && (formData.auto_tithe || formData.auto_offering) && (
+            <Card variant="outlined" padding="md" className="bg-gradient-warm">
+              <h4 className="text-small font-medium text-[var(--color-text-muted)] mb-3">Summary</h4>
+              <div className="space-y-2">
+                <div className="flex justify-between items-center">
+                  <span className="text-body text-[var(--color-text)]">Gross Income</span>
+                  <span className="text-body font-medium text-[var(--color-text)] tabular-nums">
+                    {formatCurrency(calculations.amount)}
+                  </span>
+                </div>
+                {formData.auto_tithe && (
+                  <div className="flex justify-between items-center">
+                    <span className="text-body text-[var(--color-text-muted)]">
+                      <span className="inline-flex items-center gap-1">
+                        <MinusIcon className="w-3 h-3" />
+                        Tithe (10%)
+                      </span>
+                    </span>
+                    <span className="text-body text-[var(--color-primary)] tabular-nums">
+                      -{formatCurrency(calculations.titheAmount)}
+                    </span>
+                  </div>
+                )}
+                {formData.auto_offering && (
+                  <div className="flex justify-between items-center">
+                    <span className="text-body text-[var(--color-text-muted)]">
+                      <span className="inline-flex items-center gap-1">
+                        <MinusIcon className="w-3 h-3" />
+                        Offering (5%)
+                      </span>
+                    </span>
+                    <span className="text-body text-[var(--color-accent)] tabular-nums">
+                      -{formatCurrency(calculations.offeringAmount)}
+                    </span>
+                  </div>
+                )}
+                <div className="border-t border-[var(--color-border)] pt-2 mt-2">
+                  <div className="flex justify-between items-center">
+                    <span className="text-body font-medium text-[var(--color-text)]">Total Giving</span>
+                    <span className="text-body font-semibold text-[var(--color-success)] tabular-nums">
+                      {formatCurrency(calculations.totalGiving)}
+                    </span>
+                  </div>
+                  <div className="flex justify-between items-center mt-1">
+                    <span className="text-body font-medium text-[var(--color-text)]">Net Income</span>
+                    <span className="text-body font-semibold text-[var(--color-text)] tabular-nums">
+                      {formatCurrency(calculations.amount - calculations.totalGiving)}
+                    </span>
+                  </div>
+                </div>
+              </div>
+            </Card>
+          )}
 
           {/* Description */}
           <Textarea
@@ -323,10 +461,10 @@ function SaveIcon({ className }: { className?: string }) {
   );
 }
 
-function InfoIcon({ className }: { className?: string }) {
+function MinusIcon({ className }: { className?: string }) {
   return (
     <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-      <path strokeLinecap="round" strokeLinejoin="round" d="M11.25 11.25l.041-.02a.75.75 0 011.063.852l-.708 2.836a.75.75 0 001.063.853l.041-.021M21 12a9 9 0 11-18 0 9 9 0 0118 0zm-9-3.75h.008v.008H12V8.25z" />
+      <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 12h-15" />
     </svg>
   );
 }

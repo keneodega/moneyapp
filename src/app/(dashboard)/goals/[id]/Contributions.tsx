@@ -20,6 +20,7 @@ interface ContributionItem {
 }
 
 interface ContributionsProps {
+  goalId: string;
   contributions: ContributionItem[];
 }
 
@@ -27,8 +28,8 @@ function formatCurrency(amount: number): string {
   return new Intl.NumberFormat('en-IE', {
     style: 'currency',
     currency: 'EUR',
-    minimumFractionDigits: 0,
-    maximumFractionDigits: 0,
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
   }).format(amount);
 }
 
@@ -40,7 +41,7 @@ function formatDate(date: string): string {
   });
 }
 
-export function Contributions({ contributions }: ContributionsProps) {
+export function Contributions({ goalId, contributions }: ContributionsProps) {
   const [deleting, setDeleting] = useState<string | null>(null);
   const [confirmDelete, setConfirmDelete] = useState<string | null>(null);
   const router = useRouter();
@@ -95,11 +96,10 @@ export function Contributions({ contributions }: ContributionsProps) {
       <div className="space-y-2">
         {contributions.map((contrib) => {
           const monthlyOverview = contrib.monthly_overview;
-          const monthId = monthlyOverview?.id || '';
           const monthName = monthlyOverview?.name || 'Unknown Month';
 
-          // Link to month detail page
-          const monthUrl = monthId ? `/months/${monthId}` : '#';
+          // Link to contribution edit page
+          const editUrl = `/goals/${goalId}/contributions/${contrib.id}/edit`;
 
           return (
             <div
@@ -107,7 +107,7 @@ export function Contributions({ contributions }: ContributionsProps) {
               className="group p-3 rounded-[var(--radius-md)] border border-[var(--color-border)] hover:border-[var(--color-primary)] hover:bg-[var(--color-primary)]/5 transition-colors"
             >
               <div className="flex items-start justify-between mb-1">
-                <Link href={monthUrl} className="flex-1">
+                <Link href={editUrl} className="flex-1">
                   <p className="text-body font-medium text-[var(--color-text)]">
                     {contrib.description || 'Goal Contribution'}
                   </p>

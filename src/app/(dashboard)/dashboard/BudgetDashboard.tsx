@@ -142,9 +142,15 @@ export function BudgetDashboard({ dateRange }: BudgetDashboardProps) {
             console.error(`Error fetching budgets for ${month.name}:`, budgetsError);
           }
 
+          // Drawdown budgets represent goal-to-budget transfers, not spending categories
+          const EXCLUDE_BUDGET_NAMES = ['drawdown'];
+          const spendingBudgets = (budgets || []).filter(
+            (b: any) => !EXCLUDE_BUDGET_NAMES.includes((b.name || '').trim().toLowerCase())
+          );
+
           // Get expenses for each budget
           const budgetDetails = await Promise.all(
-            (budgets || []).map(async (budget: any) => {
+            spendingBudgets.map(async (budget: any) => {
               const { data: expenses, error: expensesError } = await supabase
                 .from('expenses')
                 .select('amount')
@@ -158,7 +164,7 @@ export function BudgetDashboard({ dateRange }: BudgetDashboardProps) {
                 (sum: number, e: any) => sum + Number(e.amount || 0),
                 0
               );
-              
+
               return {
                 id: budget.id,
                 name: budget.name,

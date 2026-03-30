@@ -17,8 +17,8 @@ function formatCurrency(amount: number): string {
   return new Intl.NumberFormat('en-IE', {
     style: 'currency',
     currency: 'EUR',
-    minimumFractionDigits: 0,
-    maximumFractionDigits: 0,
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
   }).format(amount);
 }
 
@@ -285,7 +285,7 @@ export default async function GoalDetailPage({
           {/* Contributions */}
           <Card variant="outlined" padding="md">
             <h3 className="text-title text-[var(--color-text)] mb-4">Contributions</h3>
-            <Contributions contributions={contributions} />
+            <Contributions goalId={id} contributions={contributions} />
           </Card>
 
           {/* Transfers (out from this goal) */}

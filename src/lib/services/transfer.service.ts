@@ -298,6 +298,76 @@ export class TransferService {
     return (data ?? []) as Transfer[];
   }
 
+  async getById(id: string): Promise<Transfer> {
+    await this.getUserId();
+    const { data, error } = await this.supabase
+      .from('transfers')
+      .select('*')
+      .eq('id', id)
+      .single();
+
+    if (error || !data) throw new NotFoundError('Transfer', id);
+    return data as Transfer;
+  }
+
+  async update(
+    id: string,
+    updateData: { amount?: number; date?: string; description?: string | null; notes?: string | null; bank?: string | null }
+  ): Promise<Transfer> {
+    await this.getUserId();
+    const existing = await this.getById(id);
+
+    if (updateData.amount !== undefined && updateData.amount <= 0) {
+      throw new ValidationError('Transfer amount must be greater than zero', 'amount');
+    }
+
+    if (updateData.date !== undefined) {
+      const overview = await this.getMonthlyOverview(existing.monthly_overview_id);
+      this.validateTransferDate(updateData.date, overview);
+    }
+
+    const payload: Record<string, unknown> = {};
+    if (updateData.amount !== undefined) payload.amount = updateData.amount;
+    if (updateData.date !== undefined) payload.date = updateData.date;
+    if ('description' in updateData) payload.description = updateData.description ?? null;
+    if ('notes' in updateData) payload.notes = updateData.notes ?? null;
+    if ('bank' in updateData) payload.bank = updateData.bank ?? null;
+
+    const { data, error } = await this.supabase
+      .from('transfers')
+      .update(payload)
+      .eq('id', id)
+      .select()
+      .single();
+
+    if (error) {
+      logError(new Error(`Failed to update transfer: ${error.message}`), {
+        event: 'transfer.update.failed',
+        metadata: { id },
+      });
+      throw new Error(`Failed to update transfer: ${error.message}`);
+    }
+    return data as Transfer;
+  }
+
+  async delete(id: string): Promise<void> {
+    await this.getUserId();
+    await this.getById(id); // Ensure it exists
+
+    const { error } = await this.supabase
+      .from('transfers')
+      .delete()
+      .eq('id', id);
+
+    if (error) {
+      logError(new Error(`Failed to delete transfer: ${error.message}`), {
+        event: 'transfer.delete.failed',
+        metadata: { id },
+      });
+      throw new Error(`Failed to delete transfer: ${error.message}`);
+    }
+  }
+
   async getByGoal(goalId: string): Promise<Transfer[]> {
     await this.getUserId();
     const { data, error } = await this.supabase

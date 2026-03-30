@@ -12,22 +12,11 @@ import {
   Loan
 } from '@/lib/supabase/database.types';
 import { Card, Button, Input, PageHeader } from '@/components/ui';
+import { validateBankType, DEFAULT_PAYMENT_METHODS } from '@/lib/utils/payment-methods';
 
 const frequencies: FrequencyType[] = ['Weekly', 'Bi-Weekly', 'Monthly', 'Quarterly', 'Bi-Annually', 'Annually'];
 const statuses: LoanStatusType[] = ['Active', 'Paid Off', 'Defaulted', 'Refinanced', 'Closed'];
 const loanTypes: LoanType[] = ['Mortgage', 'Car Loan', 'Personal Loan', 'Student Loan', 'Credit Card', 'Other'];
-
-// Default fallbacks
-const DEFAULT_PAYMENT_METHODS = [
-  { value: 'AIB', label: 'AIB' },
-  { value: 'Revolut', label: 'Revolut' },
-  { value: 'N26', label: 'N26' },
-  { value: 'Wise', label: 'Wise' },
-  { value: 'Bank of Ireland', label: 'Bank of Ireland' },
-  { value: 'Ulster Bank', label: 'Ulster Bank' },
-  { value: 'Cash', label: 'Cash' },
-  { value: 'Other', label: 'Other' },
-];
 
 const DEFAULT_PERSONS = [
   { value: 'Kene', label: 'Kene' },
@@ -129,7 +118,7 @@ export default function EditLoanPage() {
         monthly_payment: parseFloat(formData.monthly_payment),
         payment_frequency: formData.payment_frequency,
         status: formData.status,
-        bank: formData.bank || null,
+        bank: validateBankType(formData.bank) ?? null,
         lender_name: formData.lender_name || null,
         person: formData.person || null,
         start_date: formData.start_date,

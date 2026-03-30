@@ -10,35 +10,10 @@ import {
   SubscriptionStatusType,
 } from '@/lib/supabase/database.types';
 import { Card, Button, Input, PageHeader } from '@/components/ui';
+import { validateBankType } from '@/lib/utils/payment-methods';
 
 const frequencies: FrequencyType[] = ['Weekly', 'Bi-Weekly', 'Monthly', 'Quarterly', 'Bi-Annually', 'Annually'];
 const statuses: SubscriptionStatusType[] = ['Active', 'Paused', 'Cancelled', 'Ended'];
-
-// Default fallbacks
-const DEFAULT_SUBSCRIPTION_TYPES = [
-  { value: 'Streaming', label: 'Streaming' },
-  { value: 'Software', label: 'Software' },
-  { value: 'Membership', label: 'Membership' },
-  { value: 'Insurance', label: 'Insurance' },
-  { value: 'Utility', label: 'Utility' },
-  { value: 'Other', label: 'Other' },
-];
-
-const DEFAULT_PAYMENT_METHODS = [
-  { value: 'AIB', label: 'AIB' },
-  { value: 'Revolut', label: 'Revolut' },
-  { value: 'N26', label: 'N26' },
-  { value: 'Wise', label: 'Wise' },
-  { value: 'Cash', label: 'Cash' },
-  { value: 'Other', label: 'Other' },
-];
-
-const DEFAULT_PERSONS = [
-  { value: 'Kene', label: 'Kene' },
-  { value: 'Ify', label: 'Ify' },
-  { value: 'Joint', label: 'Joint' },
-  { value: 'Other', label: 'Other' },
-];
 
 export default function NewSubscriptionPage() {
   const router = useRouter();
@@ -47,10 +22,10 @@ export default function NewSubscriptionPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   
-  // Dynamic options from Settings
-  const [subscriptionTypes, setSubscriptionTypes] = useState(DEFAULT_SUBSCRIPTION_TYPES);
-  const [paymentMethods, setPaymentMethods] = useState(DEFAULT_PAYMENT_METHODS);
-  const [persons, setPersons] = useState(DEFAULT_PERSONS);
+  // Dynamic options from Settings (loaded in useEffect, service provides fallback defaults)
+  const [subscriptionTypes, setSubscriptionTypes] = useState<Array<{ value: string; label: string }>>([]);
+  const [paymentMethods, setPaymentMethods] = useState<Array<{ value: string; label: string }>>([]);
+  const [persons, setPersons] = useState<Array<{ value: string; label: string }>>([]);
   
   const [formData, setFormData] = useState({
     name: '',
@@ -61,6 +36,7 @@ export default function NewSubscriptionPage() {
     bank: '',
     person: '',
     is_essential: true,
+    is_company_paid: false,
     collection_day: '',
     start_date: new Date().toISOString().split('T')[0],
     last_collection_date: '',
@@ -79,9 +55,9 @@ export default function NewSubscriptionPage() {
           settingsService.getPeople(),
         ]);
         
-        if (types.length > 0) setSubscriptionTypes(types);
-        if (methods.length > 0) setPaymentMethods(methods);
-        if (people.length > 0) setPersons(people);
+        setSubscriptionTypes(types);
+        setPaymentMethods(methods);
+        setPersons(people);
       } catch (err) {
         console.error('Failed to load settings:', err);
       }
@@ -102,9 +78,10 @@ export default function NewSubscriptionPage() {
         frequency: formData.frequency,
         subscription_type: formData.subscription_type || null,
         status: formData.status,
-        bank: formData.bank || null,
+        bank: validateBankType(formData.bank) ?? null,
         person: formData.person || null,
         is_essential: formData.is_essential,
+        is_company_paid: formData.is_company_paid,
         collection_day: formData.collection_day ? parseInt(formData.collection_day) : null,
         start_date: formData.start_date || null,
         last_collection_date: formData.last_collection_date || null,
@@ -277,6 +254,26 @@ export default function NewSubscriptionPage() {
                 </div>
                 <div className="text-caption text-[var(--color-text-muted)]">
                   Uncheck if this is a non-essential subscription (e.g., entertainment, optional services)
+                </div>
+              </div>
+            </label>
+          </div>
+
+          {/* Company Paid */}
+          <div>
+            <label className="flex items-center gap-3 p-3 rounded-[var(--radius-md)] hover:bg-[var(--color-surface-sunken)] cursor-pointer transition-colors">
+              <input
+                type="checkbox"
+                checked={formData.is_company_paid}
+                onChange={(e) => setFormData({ ...formData, is_company_paid: e.target.checked })}
+                className="w-4 h-4 rounded border-[var(--color-border)] text-[var(--color-primary)] focus:ring-[var(--color-primary)] focus:ring-offset-0"
+              />
+              <div>
+                <div className="text-small font-medium text-[var(--color-text)]">
+                  Company Paid (KHO)
+                </div>
+                <div className="text-caption text-[var(--color-text-muted)]">
+                  Check if this subscription is paid by KHO before your salary
                 </div>
               </div>
             </label>

@@ -33,12 +33,15 @@ export { MasterBudgetService, type MasterBudget, type MasterBudgetHistoryEntry }
 export { IncomeSourceService } from './income-source.service';
 export { FinancialGoalService } from './financial-goal.service';
 export { SubscriptionService } from './subscription.service';
+export { MonthSubscriptionService } from './month-subscription.service';
 export { LoanService } from './loan.service';
+export { DebtorService } from './debtor.service';
 export { FinancialHealthService } from './financial-health.service';
 export { GoalContributionService } from './goal-contribution.service';
 export { GoalDrawdownService } from './goal-drawdown.service';
 export { TransferService } from './transfer.service';
 export { SettingsService, type AppSetting, type SettingType } from './settings.service';
+export { LifeEventService } from './life-event.service';
 
 // Export error types for handling
 export {
@@ -79,10 +82,13 @@ import { IncomeSourceService } from './income-source.service';
 import { FinancialGoalService } from './financial-goal.service';
 import { SubscriptionService } from './subscription.service';
 import { LoanService } from './loan.service';
+import { DebtorService } from './debtor.service';
 import { GoalContributionService } from './goal-contribution.service';
 import { GoalDrawdownService } from './goal-drawdown.service';
 import { TransferService } from './transfer.service';
 import { SettingsService } from './settings.service';
+import { LifeEventService } from './life-event.service';
+import { MonthSubscriptionService } from './month-subscription.service';
 
 export interface Services {
   monthlyOverview: MonthlyOverviewService;
@@ -93,10 +99,13 @@ export interface Services {
   financialGoal: FinancialGoalService;
   subscription: SubscriptionService;
   loan: LoanService;
+  debtor: DebtorService;
   goalContribution: GoalContributionService;
   goalDrawdown: GoalDrawdownService;
   transfer: TransferService;
   settings: SettingsService;
+  lifeEvent: LifeEventService;
+  monthSubscription: MonthSubscriptionService;
 }
 
 export function createServices(supabase: SupabaseClient): Services {
@@ -109,9 +118,12 @@ export function createServices(supabase: SupabaseClient): Services {
     financialGoal: new FinancialGoalService(supabase),
     subscription: new SubscriptionService(supabase),
     loan: new LoanService(supabase),
+    debtor: new DebtorService(supabase),
     goalContribution: new GoalContributionService(supabase),
     goalDrawdown: new GoalDrawdownService(supabase),
     transfer: new TransferService(supabase),
     settings: new SettingsService(supabase),
+    lifeEvent: new LifeEventService(supabase),
+    monthSubscription: new MonthSubscriptionService(supabase),
   };
 }

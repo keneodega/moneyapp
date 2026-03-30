@@ -53,6 +53,7 @@ function getTypeBadge(type: string | null | undefined) {
 export function SubscriptionList({ subscriptions }: SubscriptionListProps) {
   const [filter, setFilter] = useState<'all' | SubscriptionStatusType>('all');
   const [essentialFilter, setEssentialFilter] = useState<'all' | 'essential' | 'non-essential'>('all');
+  const [companyPaidFilter, setCompanyPaidFilter] = useState<'all' | 'personal' | 'company'>('all');
   const [typeFilter, setTypeFilter] = useState<string>('all');
   const [personFilter, setPersonFilter] = useState<string>('all');
   const [paymentMethodFilter, setPaymentMethodFilter] = useState<string>('all');
@@ -94,6 +95,8 @@ export function SubscriptionList({ subscriptions }: SubscriptionListProps) {
       if (filter !== 'all' && s.status !== filter) return false;
       if (essentialFilter === 'essential' && !s.is_essential) return false;
       if (essentialFilter === 'non-essential' && s.is_essential) return false;
+      if (companyPaidFilter === 'company' && !s.is_company_paid) return false;
+      if (companyPaidFilter === 'personal' && s.is_company_paid) return false;
       if (typeFilter !== 'all' && (s.subscription_type || 'Other').trim() !== typeFilter) return false;
       if (personFilter !== 'all' && (s.person || '').trim() !== personFilter) return false;
       if (paymentMethodFilter !== 'all' && (s.bank || '').trim() !== paymentMethodFilter) return false;
@@ -153,7 +156,47 @@ export function SubscriptionList({ subscriptions }: SubscriptionListProps) {
         break;
     }
     return list;
-  }, [subscriptions, filter, essentialFilter, typeFilter, personFilter, paymentMethodFilter, sortBy]);
+  }, [subscriptions, filter, essentialFilter, companyPaidFilter, typeFilter, personFilter, paymentMethodFilter, sortBy]);
+
+  // Counts respecting all OTHER active filters (excluding the filter being counted)
+  const countForStatus = (status: 'all' | SubscriptionStatusType) =>
+    subscriptions.filter(s => {
+      if (essentialFilter === 'essential' && !s.is_essential) return false;
+      if (essentialFilter === 'non-essential' && s.is_essential) return false;
+      if (companyPaidFilter === 'company' && !s.is_company_paid) return false;
+      if (companyPaidFilter === 'personal' && s.is_company_paid) return false;
+      if (typeFilter !== 'all' && (s.subscription_type || 'Other').trim() !== typeFilter) return false;
+      if (personFilter !== 'all' && (s.person || '').trim() !== personFilter) return false;
+      if (paymentMethodFilter !== 'all' && (s.bank || '').trim() !== paymentMethodFilter) return false;
+      if (status !== 'all' && s.status !== status) return false;
+      return true;
+    }).length;
+
+  const countForEssential = (ess: 'all' | 'essential' | 'non-essential') =>
+    subscriptions.filter(s => {
+      if (filter !== 'all' && s.status !== filter) return false;
+      if (companyPaidFilter === 'company' && !s.is_company_paid) return false;
+      if (companyPaidFilter === 'personal' && s.is_company_paid) return false;
+      if (typeFilter !== 'all' && (s.subscription_type || 'Other').trim() !== typeFilter) return false;
+      if (personFilter !== 'all' && (s.person || '').trim() !== personFilter) return false;
+      if (paymentMethodFilter !== 'all' && (s.bank || '').trim() !== paymentMethodFilter) return false;
+      if (ess === 'essential' && !s.is_essential) return false;
+      if (ess === 'non-essential' && s.is_essential) return false;
+      return true;
+    }).length;
+
+  const countForCompanyPaid = (cp: 'all' | 'personal' | 'company') =>
+    subscriptions.filter(s => {
+      if (filter !== 'all' && s.status !== filter) return false;
+      if (essentialFilter === 'essential' && !s.is_essential) return false;
+      if (essentialFilter === 'non-essential' && s.is_essential) return false;
+      if (typeFilter !== 'all' && (s.subscription_type || 'Other').trim() !== typeFilter) return false;
+      if (personFilter !== 'all' && (s.person || '').trim() !== personFilter) return false;
+      if (paymentMethodFilter !== 'all' && (s.bank || '').trim() !== paymentMethodFilter) return false;
+      if (cp === 'company' && !s.is_company_paid) return false;
+      if (cp === 'personal' && s.is_company_paid) return false;
+      return true;
+    }).length;
 
   const selection = useSelection(filteredSubscriptions);
 
@@ -367,7 +410,7 @@ export function SubscriptionList({ subscriptions }: SubscriptionListProps) {
               >
                 {status === 'all' ? 'All' : status}
                 <span className="ml-1 opacity-60">
-                  ({status === 'all' ? subscriptions.length : subscriptions.filter(s => s.status === status).length})
+                  ({countForStatus(status)})
                 </span>
               </button>
             ))}
@@ -390,12 +433,30 @@ export function SubscriptionList({ subscriptions }: SubscriptionListProps) {
               >
                 {filterType === 'all' ? 'All' : filterType === 'essential' ? 'Essential' : 'Non-Essential'}
                 <span className="ml-1 opacity-60">
-                  ({filterType === 'all' 
-                    ? subscriptions.length 
-                    : filterType === 'essential'
-                      ? subscriptions.filter(s => s.is_essential).length
-                      : subscriptions.filter(s => !s.is_essential).length
-                  })
+                  ({countForEssential(filterType)})
+                </span>
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* Paid By Filter */}
+        <div>
+          <p className="text-small text-[var(--color-text-muted)] mb-2">Paid By</p>
+          <div className="inline-flex flex-wrap items-center gap-2 rounded-[var(--radius-md)] bg-[var(--color-surface)] p-1 border border-[var(--color-border)]">
+            {(['all', 'personal', 'company'] as const).map((filterType) => (
+              <button
+                key={filterType}
+                onClick={() => setCompanyPaidFilter(filterType)}
+                className={`px-3 py-1.5 rounded-[var(--radius-sm)] text-small font-medium transition-colors ${
+                  companyPaidFilter === filterType
+                    ? 'bg-[var(--color-primary)] text-white'
+                    : 'text-[var(--color-text-muted)] hover:text-[var(--color-text)]'
+                }`}
+              >
+                {filterType === 'all' ? 'All' : filterType === 'personal' ? 'Personal' : 'KHO'}
+                <span className="ml-1 opacity-60">
+                  ({countForCompanyPaid(filterType)})
                 </span>
               </button>
             ))}
@@ -441,6 +502,11 @@ export function SubscriptionList({ subscriptions }: SubscriptionListProps) {
                         Non-Essential
                       </span>
                     )}
+                    {subscription.is_company_paid && (
+                      <span className="px-2 py-0.5 rounded-full text-caption bg-blue-500/15 text-blue-600 dark:text-blue-400 font-medium">
+                        KHO
+                      </span>
+                    )}
                   </div>
                   <p className="text-small text-[var(--color-text-muted)]">
                     {subscription.subscription_type || 'Other'}
@@ -448,9 +514,16 @@ export function SubscriptionList({ subscriptions }: SubscriptionListProps) {
                   </p>
                 </div>
               </div>
-              <span className={`px-2 py-1 rounded-full text-small ${statusColors[subscription.status]}`}>
-                {subscription.status}
-              </span>
+              <div className="text-right">
+                <span className={`px-2 py-1 rounded-full text-small ${statusColors[subscription.status]}`}>
+                  {subscription.status}
+                </span>
+                {subscription.status === 'Cancelled' && subscription.end_date && new Date(subscription.end_date) >= new Date(new Date().toISOString().split('T')[0]) && (
+                  <p className="text-caption text-[var(--color-text-muted)] mt-1">
+                    Valid until {new Date(subscription.end_date).toLocaleDateString('en-IE', { day: 'numeric', month: 'short' })}
+                  </p>
+                )}
+              </div>
             </div>
 
             <div className="mt-4 grid grid-cols-2 gap-4">
@@ -510,7 +583,7 @@ export function SubscriptionList({ subscriptions }: SubscriptionListProps) {
             )}
 
             {/* Actions */}
-            <div className="mt-4 pt-4 border-t border-[var(--color-border)] flex items-center gap-2">
+            <div className="mt-4 pt-4 border-t border-[var(--color-border)] flex items-center gap-2 flex-wrap">
               <Link
                 href={`/subscriptions/${subscription.id}/edit`}
                 className="px-3 py-1.5 rounded-[var(--radius-sm)] text-small font-medium bg-[var(--color-surface-sunken)] text-[var(--color-text-muted)] hover:text-[var(--color-text)] transition-colors"
@@ -559,7 +632,7 @@ export function SubscriptionList({ subscriptions }: SubscriptionListProps) {
       {filteredSubscriptions.length === 0 && (
         <Card variant="outlined" padding="lg" className="text-center">
           <p className="text-body text-[var(--color-text-muted)]">
-            {filter !== 'all' || essentialFilter !== 'all' || typeFilter !== 'all' || personFilter !== 'all' || paymentMethodFilter !== 'all'
+            {filter !== 'all' || essentialFilter !== 'all' || companyPaidFilter !== 'all' || typeFilter !== 'all' || personFilter !== 'all' || paymentMethodFilter !== 'all'
               ? 'No subscriptions match your filters. Try changing the filters above.'
               : 'No subscriptions found.'}
           </p>

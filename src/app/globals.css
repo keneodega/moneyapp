@@ -89,6 +89,7 @@
 
 html {
   scroll-behavior: smooth;
+  -webkit-tap-highlight-color: transparent;
 }
 
 body {
@@ -271,6 +272,46 @@ body {
   background-size: 1000px 100%;
 }
 
+/* AI Assistant animations */
+@keyframes slideUpPanel {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes fadeInScale {
+  from {
+    opacity: 0;
+    transform: scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@keyframes pulseSoft {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(196, 93, 62, 0.4); }
+  50% { box-shadow: 0 0 0 8px rgba(196, 93, 62, 0); }
+}
+
+.animate-slide-up-panel {
+  animation: slideUpPanel 0.3s ease-out;
+}
+
+.animate-fade-in-scale {
+  animation: fadeInScale 0.2s ease-out;
+}
+
+.animate-pulse-soft {
+  animation: pulseSoft 3s ease-in-out infinite;
+}
+
 /* Stagger animation delay utilities */
 .stagger-1 { animation-delay: 0.05s; }
 .stagger-2 { animation-delay: 0.1s; }
@@ -315,4 +356,42 @@ body {
 
 .gradient-cool {
   background: linear-gradient(135deg, var(--color-accent-light) 0%, var(--color-surface) 100%);
+}
+
+/* PWA: safe area insets for notched devices */
+@supports (padding: env(safe-area-inset-top)) {
+  body {
+    padding-top: env(safe-area-inset-top);
+    padding-bottom: env(safe-area-inset-bottom);
+    padding-left: env(safe-area-inset-left);
+    padding-right: env(safe-area-inset-right);
+  }
+}
+
+/* Respect reduced motion preferences */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* PWA standalone mode */
+@media (display-mode: standalone) {
+  body {
+    -webkit-user-select: none;
+    user-select: none;
+  }
+
+  input, textarea, select, [contenteditable] {
+    -webkit-user-select: text;
+    user-select: text;
+  }
+
+  .tabular-nums {
+    -webkit-user-select: text;
+    user-select: text;
+  }
 }

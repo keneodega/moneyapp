@@ -22,7 +22,7 @@ export function PageHeader({ title, subtitle, actions, className = '' }: PageHea
             <p className="text-body text-[var(--color-text-muted)] mt-1">{subtitle}</p>
           ) : null}
         </div>
-        {actions ? <div className="flex items-center gap-2">{actions}</div> : null}
+        {actions ? <div className="flex items-center gap-2 flex-wrap">{actions}</div> : null}
       </div>
     </Card>
   );

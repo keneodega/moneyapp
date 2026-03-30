@@ -6,7 +6,7 @@ import Link from 'next/link';
 import { Card, Button, Input, PageHeader, Select, Textarea } from '@/components/ui';
 import { createSupabaseBrowserClient } from '@/lib/supabase/client';
 import { ExpenseService, SettingsService } from '@/lib/services';
-import { filterValidPaymentMethods, DEFAULT_PAYMENT_METHODS } from '@/lib/utils/payment-methods';
+import { validateBankType, DEFAULT_PAYMENT_METHODS } from '@/lib/utils/payment-methods';
 
 interface BudgetOption {
   id: string;
@@ -86,10 +86,7 @@ export default function EditExpensePage({
         // Fetch payment methods from settings
         const settingsService = new SettingsService(supabase);
         const methods = await settingsService.getPaymentMethods();
-        // Filter to only valid bank_type enum values
-        const validMethods = methods.length > 0 
-          ? filterValidPaymentMethods(methods)
-          : DEFAULT_PAYMENT_METHODS;
+        const validMethods = methods.length > 0 ? methods : DEFAULT_PAYMENT_METHODS;
         setPaymentMethods(validMethods);
 
         // Populate form with expense data
@@ -145,7 +142,7 @@ export default function EditExpensePage({
         budget_id: formData.budget_id,
         amount: expenseAmount,
         date: formData.date,
-        bank: formData.bank || null,
+        bank: validateBankType(formData.bank) ?? null,
         description: formData.description || null,
         is_recurring: false,
         recurring_frequency: null,

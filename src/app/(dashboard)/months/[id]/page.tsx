@@ -3,7 +3,7 @@ import { notFound } from 'next/navigation';
 import dynamic from 'next/dynamic';
 import { Card, PageHeader } from '@/components/ui';
 import { createSupabaseServerClient } from '@/lib/supabase/server';
-import { SubscriptionService } from '@/lib/services';
+import { SubscriptionService, MonthSubscriptionService } from '@/lib/services';
 
 // Code splitting: Load these components dynamically
 const IncomeList = dynamic(() => import('./IncomeList').then(mod => ({ default: mod.IncomeList })), {
@@ -30,6 +30,11 @@ const BudgetCategoriesList = dynamic(
 const PieChartToggle = dynamic(
   () => import('./PieChartToggle').then(mod => ({ default: mod.PieChartToggle })),
   { loading: () => <div className="p-4 text-small text-[var(--color-text-muted)]">Loading charts...</div> },
+);
+
+const MonthSubscriptionsSection = dynamic(
+  () => import('./MonthSubscriptionsSection').then(mod => ({ default: mod.MonthSubscriptionsSection })),
+  { loading: () => <div className="p-4 text-small text-[var(--color-text-muted)]">Loading subscriptions...</div> },
 );
 
 interface MonthData {
@@ -79,6 +84,8 @@ async function getMonthData(id: string): Promise<{
   totalFixed: number;
   totalVariable: number;
   totalSubscriptions: number;
+  totalSubscriptionsPersonal: number;
+  monthSubscriptions: Array<{ subscription: import('@/lib/supabase/database.types').Subscription | import('@/lib/supabase/database.types').MonthSubscription; totalDue: number }>;
 } | null> {
   try {
     const supabase = await createSupabaseServerClient();
@@ -314,16 +321,37 @@ async function getMonthData(id: string): Promise<{
       };
     }
 
-    // Total subscriptions due this month (monthly equivalent cost)
+    // Subscriptions due this month
     let totalSubscriptions = 0;
+    let totalSubscriptionsPersonal = 0;
+    let monthSubscriptions: Array<{ subscription: import('@/lib/supabase/database.types').Subscription | import('@/lib/supabase/database.types').MonthSubscription; totalDue: number }> = [];
     try {
-      const subscriptionService = new SubscriptionService(supabase);
-      totalSubscriptions = await subscriptionService.getTotalMonthlyCostForDateRange(
-        baseMonth.start_date,
-        baseMonth.end_date
-      );
+      const today = new Date().toISOString().split('T')[0];
+      const isPastMonth = baseMonth.end_date < today;
+
+      if (isPastMonth) {
+        // Past month: use snapshot for immutable data
+        const monthSubService = new MonthSubscriptionService(supabase);
+        const hasSnap = await monthSubService.hasSnapshot(baseMonth.id);
+
+        if (!hasSnap) {
+          await monthSubService.createSnapshot(baseMonth.id, baseMonth.start_date, baseMonth.end_date);
+        }
+
+        monthSubscriptions = await monthSubService.getSnapshot(baseMonth.id);
+        totalSubscriptions = await monthSubService.getTotalFromSnapshot(baseMonth.id);
+        totalSubscriptionsPersonal = await monthSubService.getTotalFromSnapshot(baseMonth.id, true);
+      } else {
+        // Current or future month: calculate dynamically
+        const subscriptionService = new SubscriptionService(supabase);
+        [totalSubscriptions, totalSubscriptionsPersonal, monthSubscriptions] = await Promise.all([
+          subscriptionService.getTotalMonthlyCostForDateRange(baseMonth.start_date, baseMonth.end_date),
+          subscriptionService.getTotalMonthlyCostForDateRange(baseMonth.start_date, baseMonth.end_date, true),
+          subscriptionService.getForDateRange(baseMonth.start_date, baseMonth.end_date),
+        ]);
+      }
     } catch {
-      // Non-fatal; leave at 0
+      // Non-fatal; leave at defaults
     }
 
     return {
@@ -335,6 +363,8 @@ async function getMonthData(id: string): Promise<{
       totalFixed,
       totalVariable,
       totalSubscriptions,
+      totalSubscriptionsPersonal,
+      monthSubscriptions,
     };
   } catch {
     return null;
@@ -386,13 +416,14 @@ export default async function MonthDetailPage({
     notFound();
   }
 
-  const { month, budgets, income, totalGoalContributions, previousMonth, totalFixed, totalVariable, totalSubscriptions } = data;
+  const { month, budgets, income, totalGoalContributions, previousMonth, totalFixed, totalVariable, totalSubscriptions, totalSubscriptionsPersonal, monthSubscriptions } = data;
   
   // Use totals from view (more accurate than manual calculation)
   const totalIncome = month.total_income || 0;
   const totalBudgeted = month.total_budgeted || 0;
-  // Unallocated = income minus budgets minus subscriptions minus goal contributions
-  const unallocated = (month.total_income || 0) - (month.total_budgeted || 0) - (totalSubscriptions || 0) - (totalGoalContributions || 0);
+  // Unallocated = income minus budgets minus personal subscriptions minus goal contributions
+  // Company-paid (KHO) subscriptions are excluded as they don't come from salary
+  const unallocated = (month.total_income || 0) - (month.total_budgeted || 0) - (totalSubscriptionsPersonal || 0) - (totalGoalContributions || 0);
   
   // Calculate spent from budgets (view provides this per budget)
   const totalSpent = (budgets || []).reduce((sum, b) => sum + Number(b?.amount_spent || 0), 0);
@@ -421,10 +452,10 @@ export default async function MonthDetailPage({
     }
     return sum;
   }, 0);
-  const fixedBudgetsPlusSubscriptions = totalBudgeted - excludedFromFixed + (totalSubscriptions ?? 0);
+  const fixedBudgetsPlusSubscriptions = totalBudgeted - excludedFromFixed + (totalSubscriptionsPersonal ?? 0);
 
-  // Income breakdown: budget, subscriptions, goal contributions, unallocated
-  const subsTotal = totalSubscriptions ?? 0;
+  // Income breakdown: budget, subscriptions (personal only), goal contributions, unallocated
+  const subsTotal = totalSubscriptionsPersonal ?? 0;
   const goalTotal = totalGoalContributions ?? 0;
   const unallocatedTotal = totalIncome - totalBudgeted - subsTotal - goalTotal;
   const incomeBreakdownData = [
@@ -453,7 +484,7 @@ export default async function MonthDetailPage({
       />
 
       {/* Key Overview */}
-      <div className="grid gap-4 lg:grid-cols-3">
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
         <Card variant="raised" padding="lg" className="animate-slide-up stagger-1">
           <p className="text-small text-[var(--color-text-muted)]">Total Income</p>
           <p className="text-display text-[var(--color-text)] mt-2 tabular-nums">
@@ -517,17 +548,24 @@ export default async function MonthDetailPage({
         </Card>
         <Link href="/subscriptions" className="block">
           <Card variant="outlined" padding="md" className="animate-slide-up stagger-5 hover:border-[var(--color-primary)]/30 transition-colors">
-            <p className="text-small text-[var(--color-text-muted)]">Subscriptions</p>
-            <p className="text-title text-[var(--color-text)] mt-1 tabular-nums">{formatCurrency(totalSubscriptions ?? 0)}</p>
-            <p className="text-caption text-[var(--color-text-subtle)] mt-0.5">Due this month</p>
+            <p className="text-small text-[var(--color-text-muted)]">Subscriptions (Personal)</p>
+            <p className="text-title text-[var(--color-text)] mt-1 tabular-nums">{formatCurrency(totalSubscriptionsPersonal ?? 0)}</p>
+            <p className="text-caption text-[var(--color-text-subtle)] mt-0.5">
+              Due this month
+              {(totalSubscriptions ?? 0) - (totalSubscriptionsPersonal ?? 0) > 0 && (
+                <span className="ml-1 text-blue-400">
+                  + {formatCurrency((totalSubscriptions ?? 0) - (totalSubscriptionsPersonal ?? 0))} KHO
+                </span>
+              )}
+            </p>
           </Card>
         </Link>
       </div>
 
       {/* Main Content Grid */}
-      <div className="grid gap-6 lg:grid-cols-3">
+      <div className="grid gap-6 md:grid-cols-3">
         {/* Budget Categories + Pie Chart */}
-        <div className="lg:col-span-2 space-y-4">
+        <div className="md:col-span-2 space-y-4">
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
             <div>
               <h2 className="text-title text-[var(--color-text)]">Budget Categories</h2>
@@ -649,6 +687,12 @@ export default async function MonthDetailPage({
           </Card>
         </div>
       </div>
+
+      {/* Subscriptions due this month */}
+      <MonthSubscriptionsSection
+        items={monthSubscriptions}
+        totalDue={totalSubscriptions ?? 0}
+      />
     </div>
   );
 }

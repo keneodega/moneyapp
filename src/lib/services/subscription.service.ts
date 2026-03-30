@@ -218,7 +218,7 @@ export class SubscriptionService {
   /**
    * Get all subscriptions for the current user
    */
-  async getAll(status?: string, isEssential?: boolean): Promise<Subscription[]> {
+  async getAll(status?: string, isEssential?: boolean, isCompanyPaid?: boolean): Promise<Subscription[]> {
     await this.getUserId();
 
     let query = this.supabase
@@ -232,6 +232,10 @@ export class SubscriptionService {
 
     if (isEssential !== undefined) {
       query = query.eq('is_essential', isEssential);
+    }
+
+    if (isCompanyPaid !== undefined) {
+      query = query.eq('is_company_paid', isCompanyPaid);
     }
 
     const { data, error } = await query;
@@ -258,10 +262,36 @@ export class SubscriptionService {
   }
 
   /**
+   * Get company-paid subscriptions only
+   */
+  async getCompanyPaid(): Promise<Subscription[]> {
+    return this.getAll('Active', undefined, true);
+  }
+
+  /**
+   * Get personal (non-company-paid) subscriptions only
+   */
+  async getPersonal(): Promise<Subscription[]> {
+    return this.getAll('Active', undefined, false);
+  }
+
+  /**
    * Get active subscriptions only
    */
   async getActive(): Promise<Subscription[]> {
     return this.getAll('Active');
+  }
+
+  /**
+   * Get subscriptions that are effectively active (Active + Cancelled but still in billing period).
+   */
+  async getEffectivelyActive(referenceDate?: Date): Promise<Subscription[]> {
+    const [active, cancelled] = await Promise.all([
+      this.getAll('Active'),
+      this.getAll('Cancelled'),
+    ]);
+    const validCancelled = cancelled.filter(s => SubscriptionService.isEffectivelyActive(s, referenceDate));
+    return [...active, ...validCancelled];
   }
 
   /**
@@ -385,14 +415,47 @@ export class SubscriptionService {
   }
 
   /**
-   * Cancel a subscription
+   * Cancel a subscription.
+   * If the payment has already been collected this period (collection day has passed),
+   * the end_date is set to the end of the current month so the subscription remains
+   * valid for the rest of the billing period.
    */
   async cancel(id: string): Promise<Subscription> {
-    const today = new Date().toISOString().split('T')[0];
-    return this.update(id, { 
+    const subscription = await this.getById(id);
+    const today = new Date();
+    const todayStr = today.toISOString().split('T')[0];
+
+    let endDate = todayStr;
+
+    // For monthly-ish subscriptions with a collection day, check if payment already collected
+    const collectionDay = subscription.collection_day;
+    if (collectionDay && today.getDate() >= collectionDay) {
+      // Payment already collected this month — valid through end of month
+      const endOfMonth = new Date(today.getFullYear(), today.getMonth() + 1, 0);
+      endDate = endOfMonth.toISOString().split('T')[0];
+    }
+
+    return this.update(id, {
       status: 'Cancelled',
-      end_date: today,
+      end_date: endDate,
     });
+  }
+
+  /**
+   * Check if a subscription is effectively active (either Active status, or
+   * Cancelled but still within its paid billing period).
+   */
+  static isEffectivelyActive(subscription: Subscription, referenceDate?: Date): boolean {
+    const date = referenceDate || new Date();
+    const dateStr = date.toISOString().split('T')[0];
+
+    if (subscription.status === 'Active') return true;
+
+    if (subscription.status === 'Cancelled' && subscription.end_date) {
+      return dateStr <= subscription.end_date;
+    }
+
+    return false;
   }
 
   /**
@@ -468,12 +531,30 @@ export class SubscriptionService {
   }
 
   /**
+   * Return active subscriptions that have at least one payment due within a date range,
+   * along with the total amount due in that range.
+   */
+  async getForDateRange(startDate: string, endDate: string, excludeCompanyPaid?: boolean): Promise<Array<{ subscription: Subscription; totalDue: number }>> {
+    const allActive = await this.getEffectivelyActive(new Date(endDate));
+    const start = new Date(startDate);
+    const end = new Date(endDate);
+
+    return allActive
+      .filter(sub => excludeCompanyPaid ? !sub.is_company_paid : true)
+      .map(sub => ({
+        subscription: sub,
+        totalDue: sub.amount * this.countPaymentOccurrences(sub, start, end),
+      }))
+      .filter(item => item.totalDue > 0);
+  }
+
+  /**
    * Calculate total monthly cost for subscriptions due within a date range
    * This calculates the ACTUAL amount due (not monthly equivalent)
    */
-  async getTotalMonthlyCostForDateRange(startDate: string, endDate: string): Promise<number> {
-    // Get all active subscriptions (not just those with next_collection_date in range)
-    const allActive = await this.getActive();
+  async getTotalMonthlyCostForDateRange(startDate: string, endDate: string, excludeCompanyPaid?: boolean): Promise<number> {
+    // Get all effectively active subscriptions (including cancelled but still in billing period)
+    const allActive = await this.getEffectivelyActive(new Date(endDate));
 
     const start = new Date(startDate);
     const end = new Date(endDate);
@@ -481,6 +562,7 @@ export class SubscriptionService {
     let total = 0;
 
     for (const sub of allActive) {
+      if (excludeCompanyPaid && sub.is_company_paid) continue;
       // Count how many payment occurrences fall within the date range
       const occurrences = this.countPaymentOccurrences(sub, start, end);
       total += sub.amount * occurrences;
@@ -493,12 +575,24 @@ export class SubscriptionService {
    * Count how many times a subscription payment occurs within a date range
    */
   private countPaymentOccurrences(subscription: Subscription, startDate: Date, endDate: Date): number {
-    if (!subscription.next_collection_date && !subscription.start_date) {
+    if (!subscription.next_collection_date && !subscription.start_date && !subscription.collection_day && !subscription.last_collection_date) {
       return 0;
     }
 
-    // Find the first payment date (either next_collection_date or start_date)
-    let paymentDate = new Date(subscription.next_collection_date || subscription.start_date!);
+    // Find a known payment date to anchor the iteration
+    // Priority: next_collection_date > last_collection_date > start_date > synthesize from collection_day
+    let paymentDate: Date;
+    if (subscription.next_collection_date) {
+      paymentDate = new Date(subscription.next_collection_date);
+    } else if (subscription.last_collection_date) {
+      paymentDate = new Date(subscription.last_collection_date);
+    } else if (subscription.start_date) {
+      paymentDate = new Date(subscription.start_date);
+    } else {
+      // Synthesize from collection_day: use the collection day within the start of the range
+      const day = subscription.collection_day!;
+      paymentDate = new Date(startDate.getFullYear(), startDate.getMonth(), day);
+    }
 
     // If the payment date is after the end date, no payments in this range
     // We need to go backwards to find payments that might be in range

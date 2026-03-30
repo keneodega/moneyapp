@@ -10,14 +10,24 @@ export default async function SubscriptionsPage() {
   const service = new SubscriptionService(supabase);
 
   const subscriptions = await service.getAll();
-  const activeSubscriptions = subscriptions.filter(s => s.status === 'Active');
+  const activeSubscriptions = subscriptions.filter(s => SubscriptionService.isEffectivelyActive(s));
   
+  // Split into personal and company-paid
+  const personalSubscriptions = activeSubscriptions.filter(s => !s.is_company_paid);
+  const companyPaidSubscriptions = activeSubscriptions.filter(s => s.is_company_paid);
+
   // Calculate totals
-  const totalMonthly = activeSubscriptions.reduce((total, sub) => {
+  const personalMonthly = personalSubscriptions.reduce((total, sub) => {
     return total + SubscriptionService.calculateMonthlyCost(sub.amount, sub.frequency);
   }, 0);
-  
-  const totalYearly = activeSubscriptions.reduce((total, sub) => {
+
+  const companyPaidMonthly = companyPaidSubscriptions.reduce((total, sub) => {
+    return total + SubscriptionService.calculateMonthlyCost(sub.amount, sub.frequency);
+  }, 0);
+
+  const totalMonthly = personalMonthly + companyPaidMonthly;
+
+  const personalYearly = personalSubscriptions.reduce((total, sub) => {
     return total + SubscriptionService.calculateYearlyCost(sub.amount, sub.frequency);
   }, 0);
 
@@ -57,17 +67,29 @@ export default async function SubscriptionsPage() {
       />
 
       {/* Stats Summary */}
-      <div className="grid gap-4 lg:grid-cols-4">
+      <div className="grid gap-4 grid-cols-2 lg:grid-cols-3">
         <DashboardTile
-          title="Monthly Cost"
-          value={formatCurrency(totalMonthly)}
-          helper="Active subscriptions only"
+          title="Monthly Cost (Personal)"
+          value={formatCurrency(personalMonthly)}
+          helper="Excludes KHO subscriptions"
           tone="primary"
         />
         <DashboardTile
-          title="Yearly Cost"
-          value={formatCurrency(totalYearly)}
-          helper="Projected annual spend"
+          title="KHO Monthly Cost"
+          value={formatCurrency(companyPaidMonthly)}
+          helper="Paid by KHO before salary"
+          tone="default"
+        />
+        <DashboardTile
+          title="Total Monthly Cost"
+          value={formatCurrency(totalMonthly)}
+          helper="Personal + KHO combined"
+          tone="default"
+        />
+        <DashboardTile
+          title="Yearly Cost (Personal)"
+          value={formatCurrency(personalYearly)}
+          helper="Excludes KHO subscriptions"
           tone="default"
         />
         <DashboardTile

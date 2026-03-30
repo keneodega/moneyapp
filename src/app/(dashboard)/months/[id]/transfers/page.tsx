@@ -145,40 +145,45 @@ export default async function TransfersPage({ params }: { params: Promise<{ id: 
           </Card>
         ) : (
           rows.map((transfer) => (
-            <Card key={transfer.id} variant="outlined" padding="md" hover>
-              <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                <div className="space-y-1">
-                  <p className="text-body font-medium text-[var(--color-text)]">
-                    {getTransferRoute(transfer)}
-                  </p>
-                  <div className="flex flex-wrap items-center gap-2 text-caption text-[var(--color-text-muted)]">
-                    <span>{TYPE_LABELS[transfer.transfer_type]}</span>
-                    <span>•</span>
-                    <span>{formatDate(transfer.date)}</span>
-                    {transfer.bank && (
-                      <>
-                        <span>•</span>
-                        <span>{transfer.bank}</span>
-                      </>
-                    )}
-                    {transfer.description && (
-                      <>
-                        <span>•</span>
-                        <span>{transfer.description}</span>
-                      </>
+            <Link
+              key={transfer.id}
+              href={`/months/${id}/transfers/${transfer.id}/edit`}
+            >
+              <Card variant="outlined" padding="md" hover>
+                <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                  <div className="space-y-1">
+                    <p className="text-body font-medium text-[var(--color-text)]">
+                      {getTransferRoute(transfer)}
+                    </p>
+                    <div className="flex flex-wrap items-center gap-2 text-caption text-[var(--color-text-muted)]">
+                      <span>{TYPE_LABELS[transfer.transfer_type]}</span>
+                      <span>•</span>
+                      <span>{formatDate(transfer.date)}</span>
+                      {transfer.bank && (
+                        <>
+                          <span>•</span>
+                          <span>{transfer.bank}</span>
+                        </>
+                      )}
+                      {transfer.description && (
+                        <>
+                          <span>•</span>
+                          <span>{transfer.description}</span>
+                        </>
+                      )}
+                    </div>
+                  </div>
+                  <div className="text-right">
+                    <p className="text-body font-medium text-[var(--color-text)] tabular-nums">
+                      {formatCurrency(transfer.amount)}
+                    </p>
+                    {transfer.notes && (
+                      <p className="text-caption text-[var(--color-text-muted)] mt-1">{transfer.notes}</p>
                     )}
                   </div>
                 </div>
-                <div className="text-right">
-                  <p className="text-body font-medium text-[var(--color-text)] tabular-nums">
-                    {formatCurrency(transfer.amount)}
-                  </p>
-                  {transfer.notes && (
-                    <p className="text-caption text-[var(--color-text-muted)] mt-1">{transfer.notes}</p>
-                  )}
-                </div>
-              </div>
-            </Card>
+              </Card>
+            </Link>
           ))
         )}
       </div>
