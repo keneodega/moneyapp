@@ -210,6 +210,64 @@ describe('FinancialGoalService', () => {
       await expect(service.update('goal-1', updateData)).rejects.toThrow('End Date must be after Start Date');
     });
 
+    it('should derive base_amount from contributions/drawdowns when current_amount is updated (does not inflate on save)', async () => {
+      // Goal with base_amount 100 and a 50 contribution => current_amount 150.
+      const existingGoal = {
+        id: 'goal-1',
+        name: 'Emergency Fund',
+        target_amount: 10000,
+        current_amount: 150,
+        base_amount: 100,
+        start_date: '2026-01-01',
+        end_date: '2026-12-31',
+        status: 'In Progress' as const,
+        priority: 'Medium' as const,
+        user_id: 'test-user-id',
+        sub_goals: [],
+        progress_percent: 0,
+      };
+
+      // getById(id, false): goal query + sub-goals query
+      const goalQuery = createQueryBuilder();
+      goalQuery.single.mockResolvedValue({ data: existingGoal, error: null });
+      const subGoalsQuery = createQueryBuilder();
+
+      // contributions + drawdowns queries
+      const contributionsQuery = createQueryBuilder([{ amount: 50 }]);
+      const drawdownsQuery = createQueryBuilder([]);
+
+      // capture the data passed to the final update
+      let capturedUpdate: any = null;
+      const updateChain = createQueryBuilder();
+      updateChain.update = vi.fn((data: any) => {
+        capturedUpdate = data;
+        return updateChain;
+      });
+      updateChain.single.mockResolvedValue({
+        data: { ...existingGoal, current_amount: 150, base_amount: 100 },
+        error: null,
+      });
+
+      (mockSupabase.from as any)
+        .mockReturnValueOnce(goalQuery) // getById - goal
+        .mockReturnValueOnce(subGoalsQuery) // getById - sub-goals
+        .mockReturnValueOnce(contributionsQuery) // goal_contributions
+        .mockReturnValueOnce(drawdownsQuery) // goal_drawdowns
+        .mockReturnValueOnce(updateChain); // financial_goals update
+
+      // The edit form always re-submits the derived current_amount (150),
+      // even when only changing the estimated contribution.
+      await service.update('goal-1', {
+        current_amount: 150,
+        estimated_contributions: 200,
+      });
+
+      // base_amount must be backed out to 100 (150 - 50 contributions + 0 drawdowns),
+      // NOT left at 150 (which would re-add the 50 contribution on recalculation).
+      expect(capturedUpdate.base_amount).toBe(100);
+      expect(capturedUpdate.current_amount).toBe(150);
+    });
+
     it('should throw ValidationError if target amount is set to zero', async () => {
       const existingGoal = {
         id: 'goal-1',
