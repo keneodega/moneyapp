@@ -422,19 +422,34 @@ export class FinancialGoalService {
     }
 
     // If current_amount is being updated manually, we need to update base_amount
-    // Get sum of linked expenses to calculate the new base_amount
+    // so the derived current_amount stays stable.
+    //
+    // current_amount is a derived value: base_amount + contributions - drawdowns
+    // (enforced by the DB trigger and recalculateCurrentAmount). When the user
+    // submits a current_amount we must back out the contributions/drawdowns to get
+    // the base_amount, otherwise recalculation would add the contributions again and
+    // inflate the amount on every save.
+    //
+    // Note: expense->goal links were migrated to goal_contributions, so we must NOT
+    // use the (deprecated, always-null) expenses.financial_goal_id here.
     if (data.current_amount !== undefined) {
-      const { data: expenses } = await this.supabase
-        .from('expenses')
+      const { data: contributions } = await this.supabase
+        .from('goal_contributions')
         .select('amount')
         .eq('financial_goal_id', id);
 
-      const totalFromExpenses = expenses?.reduce((sum, exp) => sum + Number(exp.amount || 0), 0) || 0;
-      
-      // When user manually sets current_amount, the base_amount = current_amount - expenses
-      // This ensures that when we recalculate, we get: base_amount + expenses = current_amount
-      const newBaseAmount = Math.max(0, data.current_amount - totalFromExpenses);
-      
+      const { data: drawdowns } = await this.supabase
+        .from('goal_drawdowns')
+        .select('amount')
+        .eq('financial_goal_id', id);
+
+      const totalContributions = contributions?.reduce((sum, c) => sum + Number(c.amount || 0), 0) || 0;
+      const totalDrawdowns = drawdowns?.reduce((sum, d) => sum + Number(d.amount || 0), 0) || 0;
+
+      // base_amount = current_amount - contributions + drawdowns
+      // This ensures recalculation yields: base_amount + contributions - drawdowns = current_amount
+      const newBaseAmount = Math.max(0, data.current_amount - totalContributions + totalDrawdowns);
+
       // Update both current_amount and base_amount
       data = {
         ...data,
