@@ -254,7 +254,7 @@ export class TransferService {
     const insert: TransferInsert = {
       user_id: userId,
       monthly_overview_id: monthlyOverviewId,
-      transfer_type: 'goal_drawdown',
+      transfer_type: 'goal_to_budget',
       amount: data.amount,
       date: data.date,
       description: data.description ?? null,

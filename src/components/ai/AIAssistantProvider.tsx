@@ -95,9 +95,9 @@ export function AIAssistantProvider({ children }: { children: ReactNode }) {
           .limit(1)
           .single();
 
-        if (!recentMonth) return;
+        if (!recentMonth) return null;
         Object.assign(currentMonth || {}, recentMonth);
-        if (!currentMonth) return;
+        if (!currentMonth) return null;
       }
 
       // Fetch all context in parallel

@@ -115,8 +115,13 @@ export function TransferDialogProvider({ children }: { children: ReactNode }) {
         if (goalRes.data) setGoals(goalRes.data as GoalOption[]);
         const methods = settingsRes.length > 0 ? settingsRes : DEFAULT_PAYMENT_METHODS;
         setPaymentMethods(methods);
+        const firstFromBudget = (budgetRes.data?.[0] as BudgetOption | undefined)?.id ?? '';
+        const firstToBudget =
+          (allBudgetsRes.data as BudgetOptionBasic[] | undefined)?.find(b => b.id !== firstFromBudget)?.id ?? '';
         setFormData(prev => ({
           ...prev,
+          fromBudgetId: prev.fromBudgetId || firstFromBudget,
+          toBudgetId: prev.toBudgetId || firstToBudget,
           fromGoalId: prev.fromGoalId || (currentOptions.goalId ?? (goalRes.data?.[0] ? (goalRes.data[0] as GoalOption).id : '')),
           bank: prev.bank || (methods[0]?.value ?? 'Revolut'),
         }));

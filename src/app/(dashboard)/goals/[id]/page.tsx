@@ -1,7 +1,7 @@
 import Link from 'next/link';
 import { Card, Button, PageHeader, ProgressBar, Currency } from '@/components/ui';
 import { createSupabaseServerClient } from '@/lib/supabase/server';
-import { FinancialGoalService, GoalContributionService } from '@/lib/services';
+import { FinancialGoalService, GoalContributionService, TransferService } from '@/lib/services';
 import { NotFoundError } from '@/lib/services/errors';
 import { Contributions } from './Contributions';
 import { Drawdowns } from './Drawdowns';
@@ -87,12 +87,26 @@ async function getContributions(goalId: string) {
     }
 
     const contributionService = new GoalContributionService(supabase);
-    const contributions = await contributionService.getByGoal(goalId);
-
-    // Limit to latest 10
-    return contributions.slice(0, 10);
+    return await contributionService.getByGoal(goalId);
   } catch (error) {
     console.error('Error fetching contributions:', error);
+    return [];
+  }
+}
+
+async function getTransfersOut(goalId: string) {
+  try {
+    const supabase = await createSupabaseServerClient();
+    const { data: { user } } = await supabase.auth.getUser();
+
+    if (!user) {
+      return [];
+    }
+
+    const transferService = new TransferService(supabase);
+    return await transferService.getByGoal(goalId);
+  } catch (error) {
+    console.error('Error fetching transfers for goal:', error);
     return [];
   }
 }
@@ -103,9 +117,10 @@ export default async function GoalDetailPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
-  const [goal, contributions] = await Promise.all([
+  const [goal, contributions, transfersOut] = await Promise.all([
     getGoal(id),
     getContributions(id),
+    getTransfersOut(id),
   ]);
 
   if ( !goal) {
@@ -127,8 +142,22 @@ export default async function GoalDetailPage({
     );
   }
 
-  const progress = goal.progress_percent || 0;
-  const remaining = goal.target_amount - goal.current_amount;
+  const totalContributions = contributions.reduce(
+    (sum, c) => sum + Number((c as { amount: number | string }).amount || 0),
+    0,
+  );
+  const totalTransfersOut = transfersOut.reduce(
+    (sum, t) => sum + Number(t.amount || 0),
+    0,
+  );
+  const baseAmount = Number(
+    (goal as { base_amount?: number | string | null }).base_amount ?? goal.current_amount ?? 0,
+  );
+  const currentAmount = baseAmount + totalContributions - totalTransfersOut;
+  const progress = goal.target_amount > 0
+    ? Math.min(100, Math.max(0, (currentAmount / goal.target_amount) * 100))
+    : 0;
+  const remaining = goal.target_amount - currentAmount;
   const daysRemaining = goal.end_date 
     ? Math.ceil((new Date(goal.end_date).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24))
     : null;
@@ -146,10 +175,10 @@ export default async function GoalDetailPage({
             >
               <ChevronLeftIcon className="w-5 h-5 text-[var(--color-text)]" />
             </Link>
-            <TransferButton 
-              goalId={id} 
+            <TransferButton
+              goalId={id}
               goalName={goal.name}
-              currentAmount={goal.current_amount}
+              currentAmount={currentAmount}
             />
             <GoalActions goalId={id} />
           </>
@@ -180,7 +209,7 @@ export default async function GoalDetailPage({
             <div>
               <p className="text-caption text-[var(--color-text-muted)] mb-1">Current</p>
               <p className="text-title font-medium text-[var(--color-success)] tabular-nums">
-                {formatCurrency(goal.current_amount)}
+                {formatCurrency(currentAmount)}
               </p>
             </div>
             <div>

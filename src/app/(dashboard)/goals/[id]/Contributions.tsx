@@ -41,9 +41,12 @@ function formatDate(date: string): string {
   });
 }
 
+const PAGE_SIZE = 10;
+
 export function Contributions({ goalId, contributions }: ContributionsProps) {
   const [deleting, setDeleting] = useState<string | null>(null);
   const [confirmDelete, setConfirmDelete] = useState<string | null>(null);
+  const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
   const router = useRouter();
   const supabase = createSupabaseBrowserClient();
 
@@ -94,7 +97,7 @@ export function Contributions({ goalId, contributions }: ContributionsProps) {
 
       {/* Contributions List */}
       <div className="space-y-2">
-        {contributions.map((contrib) => {
+        {contributions.slice(0, visibleCount).map((contrib) => {
           const monthlyOverview = contrib.monthly_overview;
           const monthName = monthlyOverview?.name || 'Unknown Month';
 
@@ -159,10 +162,15 @@ export function Contributions({ goalId, contributions }: ContributionsProps) {
         })}
       </div>
 
-      {contributions.length >= 10 && (
-        <p className="text-caption text-[var(--color-text-muted)] text-center pt-2">
-          Showing latest 10 contributions
-        </p>
+      {visibleCount < contributions.length && (
+        <div className="flex justify-center pt-2">
+          <button
+            onClick={() => setVisibleCount((c) => c + PAGE_SIZE)}
+            className="px-4 py-2 rounded-[var(--radius-md)] text-small font-medium text-[var(--color-primary)] hover:bg-[var(--color-primary)]/10 transition-colors"
+          >
+            Show more ({contributions.length - visibleCount} remaining)
+          </button>
+        </div>
       )}
     </div>
   );
