@@ -44,6 +44,8 @@ next-env.d.ts
 # salesforce
 .sfdx/
 
-# bank statements / local docs (do not commit)
+# bank statements / local docs (do not commit — personal financial data)
 *.pdf
 /statements/
+/bank_statements/
+/backups/
