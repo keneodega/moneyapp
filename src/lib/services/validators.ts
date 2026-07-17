@@ -1,91 +1,13 @@
 /**
  * Pure validation functions for business rules
  * These can be unit tested without Supabase dependencies
- * 
- * Replicates Salesforce validation rules:
- * - ExpenseDate_WithinMonthlyOverview
- * - Prevent_Overspending
- * - Date range validations
+ *
+ * Expenses are deliberately not validated here: an expense records something
+ * that already happened, so it is never rejected for exceeding its budget or
+ * for falling outside its month's date range.
  */
 
-import { ValidationError, OverspendingError as OverspendingErrorClass } from './errors';
-
-// Re-export a simpler OverspendingError for validator functions
-class OverspendingError extends Error {
-  constructor(message: string) {
-    super(message);
-    this.name = 'OverspendingError';
-  }
-}
-
-export { OverspendingError };
-
-/**
- * Validates that an expense date is within the monthly overview date range.
- * Replicates Salesforce validation rule: ExpenseDate_WithinMonthlyOverview
- * 
- * @param expenseDate - The date of the expense (YYYY-MM-DD)
- * @param monthStartDate - The start date of the monthly overview (YYYY-MM-DD)
- * @param monthEndDate - The end date of the monthly overview (YYYY-MM-DD)
- * @param monthName - The name of the month for error messages
- * @returns true if valid
- * @throws ValidationError if expense date is outside the month range
- */
-export function validateExpenseDateWithinMonth(
-  expenseDate: string,
-  monthStartDate: string,
-  monthEndDate: string,
-  monthName: string = 'the monthly overview'
-): boolean {
-  const expenseDt = new Date(expenseDate);
-  const startDt = new Date(monthStartDate);
-  const endDt = new Date(monthEndDate);
-
-  // Set all dates to midnight for comparison
-  expenseDt.setHours(0, 0, 0, 0);
-  startDt.setHours(0, 0, 0, 0);
-  endDt.setHours(0, 0, 0, 0);
-
-  if (expenseDt < startDt || expenseDt > endDt) {
-    throw new ValidationError(
-      `The Expense Date (${expenseDate}) must be between the Start Date (${monthStartDate}) ` +
-      `and End Date (${monthEndDate}) of ${monthName}.`
-    );
-  }
-
-  return true;
-}
-
-/**
- * Validates that adding an expense does not exceed the budget.
- * Replicates Salesforce validation rule: Prevent_Overspending
- * 
- * @param budgetAmount - The total budget amount
- * @param currentSpent - The amount already spent (excluding the expense being validated)
- * @param newExpenseAmount - The amount of the new expense
- * @param budgetName - The name of the budget for error messages
- * @returns true if valid
- * @throws OverspendingError if expense would cause overspending
- */
-export function validateNoOverspending(
-  budgetAmount: number,
-  currentSpent: number,
-  newExpenseAmount: number,
-  budgetName: string = 'this budget'
-): boolean {
-  const amountLeft = budgetAmount - currentSpent - newExpenseAmount;
-
-  if (amountLeft < 0) {
-    const available = budgetAmount - currentSpent;
-    throw new OverspendingError(
-      `Cannot add expense of €${newExpenseAmount.toFixed(2)} to "${budgetName}" budget. ` +
-      `Budget would be negative by €${Math.abs(amountLeft).toFixed(2)}. ` +
-      `Available: €${available.toFixed(2)}`
-    );
-  }
-
-  return true;
-}
+import { ValidationError } from './errors';
 
 /**
  * Validates that a date range has end date on or after start date.

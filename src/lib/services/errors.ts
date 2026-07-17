@@ -16,47 +16,6 @@ export class ServiceError extends Error {
 }
 
 /**
- * Thrown when an expense date is outside the monthly overview range
- */
-export class ExpenseDateOutOfRangeError extends ServiceError {
-  constructor(expenseDate: string, startDate: string, endDate: string) {
-    super(
-      `The Expense Date (${expenseDate}) must be between the Start Date (${startDate}) and End Date (${endDate}) of the associated Monthly Overview.`,
-      'EXPENSE_DATE_OUT_OF_RANGE'
-    );
-    this.name = 'ExpenseDateOutOfRangeError';
-  }
-}
-
-/**
- * Thrown when an expense would cause overspending (negative budget amount left)
- */
-export class OverspendingError extends ServiceError {
-  public readonly budgetName: string;
-  public readonly budgetAmount: number;
-  public readonly currentSpent: number;
-  public readonly expenseAmount: number;
-
-  constructor(
-    budgetName: string,
-    budgetAmount: number,
-    currentSpent: number,
-    expenseAmount: number
-  ) {
-    const amountLeft = budgetAmount - currentSpent;
-    super(
-      `Cannot add expense of €${expenseAmount.toFixed(2)} to "${budgetName}". Budget would be negative. Available: €${amountLeft.toFixed(2)}`,
-      'OVERSPENDING_NOT_ALLOWED'
-    );
-    this.name = 'OverspendingError';
-    this.budgetName = budgetName;
-    this.budgetAmount = budgetAmount;
-    this.currentSpent = currentSpent;
-    this.expenseAmount = expenseAmount;
-  }
-}
-
-/**
  * Thrown when a required resource is not found
  */
 export class NotFoundError extends ServiceError {

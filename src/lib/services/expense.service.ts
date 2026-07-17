@@ -1,32 +1,28 @@
 /**
  * Expense Service
- * 
+ *
  * Handles all business logic for expense records.
- * 
- * Key Business Rules:
- * 1. Expense date must be within the Monthly Overview date range
- *    (Replicates Salesforce Validation Rule: ExpenseDate_WithinMonthlyOverview)
- * 
- * 2. Cannot overspend - expense cannot cause negative budget amount left
- *    (Replicates Salesforce Validation Rule: Prevent_Overspending)
- * 
+ *
+ * An expense records something that already happened, so it is never rejected
+ * for being over budget or for falling outside its month's date range. A budget
+ * that is exceeded reports as over; a month is the bucket a row is assigned to,
+ * not a range it must satisfy.
+ *
  * @author Anthony Barrow anthony@mopsy-studio.com
  */
 
 import { SupabaseClient } from '@supabase/supabase-js';
-import { 
-  Expense, 
-  ExpenseInsert, 
+import {
+  Expense,
+  ExpenseInsert,
   ExpenseUpdate,
   Budget,
-  MonthlyOverview 
+  MonthlyOverview
 } from '@/lib/supabase/database.types';
-import { 
-  ExpenseDateOutOfRangeError, 
-  OverspendingError, 
-  NotFoundError, 
+import {
+  NotFoundError,
   UnauthorizedError,
-  ValidationError 
+  ValidationError
 } from './errors';
 import { logExpenseCreated, logError } from '@/lib/utils/logger';
 
@@ -97,73 +93,8 @@ export class ExpenseService {
   }
 
   /**
-   * Validate that the expense date is within the monthly overview date range
-   * 
-   * Business Rule: ExpenseDate_WithinMonthlyOverview
-   * Error: "The Expense Date must be between the Start Date and End Date 
-   *         of the associated Monthly Overview."
-   * 
-   * @param expenseDate - The date of the expense
-   * @param monthlyOverview - The monthly overview containing start/end dates
-   * @throws ExpenseDateOutOfRangeError if date is outside range
-   */
-  private validateExpenseDate(expenseDate: string, monthlyOverview: MonthlyOverview): void {
-    const expense = new Date(expenseDate);
-    const start = new Date(monthlyOverview.start_date);
-    const end = new Date(monthlyOverview.end_date);
-
-    // Set times to midnight for date-only comparison
-    expense.setHours(0, 0, 0, 0);
-    start.setHours(0, 0, 0, 0);
-    end.setHours(0, 0, 0, 0);
-
-    if (expense < start || expense > end) {
-      throw new ExpenseDateOutOfRangeError(
-        expenseDate,
-        monthlyOverview.start_date,
-        monthlyOverview.end_date
-      );
-    }
-  }
-
-  /**
-   * Validate that adding/updating an expense won't cause overspending
-   * 
-   * Business Rule: Prevent_Overspending
-   * Error: "Pocket would be negative"
-   * 
-   * @param budgetSummary - Current budget summary with amount spent
-   * @param newExpenseAmount - Amount being added
-   * @param existingExpenseAmount - Amount being replaced (for updates), default 0
-   * @throws OverspendingError if expense would cause negative budget
-   */
-  private validateNoOverspending(
-    budgetSummary: BudgetSummary,
-    newExpenseAmount: number,
-    existingExpenseAmount: number = 0
-  ): void {
-    // Calculate what the new amount left would be
-    // For updates: add back the existing amount, then subtract the new amount
-    const projectedAmountLeft = 
-      budgetSummary.amount_left + existingExpenseAmount - newExpenseAmount;
-
-    if (projectedAmountLeft < 0) {
-      throw new OverspendingError(
-        budgetSummary.name,
-        budgetSummary.budget_amount,
-        budgetSummary.amount_spent - existingExpenseAmount,
-        newExpenseAmount
-      );
-    }
-  }
-
-  /**
    * Create a new expense
-   * 
-   * Validates:
-   * 1. Expense date is within monthly overview range
-   * 2. Expense won't cause overspending
-   * 
+   *
    * @param data - Expense data
    * @returns The created expense
    */
@@ -175,17 +106,8 @@ export class ExpenseService {
       throw new ValidationError('Expense amount must be greater than zero', 'amount');
     }
 
-    // Get budget with monthly overview for validation
+    // Resolves the budget for logging, and 404s on an unknown budget_id
     const budgetWithMonth = await this.getBudgetWithMonthlyOverview(data.budget_id);
-
-    // RULE 1: Validate expense date is within monthly overview range
-    this.validateExpenseDate(data.date, budgetWithMonth.monthly_overview);
-
-    // Get budget summary for overspending check
-    const budgetSummary = await this.getBudgetSummary(data.budget_id);
-
-    // RULE 2: Validate no overspending
-    this.validateNoOverspending(budgetSummary, data.amount);
 
     // Create the expense
     const { data: expense, error } = await this.supabase
@@ -297,11 +219,7 @@ export class ExpenseService {
 
   /**
    * Update an expense
-   * 
-   * Validates:
-   * 1. If date changes, it must still be within monthly overview range
-   * 2. If amount changes, it must not cause overspending
-   * 
+   *
    * @param id - Expense ID
    * @param data - Fields to update
    */
@@ -311,26 +229,9 @@ export class ExpenseService {
     // Get the existing expense
     const existingExpense = await this.getById(id);
 
-    // Determine the budget to validate against
+    // 404s on an unknown budget_id
     const budgetId = data.budget_id || existingExpense.budget_id;
-    const budgetWithMonth = await this.getBudgetWithMonthlyOverview(budgetId);
-
-    // RULE 1: Validate expense date if it's being changed or budget is changing
-    const expenseDate = data.date || existingExpense.date;
-    this.validateExpenseDate(expenseDate, budgetWithMonth.monthly_overview);
-
-    // RULE 2: Validate no overspending if amount is changing
-    if (data.amount !== undefined || data.budget_id !== undefined) {
-      const budgetSummary = await this.getBudgetSummary(budgetId);
-      const newAmount = data.amount ?? existingExpense.amount;
-      
-      // If budget is changing, existing expense doesn't count against new budget
-      const existingAmountInBudget = data.budget_id && data.budget_id !== existingExpense.budget_id
-        ? 0
-        : existingExpense.amount;
-
-      this.validateNoOverspending(budgetSummary, newAmount, existingAmountInBudget);
-    }
+    await this.getBudgetWithMonthlyOverview(budgetId);
 
     // Update the expense
     const { data: updated, error } = await this.supabase

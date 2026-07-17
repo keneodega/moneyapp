@@ -1,16 +1,14 @@
 /**
  * Unit Tests for Business Rule Validators
- * 
- * Tests the three core Salesforce validation rules:
- * 1. Expense date must be within monthly overview date range
- * 2. Prevent overspending (no negative amount left)
- * 3. Date range validation (end date after start date)
+ *
+ * Expenses are deliberately not validated: an expense records something that
+ * already happened, so it is never rejected for exceeding its budget or for
+ * falling outside its month's date range. The date-range rule below applies to
+ * monthly overviews and goals, not to expenses.
  */
 
 import { describe, it, expect } from 'vitest';
 import {
-  validateExpenseDateWithinMonth,
-  validateNoOverspending,
   validateDateRange,
   validatePositiveAmount,
   validateNonNegativeAmount,
@@ -18,116 +16,8 @@ import {
   calculateMonthlyOverviewSummary,
   DEFAULT_BUDGET_CATEGORIES,
   DEFAULT_TOTAL_BUDGET,
-  OverspendingError,
 } from '@/lib/services/validators';
 import { ValidationError } from '@/lib/services/errors';
-
-describe('Expense Date Within Month Validation', () => {
-  const monthStart = '2026-01-01';
-  const monthEnd = '2026-01-31';
-  const monthName = 'January 2026';
-
-  it('should pass when expense date is within the month range', () => {
-    expect(
-      validateExpenseDateWithinMonth('2026-01-15', monthStart, monthEnd, monthName)
-    ).toBe(true);
-  });
-
-  it('should pass when expense date equals the start date', () => {
-    expect(
-      validateExpenseDateWithinMonth('2026-01-01', monthStart, monthEnd, monthName)
-    ).toBe(true);
-  });
-
-  it('should pass when expense date equals the end date', () => {
-    expect(
-      validateExpenseDateWithinMonth('2026-01-31', monthStart, monthEnd, monthName)
-    ).toBe(true);
-  });
-
-  it('should throw ValidationError when expense date is before the month', () => {
-    expect(() =>
-      validateExpenseDateWithinMonth('2025-12-31', monthStart, monthEnd, monthName)
-    ).toThrow(ValidationError);
-  });
-
-  it('should throw ValidationError when expense date is after the month', () => {
-    expect(() =>
-      validateExpenseDateWithinMonth('2026-02-01', monthStart, monthEnd, monthName)
-    ).toThrow(ValidationError);
-  });
-
-  it('should include dates in error message', () => {
-    expect(() =>
-      validateExpenseDateWithinMonth('2025-12-15', monthStart, monthEnd, monthName)
-    ).toThrow(/2025-12-15/);
-  });
-
-  it('should include month name in error message', () => {
-    expect(() =>
-      validateExpenseDateWithinMonth('2025-12-15', monthStart, monthEnd, monthName)
-    ).toThrow(/January 2026/);
-  });
-});
-
-describe('Prevent Overspending Validation', () => {
-  const budgetAmount = 500;
-  const budgetName = 'Food';
-
-  it('should pass when expense is within budget', () => {
-    expect(
-      validateNoOverspending(budgetAmount, 200, 100, budgetName)
-    ).toBe(true);
-  });
-
-  it('should pass when expense uses entire remaining budget', () => {
-    expect(
-      validateNoOverspending(budgetAmount, 400, 100, budgetName)
-    ).toBe(true);
-  });
-
-  it('should pass when no previous spending', () => {
-    expect(
-      validateNoOverspending(budgetAmount, 0, 500, budgetName)
-    ).toBe(true);
-  });
-
-  it('should throw OverspendingError when expense exceeds budget', () => {
-    expect(() =>
-      validateNoOverspending(budgetAmount, 400, 150, budgetName)
-    ).toThrow(OverspendingError);
-  });
-
-  it('should throw OverspendingError when expense on exhausted budget', () => {
-    expect(() =>
-      validateNoOverspending(budgetAmount, 500, 1, budgetName)
-    ).toThrow(OverspendingError);
-  });
-
-  it('should include expense amount in error message', () => {
-    expect(() =>
-      validateNoOverspending(budgetAmount, 450, 100, budgetName)
-    ).toThrow(/€100\.00/);
-  });
-
-  it('should include budget name in error message', () => {
-    expect(() =>
-      validateNoOverspending(budgetAmount, 450, 100, budgetName)
-    ).toThrow(/Food/);
-  });
-
-  it('should include available amount in error message', () => {
-    expect(() =>
-      validateNoOverspending(budgetAmount, 450, 100, budgetName)
-    ).toThrow(/€50\.00/);
-  });
-
-  it('should include overage amount in error message', () => {
-    expect(() =>
-      validateNoOverspending(budgetAmount, 450, 100, budgetName)
-    ).toThrow(/€50\.00/); // 450 + 100 - 500 = 50 over
-  });
-});
 
 describe('Date Range Validation', () => {
   it('should pass when end date is after start date', () => {
@@ -336,46 +226,3 @@ describe('Default Budget Categories', () => {
   });
 });
 
-describe('Edge Cases and Combined Scenarios', () => {
-  it('should handle decimal amounts correctly in overspending check', () => {
-    // Budget: 100.00, Spent: 99.99, New expense: 0.02
-    expect(() =>
-      validateNoOverspending(100, 99.99, 0.02, 'Test')
-    ).toThrow(OverspendingError);
-  });
-
-  it('should allow exact remaining in overspending check', () => {
-    // Budget: 100.00, Spent: 99.99, New expense: 0.01
-    expect(
-      validateNoOverspending(100, 99.99, 0.01, 'Test')
-    ).toBe(true);
-  });
-
-  it('should validate February dates correctly', () => {
-    // February 2026 is not a leap year
-    expect(
-      validateExpenseDateWithinMonth('2026-02-28', '2026-02-01', '2026-02-28', 'February')
-    ).toBe(true);
-
-    expect(() =>
-      validateExpenseDateWithinMonth('2026-02-29', '2026-02-01', '2026-02-28', 'February')
-    ).toThrow(ValidationError);
-  });
-
-  it('should validate leap year February correctly', () => {
-    // 2024 was a leap year
-    expect(
-      validateExpenseDateWithinMonth('2024-02-29', '2024-02-01', '2024-02-29', 'February 2024')
-    ).toBe(true);
-  });
-
-  it('should handle year boundary correctly', () => {
-    expect(
-      validateExpenseDateWithinMonth('2025-12-31', '2025-12-01', '2025-12-31', 'December 2025')
-    ).toBe(true);
-
-    expect(() =>
-      validateExpenseDateWithinMonth('2026-01-01', '2025-12-01', '2025-12-31', 'December 2025')
-    ).toThrow(ValidationError);
-  });
-});

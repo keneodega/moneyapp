@@ -67,8 +67,12 @@ export function BudgetProgress({
   currency = 'EUR',
   className = '',
 }: BudgetProgressProps) {
-  const percentage = total > 0 ? (spent / total) * 100 : 0;
   const remaining = remainingProp !== undefined ? remainingProp : total - spent;
+
+  // A category with no budget but some spend is fully over, not 0% used. This is
+  // the normal state for unplanned spend, so it must not read as untouched.
+  const percentage = total > 0 ? (spent / total) * 100 : spent > 0 ? 100 : 0;
+  const isOver = remaining < 0;
 
   const formatCurrency = (amount: number) =>
     new Intl.NumberFormat('en-IE', {
@@ -79,20 +83,22 @@ export function BudgetProgress({
     }).format(amount);
 
   const getStatusColor = () => {
-    if (percentage >= 100) return 'text-[var(--color-danger)]';
+    if (isOver || percentage >= 100) return 'text-[var(--color-danger)]';
     if (percentage >= 80) return 'text-[var(--color-warning)]';
     return 'text-[var(--color-text-muted)]';
   };
 
   return (
     <div className={`flex flex-col gap-2 ${className}`}>
-      <ProgressBar value={spent} max={total} colorMode="budget" size="md" />
+      <ProgressBar value={percentage} max={100} colorMode="budget" size="md" />
       <div className="flex justify-between items-center">
         <span className="text-small text-[var(--color-text-muted)]">
           {formatCurrency(spent)} spent
         </span>
         <span className={`text-small font-medium ${getStatusColor()}`}>
-          {remaining >= 0 ? formatCurrency(remaining) : `-${formatCurrency(Math.abs(remaining))}`} left
+          {isOver
+            ? `${formatCurrency(Math.abs(remaining))} over`
+            : `${formatCurrency(remaining)} left`}
         </span>
       </div>
     </div>

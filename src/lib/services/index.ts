@@ -46,8 +46,6 @@ export { LifeEventService } from './life-event.service';
 // Export error types for handling
 export {
   ServiceError,
-  ExpenseDateOutOfRangeError,
-  OverspendingError,
   NotFoundError,
   UnauthorizedError,
   ValidationError,
@@ -55,8 +53,6 @@ export {
 
 // Export pure validation functions for testing and reuse
 export {
-  validateExpenseDateWithinMonth,
-  validateNoOverspending,
   validateDateRange,
   validatePositiveAmount,
   validateNonNegativeAmount,
