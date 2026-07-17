@@ -534,8 +534,10 @@ export class FinancialGoalService {
   async createSubGoal(goalId: string, data: Omit<FinancialSubGoalInsert, 'financial_goal_id'>): Promise<FinancialSubGoal> {
     await this.getUserId();
 
-    // Verify parent goal exists and belongs to user
-    await this.getById(goalId);
+    // Verify parent goal exists and belongs to user. No recalc needed — this
+    // only checks existence, and recalculating the balance here would be a
+    // pointless extra write on every sub-goal creation.
+    await this.getById(goalId, false);
 
     // Validate date range if both dates are provided
     if (data.start_date && data.end_date) {
