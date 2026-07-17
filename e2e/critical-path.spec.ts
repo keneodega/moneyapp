@@ -6,7 +6,7 @@
  * 2. Add income
  * 3. Add expense (with category selection)
  * 4. Verify totals update correctly
- * 5. Verify overspend blocking works
+ * 5. Verify an exhausted category stays selectable
  */
 
 import { test, expect } from '@playwright/test';
@@ -153,17 +153,17 @@ test.describe('Critical Path - Budget Management Flow', () => {
     expect(options.some(opt => opt.includes('left'))).toBe(true);
   });
 
-  test('should disable budget categories with zero balance in expense form', async ({ page }) => {
+  test('should keep exhausted budget categories selectable in expense form', async ({ page }) => {
     await page.goto('/months/1/expense/new');
-    
-    // Get the budget category dropdown
+
     const categorySelect = page.locator('select[name="budget_id"]');
-    
-    // Check for disabled options (categories with €0 left)
-    const disabledOptions = await categorySelect.locator('option[disabled]').count();
-    
-    // There should be some disabled options (placeholder + exhausted budgets)
-    expect(disabledOptions).toBeGreaterThan(0);
+
+    // Only the placeholder may be disabled. An exhausted or over-budget category
+    // must stay selectable — the spend already happened and has to be recordable.
+    const disabledOptions = await categorySelect.locator('option[disabled]').all();
+    for (const option of disabledOptions) {
+      await expect(option).toHaveValue('');
+    }
   });
 
   test('should show budget info when category is selected', async ({ page }) => {

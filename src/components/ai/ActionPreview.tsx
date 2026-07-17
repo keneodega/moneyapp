@@ -58,7 +58,7 @@ export function ActionPreview({ messageId, response, confirmed }: ActionPreviewP
   const isLowConfidence = action.confidence < 0.7;
 
   async function handleConfirm() {
-    if (!action || isOverspending) return;
+    if (!action) return;
     setIsSubmitting(true);
     setError(null);
 
@@ -208,7 +208,8 @@ export function ActionPreview({ messageId, response, confirmed }: ActionPreviewP
         <div className="px-4 py-2 border-t border-[var(--color-border)]">
           {isOverspending && (
             <p className="text-caption text-[var(--color-danger)]">
-              This exceeds the remaining budget of {formatCurrency(matchedBudget!.amount_left)}
+              This puts {matchedBudget!.name} {formatCurrency(action.amount - matchedBudget!.amount_left)} over
+              budget. It will still be recorded.
             </p>
           )}
           {isLowConfidence && (
@@ -239,7 +240,7 @@ export function ActionPreview({ messageId, response, confirmed }: ActionPreviewP
         </button>
         <button
           onClick={handleConfirm}
-          disabled={isSubmitting || !!isOverspending}
+          disabled={isSubmitting}
           className="px-4 py-2 text-small font-medium rounded-[var(--radius-sm)] bg-[var(--color-primary)] text-white hover:bg-[var(--color-primary-dark)] disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
         >
           {isSubmitting ? 'Adding...' : 'Confirm'}

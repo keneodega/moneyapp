@@ -142,16 +142,6 @@ export default function NewExpensePage({
         return;
       }
 
-      // Additional validation: Check overspending
-      const selectedBudget = budgets.find(b => b.id === formData.budget_id);
-      if (selectedBudget && parseFloat(formData.amount) > selectedBudget.amount_left) {
-        const errorMessage = `This expense (€${formData.amount}) exceeds the remaining budget (€${selectedBudget.amount_left.toFixed(2)}) for ${selectedBudget.name}.`;
-        setError(errorMessage);
-        showErrorToast(errorMessage);
-        setIsLoading(false);
-        return;
-      }
-
       const supabase = createSupabaseBrowserClient();
       const { data: { user } } = await supabase.auth.getUser();
 
@@ -195,6 +185,11 @@ export default function NewExpensePage({
   };
 
   const selectedBudget = budgets.find(b => b.id === formData.budget_id);
+
+  // Advisory only — an over-budget expense is still recorded.
+  const overspendBy = selectedBudget
+    ? parseFloat(formData.amount || '0') - selectedBudget.amount_left
+    : 0;
 
   return (
     <div className="max-w-2xl mx-auto space-y-6 animate-fade-in">
@@ -249,12 +244,10 @@ export default function NewExpensePage({
               >
                 <option value="" disabled>Select a budget category</option>
                 {budgets.map((budget) => (
-                  <option
-                    key={budget.id}
-                    value={budget.id}
-                    disabled={budget.amount_left <= 0}
-                  >
-                    {budget.name} (€{budget.amount_left.toFixed(0)} left)
+                  <option key={budget.id} value={budget.id}>
+                    {budget.name} ({budget.amount_left < 0
+                      ? `€${Math.abs(budget.amount_left).toFixed(0)} over`
+                      : `€${budget.amount_left.toFixed(0)} left`})
                   </option>
                 ))}
               </select>
@@ -268,13 +261,15 @@ export default function NewExpensePage({
                   </span>
                 </div>
                 <div className="flex justify-between items-center mt-1">
-                  <span className="text-small text-[var(--color-text-muted)]">Remaining</span>
+                  <span className="text-small text-[var(--color-text-muted)]">
+                    {selectedBudget.amount_left < 0 ? 'Over by' : 'Remaining'}
+                  </span>
                   <span className={`text-small font-medium tabular-nums ${
                     selectedBudget.amount_left > 0
                       ? 'text-[var(--color-success)]'
                       : 'text-[var(--color-danger)]'
                   }`}>
-                    €{selectedBudget.amount_left.toFixed(2)}
+                    €{Math.abs(selectedBudget.amount_left).toFixed(2)}
                   </span>
                 </div>
               </div>
@@ -288,14 +283,15 @@ export default function NewExpensePage({
             type="number"
             step="0.01"
             min="0.01"
-            max={selectedBudget?.amount_left}
             placeholder="0.00"
             value={formData.amount}
             onChange={handleChange}
             onBlur={() => handleBlur('amount')}
             error={errors.amount}
             required
-            hint={selectedBudget ? `Max: €${selectedBudget.amount_left.toFixed(2)}` : undefined}
+            hint={overspendBy > 0
+              ? `This puts ${selectedBudget!.name} €${overspendBy.toFixed(2)} over budget. It will still be recorded.`
+              : undefined}
           />
 
           {/* Date */}

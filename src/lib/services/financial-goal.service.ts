@@ -222,7 +222,7 @@ export class FinancialGoalService {
       return;
     }
 
-    // Get all drawdowns for this goal
+    // Get all legacy drawdowns for this goal
     const { data: drawdowns, error: drawdownsError } = await this.supabase
       .from('goal_drawdowns')
       .select('amount')
@@ -233,32 +233,49 @@ export class FinancialGoalService {
       return;
     }
 
+    // Get all transfers OUT of this goal. The transfers table (goal_to_budget)
+    // is the real source of truth for drawdowns; omitting it here overstates the
+    // balance by the amount already withdrawn. Must match the DB triggers'
+    // formula (see unify_goal_amount_trigger_formula.sql).
+    const { data: transfersOut, error: transfersError } = await this.supabase
+      .from('transfers')
+      .select('amount')
+      .eq('from_goal_id', id);
+
+    if (transfersError) {
+      console.error(`Error fetching transfers for goal ${id}:`, transfersError);
+      return;
+    }
+
     // Calculate total from contributions
     const totalContributions = contributions?.reduce((sum, contrib) => sum + Number(contrib.amount || 0), 0) || 0;
 
-    // Calculate total from drawdowns
+    // Calculate total from legacy drawdowns
     const totalDrawdowns = drawdowns?.reduce((sum, drawdown) => sum + Number(drawdown.amount || 0), 0) || 0;
 
+    // Calculate total transferred out of the goal
+    const totalTransfersOut = transfersOut?.reduce((sum, transfer) => sum + Number(transfer.amount || 0), 0) || 0;
+
     // Get base_amount (initial/manual amount)
-    // If base_amount doesn't exist (migration not run), calculate it from current_amount - contributions + drawdowns
+    // If base_amount doesn't exist (migration not run), derive it by inverting
+    // the balance formula: base = current - contributions + drawdowns + transfers_out
     let baseAmount: number;
     if (goal.base_amount !== null && goal.base_amount !== undefined) {
       // base_amount exists, use it
       baseAmount = Number(goal.base_amount);
     } else {
-      // base_amount doesn't exist yet, calculate it from current_amount - contributions + drawdowns
-      // This handles the case where migration hasn't been run
       const currentAmount = Number(goal.current_amount || 0);
-      baseAmount = Math.max(0, currentAmount - totalContributions + totalDrawdowns);
+      baseAmount = Math.max(0, currentAmount - totalContributions + totalDrawdowns + totalTransfersOut);
     }
 
-    // New current_amount = base_amount + sum of contributions - sum of drawdowns
-    const newCurrentAmount = baseAmount + totalContributions - totalDrawdowns;
+    // New current_amount = base + contributions - drawdowns - transfers_out
+    const newCurrentAmount = baseAmount + totalContributions - totalDrawdowns - totalTransfersOut;
 
     console.log(`Recalculating goal ${id}:`, {
       baseAmount,
       totalContributions,
       totalDrawdowns,
+      totalTransfersOut,
       newCurrentAmount,
       oldCurrentAmount: goal.current_amount,
     });
@@ -517,8 +534,10 @@ export class FinancialGoalService {
   async createSubGoal(goalId: string, data: Omit<FinancialSubGoalInsert, 'financial_goal_id'>): Promise<FinancialSubGoal> {
     await this.getUserId();
 
-    // Verify parent goal exists and belongs to user
-    await this.getById(goalId);
+    // Verify parent goal exists and belongs to user. No recalc needed — this
+    // only checks existence, and recalculating the balance here would be a
+    // pointless extra write on every sub-goal creation.
+    await this.getById(goalId, false);
 
     // Validate date range if both dates are provided
     if (data.start_date && data.end_date) {
