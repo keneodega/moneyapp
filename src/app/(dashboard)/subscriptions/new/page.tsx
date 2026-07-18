@@ -104,7 +104,7 @@ export default function NewSubscriptionPage() {
         actions={
           <button
             type="button"
-            onClick={() => router.back()}
+            onClick={() => router.push('/subscriptions')}
             className="p-2 rounded-[var(--radius-md)] hover:bg-[var(--color-surface-sunken)] transition-colors"
           >
             <ArrowLeftIcon className="w-5 h-5 text-[var(--color-text-muted)]" />
@@ -314,7 +314,7 @@ export default function NewSubscriptionPage() {
             <Button type="submit" disabled={loading}>
               {loading ? 'Creating...' : 'Create Subscription'}
             </Button>
-            <Button type="button" variant="secondary" onClick={() => router.back()}>
+            <Button type="button" variant="secondary" onClick={() => router.push('/subscriptions')}>
               Cancel
             </Button>
           </div>

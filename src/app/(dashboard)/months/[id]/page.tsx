@@ -563,6 +563,13 @@ export default async function MonthDetailPage({
         </p>
       </Card>
 
+      {/* Compact totals — income vs spent this month */}
+      <div className="flex flex-wrap gap-x-6 gap-y-1 px-1 text-small text-[var(--color-text-muted)]">
+        <span>Income <span className="text-[var(--color-text)] tabular-nums font-medium">{formatCurrency(totalIncome)}</span></span>
+        <span>Spent <span className="text-[var(--color-text)] tabular-nums font-medium">{formatCurrency(totalSpent)}</span></span>
+        <span>Budgeted <span className="text-[var(--color-text)] tabular-nums font-medium">{formatCurrency(totalBudgeted)}</span></span>
+      </div>
+
       {/* Maternity Fund progress */}
       {goal && (
         <Card variant="raised" padding="lg" className="animate-slide-up stagger-2 border-[var(--color-accent)]/40">

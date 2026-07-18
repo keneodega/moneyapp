@@ -232,7 +232,7 @@ export default function EditBudgetPage({
         actions={
           <button
             type="button"
-            onClick={() => router.back()}
+            onClick={() => router.push(`/months/${monthId}/budgets/${budgetId}`)}
             className="w-10 h-10 rounded-[var(--radius-md)] bg-[var(--color-surface-sunken)] flex items-center justify-center hover:bg-[var(--color-border)] transition-colors"
           >
             <ChevronLeftIcon className="w-5 h-5 text-[var(--color-text)]" />
@@ -345,7 +345,7 @@ export default function EditBudgetPage({
           <div className="flex flex-col-reverse sm:flex-row gap-3 pt-4">
             <button
               type="button"
-              onClick={() => router.back()}
+              onClick={() => router.push(`/months/${monthId}/budgets/${budgetId}`)}
               className="flex-1 h-12 flex items-center justify-center rounded-[var(--radius-md)] border border-[var(--color-border)] text-[var(--color-text)] font-medium hover:bg-[var(--color-surface-sunken)] transition-colors"
             >
               Cancel
