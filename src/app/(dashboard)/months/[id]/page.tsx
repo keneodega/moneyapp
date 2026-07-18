@@ -42,6 +42,7 @@ interface MonthData {
   name: string;
   start_date: string;
   end_date: string;
+  status: 'open' | 'frozen';
   total_income?: number;
   total_budgeted?: number;
   amount_unallocated?: number;
@@ -117,6 +118,8 @@ async function getMonthData(id: string): Promise<{
 
     const month = {
       ...baseMonth,
+      // status column may not exist until the freeze migration is run; default to 'open'
+      status: ((baseMonth as { status?: string }).status ?? 'open') as 'open' | 'frozen',
       total_income: 0,
       total_budgeted: 0,
       total_spent: 0, // Will be calculated from budget_summary below
@@ -482,6 +485,17 @@ export default async function MonthDetailPage({
           </>
         }
       />
+
+      {month.status === 'frozen' && (
+        <div className="rounded-[var(--radius-md)] border border-[var(--color-warning)]/40 bg-[var(--color-warning)]/10 px-4 py-3">
+          <p className="text-small font-medium text-[var(--color-warning)]">
+            Historical — not reconciled
+          </p>
+          <p className="text-caption text-[var(--color-text-muted)] mt-0.5">
+            This month predates the new tracking system. Its figures may not reflect what actually happened.
+          </p>
+        </div>
+      )}
 
       {/* Key Overview */}
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">

@@ -78,25 +78,28 @@ export function AIAssistantProvider({ children }: { children: ReactNode }) {
       const now = new Date();
       const today = now.toISOString().split('T')[0];
 
-      // Find current month by date range
-      const { data: currentMonth } = await supabase
+      // Find current month by date range. Uses limit(1) rather than single() so
+      // a shared boundary day (or any range overlap) returns a row instead of
+      // throwing — single() errors on >1 match and silently killed the assistant.
+      const { data: currentRows } = await supabase
         .from('monthly_overviews')
         .select('id, name, start_date, end_date')
         .lte('start_date', today)
         .gte('end_date', today)
-        .single();
+        .order('start_date', { ascending: false })
+        .limit(1);
+
+      let currentMonth = currentRows?.[0] ?? null;
 
       if (!currentMonth) {
-        // Fallback: get most recent month
-        const { data: recentMonth } = await supabase
+        // Fallback: most recent month
+        const { data: recentRows } = await supabase
           .from('monthly_overviews')
           .select('id, name, start_date, end_date')
           .order('start_date', { ascending: false })
-          .limit(1)
-          .single();
+          .limit(1);
 
-        if (!recentMonth) return null;
-        Object.assign(currentMonth || {}, recentMonth);
+        currentMonth = recentRows?.[0] ?? null;
         if (!currentMonth) return null;
       }
 
