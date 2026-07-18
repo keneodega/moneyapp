@@ -196,7 +196,7 @@ export default function MasterBudgetsPage() {
     <div className="max-w-4xl mx-auto space-y-6 animate-fade-in">
       <PageHeader
         title="Master Budgets"
-        subtitle="Manage your baseline budget categories. These amounts are copied to each new month."
+        subtitle="Manage your baseline budget categories. These are copied into each new month when it's created."
         actions={
           <Button
             onClick={() => setShowAddForm(!showAddForm)}

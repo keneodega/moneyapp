@@ -401,6 +401,52 @@ export class SubscriptionService {
   }
 
   /**
+   * Roll every Active subscription whose next_collection_date is in the past
+   * forward to its next future occurrence, and clear paid_this_period.
+   *
+   * This is display bookkeeping only — it advances the "next due" date so it
+   * stops showing months in the past. It asserts NOTHING about whether a
+   * payment was actually made (that is what CSV reconciliation / markAsPaid are
+   * for). Safe to run on a schedule.
+   *
+   * Scoped to one user when userId is given; otherwise every user (the cron
+   * path, which runs under a service-role client with no session). Returns the
+   * number of subscriptions rolled.
+   */
+  async rollForwardStaleCollectionDates(userId?: string): Promise<number> {
+    const today = new Date().toISOString().split('T')[0];
+
+    let query = this.supabase
+      .from('subscriptions')
+      .select('*')
+      .eq('status', 'Active')
+      .lt('next_collection_date', today);
+    if (userId) query = query.eq('user_id', userId);
+
+    const { data: stale, error } = await query;
+    if (error) throw new Error(`Failed to load stale subscriptions: ${error.message}`);
+
+    let rolled = 0;
+    for (const sub of stale ?? []) {
+      const next = this.calculateNextCollectionDate(
+        sub.frequency,
+        sub.collection_day,
+        sub.next_collection_date ?? sub.last_collection_date
+      );
+      const { error: updateError } = await this.supabase
+        .from('subscriptions')
+        .update({ next_collection_date: next, paid_this_period: false })
+        .eq('id', sub.id);
+      if (updateError) {
+        console.warn(`rollForward: failed to roll ${sub.name}:`, updateError.message);
+        continue;
+      }
+      rolled++;
+    }
+    return rolled;
+  }
+
+  /**
    * Pause a subscription
    */
   async pause(id: string): Promise<Subscription> {
@@ -700,69 +746,4 @@ export class SubscriptionService {
     return newDate;
   }
 
-  /**
-   * Create budget entries from subscriptions for a specific month
-   * Each subscription becomes a budget category with its monthly equivalent cost
-   */
-  async createBudgetsFromSubscriptions(
-    monthlyOverviewId: string,
-    startDate: string,
-    endDate: string,
-    subscriptionIds?: string[]
-  ): Promise<{ created: number; skipped: number; errors: string[] }> {
-    await this.getUserId();
-
-    // Get subscriptions due in this date range
-    let subscriptions = await this.getByDateRange(startDate, endDate, 'Active');
-
-    // Filter by subscription IDs if provided
-    if (subscriptionIds && subscriptionIds.length > 0) {
-      subscriptions = subscriptions.filter(sub => subscriptionIds.includes(sub.id));
-    }
-
-    const { BudgetService } = await import('./budget.service');
-    const budgetService = new BudgetService(this.supabase);
-
-    const results = {
-      created: 0,
-      skipped: 0,
-      errors: [] as string[],
-    };
-
-    // Create a budget for each subscription
-    for (const subscription of subscriptions) {
-      try {
-        const monthlyCost = SubscriptionService.calculateMonthlyCost(
-          subscription.amount,
-          subscription.frequency
-        );
-
-        // Check if budget already exists with this name
-        const existingBudgets = await budgetService.getByMonthlyOverview(monthlyOverviewId);
-        const existingBudget = existingBudgets.find(
-          b => b.name.toLowerCase() === subscription.name.toLowerCase()
-        );
-
-        if (existingBudget) {
-          results.skipped++;
-          continue;
-        }
-
-        // Create budget entry
-        await budgetService.create({
-          monthly_overview_id: monthlyOverviewId,
-          name: subscription.name,
-          budget_amount: monthlyCost,
-          description: `Subscription: ${subscription.name} (${subscription.frequency}) - Due: ${subscription.next_collection_date || 'N/A'}`,
-        });
-
-        results.created++;
-      } catch (error) {
-        const errorMsg = error instanceof Error ? error.message : 'Unknown error';
-        results.errors.push(`${subscription.name}: ${errorMsg}`);
-      }
-    }
-
-    return results;
-  }
 }

@@ -1,45 +1,25 @@
 /**
  * Monthly Overview Service
- * 
+ *
  * Handles all business logic for monthly budget periods.
- * 
- * Key Business Rules:
- * 1. Auto-create 13 default budget categories when a month is created
- *    (Replicates Salesforce Flow: Budget_Automation)
- * 
+ *
+ * When a month is created, its budget categories are copied from the user's
+ * active master budgets (bootstrapFromMasterBudgets). Master budgets are the
+ * single source of truth for what categories a month starts with.
+ *
  * @author Anthony Barrow anthony@mopsy-studio.com
  */
 
 import { SupabaseClient } from '@supabase/supabase-js';
-import { 
-  MonthlyOverview, 
-  MonthlyOverviewInsert, 
-  MonthlyOverviewUpdate,
-  BudgetInsert 
+import {
+  MonthlyOverview,
+  MonthlyOverviewInsert,
+  MonthlyOverviewUpdate
 } from '@/lib/supabase/database.types';
 import { NotFoundError, UnauthorizedError, ValidationError } from './errors';
 import { logMonthCreated } from '@/lib/utils/logger';
-
-/**
- * Default budget categories automatically created for each new month
- * Replicates the Salesforce Flow "Budget_Automation"
- * Total Default Monthly Budget: €4,588.00
- */
-const DEFAULT_BUDGET_CATEGORIES: Omit<BudgetInsert, 'monthly_overview_id'>[] = [
-  { name: 'Tithe', budget_amount: 350.00, description: '10% of all income - giving back to God' },
-  { name: 'Offering', budget_amount: 175.00, description: '5% of main income - additional giving' },
-  { name: 'Housing', budget_amount: 2228.00, description: 'Rent, Electricity' },
-  { name: 'Food', budget_amount: 350.00, description: 'Groceries & Snacks' },
-  { name: 'Transport', budget_amount: 200.00, description: 'Toll, Parking, Fuel' },
-  { name: 'Personal Care', budget_amount: 480.00, description: 'Personal allowances, Nails' },
-  { name: 'Household', budget_amount: 130.00, description: 'Household items, Cleaning' },
-  { name: 'Savings', budget_amount: 300.00, description: 'Monthly savings' },
-  { name: 'Investments', budget_amount: 100.00, description: '401K, Stocks, Retirement contributions' },
-  { name: 'Subscriptions', budget_amount: 75.00, description: 'Netflix, Spotify, and other recurring subscriptions' },
-  { name: 'Health', budget_amount: 50.00, description: 'Medicine or health related' },
-  { name: 'Travel', budget_amount: 50.00, description: 'Travel Allowance' },
-  { name: 'Miscellaneous', budget_amount: 100.00, description: 'Unexpected expenses and other items' },
-];
+import { MasterBudgetService } from './master-budget.service';
+import { BudgetService } from './budget.service';
 
 export class MonthlyOverviewService {
   constructor(private supabase: SupabaseClient) {}
@@ -57,9 +37,8 @@ export class MonthlyOverviewService {
   }
 
   /**
-   * Create a new monthly overview.
-   * Default budget categories (if any) are created by the database trigger only.
-   * No subscription-based budget categories (e.g. from subscriptions table) are added here.
+   * Create a new monthly overview, then seed its budget categories from the
+   * user's active master budgets.
    *
    * @param data - Monthly overview data (name, start_date, end_date)
    * @returns The created monthly overview
@@ -86,34 +65,53 @@ export class MonthlyOverviewService {
       throw new Error(`Failed to create monthly overview: ${error.message}`);
     }
 
-    // Default budgets are automatically created by database trigger
-    // No need to create them manually here to avoid duplicates
+    const budgetsCreated = await this.bootstrapFromMasterBudgets(monthlyOverview.id);
 
-    // Get count of budgets created (by trigger)
-    // Wait a moment for trigger to complete, then check
-    await new Promise(resolve => setTimeout(resolve, 500));
-    
-    const { count, error: countError } = await this.supabase
-      .from('budgets')
-      .select('*', { count: 'exact', head: true })
-      .eq('monthly_overview_id', monthlyOverview.id);
-    
-    // If budgets table doesn't exist, log warning but don't fail
-    if (countError && (countError.message.includes('does not exist') || countError.code === '42P01')) {
-      console.warn('Budgets table does not exist. Please run the database schema migration.');
-    }
-
-    // Log successful month creation
     logMonthCreated({
       monthlyOverviewId: monthlyOverview.id,
       userId,
       name: monthlyOverview.name,
       startDate: monthlyOverview.start_date,
       endDate: monthlyOverview.end_date,
-      budgetsCreated: count || DEFAULT_BUDGET_CATEGORIES.length,
+      budgetsCreated,
     });
 
     return monthlyOverview;
+  }
+
+  /**
+   * Seed a month's budget categories from the user's active master budgets.
+   * Idempotent: does nothing if the month already has budgets. Returns the
+   * number of budgets created.
+   */
+  async bootstrapFromMasterBudgets(monthId: string): Promise<number> {
+    const { count: existing } = await this.supabase
+      .from('budgets')
+      .select('*', { count: 'exact', head: true })
+      .eq('monthly_overview_id', monthId);
+
+    if (existing && existing > 0) return 0;
+
+    const masterBudgets = await new MasterBudgetService(this.supabase).getAll(true);
+    const budgetService = new BudgetService(this.supabase);
+
+    let created = 0;
+    for (const mb of masterBudgets) {
+      try {
+        await budgetService.create({
+          monthly_overview_id: monthId,
+          name: mb.name,
+          budget_amount: mb.budget_amount,
+          master_budget_id: mb.id,
+          description: mb.description || null,
+        });
+        created++;
+      } catch (err) {
+        // A duplicate name (already present) is fine; anything else is worth seeing.
+        console.warn(`bootstrapFromMasterBudgets: skipped ${mb.name}:`, err);
+      }
+    }
+    return created;
   }
 
 
@@ -296,8 +294,3 @@ export class MonthlyOverviewService {
     return data || [];
   }
 }
-
-/**
- * Export the default budget categories for reference
- */
-export { DEFAULT_BUDGET_CATEGORIES };
