@@ -54,5 +54,11 @@
       "destination": "/months",
       "permanent": true
     }
+  ],
+  "crons": [
+    {
+      "path": "/api/cron/roll-subscriptions",
+      "schedule": "0 2 * * *"
+    }
   ]
 }

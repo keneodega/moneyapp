@@ -401,6 +401,52 @@ export class SubscriptionService {
   }
 
   /**
+   * Roll every Active subscription whose next_collection_date is in the past
+   * forward to its next future occurrence, and clear paid_this_period.
+   *
+   * This is display bookkeeping only — it advances the "next due" date so it
+   * stops showing months in the past. It asserts NOTHING about whether a
+   * payment was actually made (that is what CSV reconciliation / markAsPaid are
+   * for). Safe to run on a schedule.
+   *
+   * Scoped to one user when userId is given; otherwise every user (the cron
+   * path, which runs under a service-role client with no session). Returns the
+   * number of subscriptions rolled.
+   */
+  async rollForwardStaleCollectionDates(userId?: string): Promise<number> {
+    const today = new Date().toISOString().split('T')[0];
+
+    let query = this.supabase
+      .from('subscriptions')
+      .select('*')
+      .eq('status', 'Active')
+      .lt('next_collection_date', today);
+    if (userId) query = query.eq('user_id', userId);
+
+    const { data: stale, error } = await query;
+    if (error) throw new Error(`Failed to load stale subscriptions: ${error.message}`);
+
+    let rolled = 0;
+    for (const sub of stale ?? []) {
+      const next = this.calculateNextCollectionDate(
+        sub.frequency,
+        sub.collection_day,
+        sub.next_collection_date ?? sub.last_collection_date
+      );
+      const { error: updateError } = await this.supabase
+        .from('subscriptions')
+        .update({ next_collection_date: next, paid_this_period: false })
+        .eq('id', sub.id);
+      if (updateError) {
+        console.warn(`rollForward: failed to roll ${sub.name}:`, updateError.message);
+        continue;
+      }
+      rolled++;
+    }
+    return rolled;
+  }
+
+  /**
    * Pause a subscription
    */
   async pause(id: string): Promise<Subscription> {
