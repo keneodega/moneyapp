@@ -87,6 +87,7 @@ async function getMonthData(id: string): Promise<{
   totalSubscriptions: number;
   totalSubscriptionsPersonal: number;
   monthSubscriptions: Array<{ subscription: import('@/lib/supabase/database.types').Subscription | import('@/lib/supabase/database.types').MonthSubscription; totalDue: number }>;
+  goal: { name: string; current_amount: number; target_amount: number; end_date: string | null } | null;
 } | null> {
   try {
     const supabase = await createSupabaseServerClient();
@@ -357,6 +358,28 @@ async function getMonthData(id: string): Promise<{
       // Non-fatal; leave at defaults
     }
 
+    // Primary in-progress savings goal (for the Fund card)
+    let goal: { name: string; current_amount: number; target_amount: number; end_date: string | null } | null = null;
+    try {
+      const { data: goalRow } = await supabase
+        .from('financial_goals')
+        .select('name, current_amount, target_amount, end_date')
+        .eq('status', 'In Progress')
+        .order('created_at', { ascending: true })
+        .limit(1)
+        .maybeSingle();
+      if (goalRow) {
+        goal = {
+          name: goalRow.name,
+          current_amount: Number(goalRow.current_amount),
+          target_amount: Number(goalRow.target_amount),
+          end_date: goalRow.end_date,
+        };
+      }
+    } catch {
+      // Non-fatal; Fund card just won't render
+    }
+
     return {
       month,
       budgets: budgets || [],
@@ -368,6 +391,7 @@ async function getMonthData(id: string): Promise<{
       totalSubscriptions,
       totalSubscriptionsPersonal,
       monthSubscriptions,
+      goal,
     };
   } catch {
     return null;
@@ -419,43 +443,58 @@ export default async function MonthDetailPage({
     notFound();
   }
 
-  const { month, budgets, income, totalGoalContributions, previousMonth, totalFixed, totalVariable, totalSubscriptions, totalSubscriptionsPersonal, monthSubscriptions } = data;
+  const { month, budgets, income, totalGoalContributions, previousMonth, totalFixed, totalVariable, totalSubscriptions, totalSubscriptionsPersonal, monthSubscriptions, goal } = data;
   
   // Use totals from view (more accurate than manual calculation)
   const totalIncome = month.total_income || 0;
   const totalBudgeted = month.total_budgeted || 0;
-  // Unallocated = income minus budgets minus personal subscriptions minus goal contributions
-  // Company-paid (KHO) subscriptions are excluded as they don't come from salary
-  const unallocated = (month.total_income || 0) - (month.total_budgeted || 0) - (totalSubscriptionsPersonal || 0) - (totalGoalContributions || 0);
-  
+
   // Calculate spent from budgets (view provides this per budget)
   const totalSpent = (budgets || []).reduce((sum, b) => sum + Number(b?.amount_spent || 0), 0);
   const spentPercent = totalBudgeted > 0 ? (totalSpent / totalBudgeted) * 100 : 0;
   const { daysRemaining, elapsedDays } = getMonthTimeStats(month.start_date, month.end_date);
 
-  // Month-over-month changes
-  const pctChange = (curr: number, prev: number) =>
-    prev !== 0 ? (((curr - prev) / prev) * 100) : (curr !== 0 ? 100 : 0);
-  const overallIncomeChange = previousMonth ? pctChange(totalIncome, previousMonth.total_income) : null;
-  const overallBudgetedChange = previousMonth ? pctChange(totalBudgeted, previousMonth.total_budgeted) : null;
-  const overallSpentChange = previousMonth ? pctChange(totalSpent, previousMonth.total_spent) : null;
+  // --- "This month" status hero ---
+  const overUnder = totalSpent - totalBudgeted; // positive = over budget
+  const isOver = overUnder > 0.005;
+  const overFraction = totalBudgeted > 0 ? overUnder / totalBudgeted : 0;
+  // Just over (<10%) reads as amber; further over reads as danger.
+  const heroTone: 'success' | 'warning' | 'danger' = !isOver ? 'success' : overFraction < 0.1 ? 'warning' : 'danger';
+  // Full literal class strings per tone so Tailwind's scanner keeps them.
+  const toneClasses = {
+    success: { text: 'text-[var(--color-success)]', bg: 'bg-[var(--color-success)]/10', bar: 'bg-[var(--color-success)]', pill: 'text-[var(--color-success)] bg-[var(--color-success)]/10' },
+    warning: { text: 'text-[var(--color-warning)]', bg: 'bg-[var(--color-warning)]/10', bar: 'bg-[var(--color-warning)]', pill: 'text-[var(--color-warning)] bg-[var(--color-warning)]/10' },
+    danger: { text: 'text-[var(--color-danger)]', bg: 'bg-[var(--color-danger)]/10', bar: 'bg-[var(--color-danger)]', pill: 'text-[var(--color-danger)] bg-[var(--color-danger)]/10' },
+  }[heroTone];
+
+  // Categories under pressure: over budget, or >=90% used.
+  const pressureCategories = (budgets || [])
+    .map((b) => ({
+      name: b.name,
+      left: Number(b.amount_left ?? 0),
+      spent: Number(b.amount_spent ?? 0),
+      budget: Number(b.override_amount ?? b.budget_amount ?? 0),
+      pct: Number(b.percent_used ?? 0),
+    }))
+    .filter((b) => b.left < -0.005 || (b.budget > 0 && b.pct >= 90))
+    .sort((a, b) => a.left - b.left);
+  const pressureNames = pressureCategories.slice(0, 2).map((p) => p.name);
+
+  // --- Maternity Fund progress ---
+  const fundCurrent = goal ? goal.current_amount : 0;
+  const fundTarget = goal ? goal.target_amount : 0;
+  const fundPercent = fundTarget > 0 ? Math.min(100, (fundCurrent / fundTarget) * 100) : 0;
+  const fundLeft = Math.max(0, fundTarget - fundCurrent);
+  const fundMonthsLeft = goal?.end_date
+    ? Math.max(1, Math.ceil((new Date(goal.end_date).getTime() - Date.now()) / (1000 * 60 * 60 * 24 * 30.4)))
+    : null;
+  const fundPerMonth = fundMonthsLeft ? fundLeft / fundMonthsLeft : null;
 
   // Pie chart data: budget amounts (allocation) per category
   const pieData = (budgets || []).map((b) => ({
     name: b.name,
     value: Number(b.override_amount ?? b.budget_amount ?? 0),
   })).filter((d) => d.value > 0);
-
-  // Fixed budgets + subscriptions: total budget minus Tithe, Offering, Drawdown, plus subscriptions
-  const EXCLUDE_FROM_FIXED_BUDGETS = ['tithe', 'offering', 'drawdown'];
-  const excludedFromFixed = (budgets || []).reduce((sum, b) => {
-    const name = (b.name || '').trim().toLowerCase();
-    if (EXCLUDE_FROM_FIXED_BUDGETS.includes(name)) {
-      return sum + Number(b.override_amount ?? b.budget_amount ?? 0);
-    }
-    return sum;
-  }, 0);
-  const fixedBudgetsPlusSubscriptions = totalBudgeted - excludedFromFixed + (totalSubscriptionsPersonal ?? 0);
 
   // Income breakdown: budget, subscriptions (personal only), goal contributions, unallocated
   const subsTotal = totalSubscriptionsPersonal ?? 0;
@@ -497,81 +536,71 @@ export default async function MonthDetailPage({
         </div>
       )}
 
-      {/* Key Overview */}
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-        <Card variant="raised" padding="lg" className="animate-slide-up stagger-1">
-          <p className="text-small text-[var(--color-text-muted)]">Total Income</p>
-          <p className="text-display text-[var(--color-text)] mt-2 tabular-nums">
-            {formatCurrency(totalIncome)}
-          </p>
-          {overallIncomeChange != null && (
-            <p className={`text-caption mt-1 ${overallIncomeChange > 0 ? 'text-[var(--color-success)]' : overallIncomeChange < 0 ? 'text-[var(--color-danger)]' : 'text-[var(--color-text-muted)]'}`}>
-              {overallIncomeChange > 0 ? '↑' : overallIncomeChange < 0 ? '↓' : ''} {overallIncomeChange > 0 ? '+' : ''}{overallIncomeChange.toFixed(1)}% vs {previousMonth?.name}
-            </p>
-          )}
-        </Card>
+      {/* This month — status hero */}
+      <Card variant="raised" padding="lg" className={`animate-slide-up stagger-1 ${toneClasses.bg}`}>
+        <div className="flex items-baseline justify-between">
+          <p className={`text-small ${toneClasses.text}`}>This month</p>
+          <p className="text-caption text-[var(--color-text-muted)]">{daysRemaining} days left</p>
+        </div>
+        <p className={`text-display mt-1 tabular-nums ${toneClasses.text}`}>
+          {isOver
+            ? `${formatCurrency(Math.abs(overUnder))} over budget`
+            : `${formatCurrency(Math.abs(overUnder))} left to spend`}
+        </p>
+        <div className="mt-3 h-2 rounded-full bg-[var(--color-surface)] overflow-hidden">
+          <div className={`h-full ${toneClasses.bar}`} style={{ width: `${Math.min(100, spentPercent)}%` }} />
+        </div>
+        <div className="mt-1.5 flex justify-between text-caption text-[var(--color-text-muted)] tabular-nums">
+          <span>{formatCurrency(totalSpent)} spent</span>
+          <span>{formatCurrency(totalBudgeted)} planned</span>
+        </div>
+        <p className="text-small text-[var(--color-text)] mt-3">
+          {pressureNames.length > 0
+            ? `${pressureNames.join(' and ')} ${pressureNames.length > 1 ? 'are' : 'is'} the pressure.`
+            : isOver
+              ? 'Over for the month.'
+              : 'On track.'}
+        </p>
+      </Card>
 
-        <Card variant="raised" padding="lg" className="animate-slide-up stagger-2">
-          <p className="text-small text-[var(--color-text-muted)]">Total Budgeted</p>
-          <p className="text-display text-[var(--color-text)] mt-2 tabular-nums">
-            {formatCurrency(totalBudgeted)}
-          </p>
-          <div className="mt-3 grid grid-cols-2 gap-3 text-small text-[var(--color-text-muted)]">
-            <div className="flex items-center justify-between">
-              <span>Fixed</span>
-              <span className="text-[var(--color-text)] tabular-nums">{formatCurrency(totalFixed ?? 0)}</span>
-            </div>
-            <div className="flex items-center justify-between">
-              <span>Variable</span>
-              <span className="text-[var(--color-text)] tabular-nums">{formatCurrency(totalVariable ?? 0)}</span>
-            </div>
+      {/* Maternity Fund progress */}
+      {goal && (
+        <Card variant="raised" padding="lg" className="animate-slide-up stagger-2 border-[var(--color-accent)]/40">
+          <div className="flex items-center gap-2">
+            <HeartIcon className="w-5 h-5 text-[var(--color-accent)]" />
+            <span className="text-small font-medium text-[var(--color-text)]">{goal.name}</span>
+            <span className="ml-auto text-small text-[var(--color-text-muted)]">{fundPercent.toFixed(0)}%</span>
           </div>
-          {overallBudgetedChange != null && (
-            <p className={`text-caption mt-2 ${overallBudgetedChange > 0 ? 'text-[var(--color-warning)]' : overallBudgetedChange < 0 ? 'text-[var(--color-success)]' : 'text-[var(--color-text-muted)]'}`}>
-              {overallBudgetedChange > 0 ? '↑' : overallBudgetedChange < 0 ? '↓' : ''} {overallBudgetedChange > 0 ? '+' : ''}{overallBudgetedChange.toFixed(1)}% vs {previousMonth?.name}
-            </p>
-          )}
-        </Card>
-
-        <Card variant="raised" padding="lg" className="animate-slide-up stagger-3">
-          <p className="text-small text-[var(--color-text-muted)]">Unallocated</p>
-          <p className={`text-display mt-2 tabular-nums ${unallocated >= 0 ? 'text-[var(--color-accent)]' : 'text-[var(--color-danger)]'}`}>
-            {formatCurrency(unallocated)}
+          <p className="mt-2 tabular-nums">
+            <span className="text-title text-[var(--color-text)]">{formatCurrency(fundCurrent)}</span>
+            <span className="text-small text-[var(--color-text-muted)]"> of {formatCurrency(fundTarget)}</span>
           </p>
-          <p className="text-caption text-[var(--color-text-subtle)] mt-1">
-            {unallocated >= 0 ? 'Available to budget' : 'Over-budgeted'}
+          <div className="mt-3 h-2 rounded-full bg-[var(--color-surface-sunken)] overflow-hidden">
+            <div className="h-full bg-[var(--color-accent)]" style={{ width: `${fundPercent}%` }} />
+          </div>
+          <p className="text-small text-[var(--color-text)] mt-3">
+            {fundLeft > 0
+              ? `${formatCurrency(fundLeft)} to go${fundPerMonth ? ` — about ${formatCurrency(fundPerMonth)} a month to finish.` : '.'}`
+              : 'Target reached.'}
           </p>
         </Card>
-      </div>
+      )}
 
-      {/* Supporting Metrics */}
-      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-        <Card variant="outlined" padding="md" className="animate-slide-up stagger-4">
-          <p className="text-small text-[var(--color-text-muted)]">Total Spent</p>
-          <p className="text-title text-[var(--color-text)] mt-1 tabular-nums">{formatCurrency(totalSpent)}</p>
-          <p className="text-caption text-[var(--color-text-subtle)] mt-0.5">{spentPercent.toFixed(0)}% of budget</p>
-        </Card>
-        <Card variant="outlined" padding="md" className="animate-slide-up stagger-4">
-          <p className="text-small text-[var(--color-text-muted)]">Budget + Subscriptions</p>
-          <p className="text-title text-[var(--color-text)] mt-1 tabular-nums">{formatCurrency(fixedBudgetsPlusSubscriptions)}</p>
-          <p className="text-caption text-[var(--color-text-subtle)] mt-0.5">Fixed categories + subscriptions</p>
-        </Card>
-        <Card variant="outlined" padding="md" className="animate-slide-up stagger-5">
-          <p className="text-small text-[var(--color-text-muted)]">Goal Contributions</p>
+      {/* Supporting stats */}
+      <div className="grid gap-3 grid-cols-2">
+        <Card variant="outlined" padding="md" className="animate-slide-up stagger-3">
+          <p className="text-small text-[var(--color-text-muted)]">Saved this month</p>
           <p className="text-title text-[var(--color-text)] mt-1 tabular-nums">{formatCurrency(totalGoalContributions)}</p>
         </Card>
         <Link href="/subscriptions" className="block">
-          <Card variant="outlined" padding="md" className="animate-slide-up stagger-5 hover:border-[var(--color-primary)]/30 transition-colors">
-            <p className="text-small text-[var(--color-text-muted)]">Subscriptions (Personal)</p>
+          <Card variant="outlined" padding="md" className="animate-slide-up stagger-3 hover:border-[var(--color-primary)]/30 transition-colors h-full">
+            <p className="text-small text-[var(--color-text-muted)]">Bills due</p>
             <p className="text-title text-[var(--color-text)] mt-1 tabular-nums">{formatCurrency(totalSubscriptionsPersonal ?? 0)}</p>
-            <p className="text-caption text-[var(--color-text-subtle)] mt-0.5">
-              Due this month
-              {(totalSubscriptions ?? 0) - (totalSubscriptionsPersonal ?? 0) > 0 && (
-                <span className="ml-1 text-blue-400">
-                  + {formatCurrency((totalSubscriptions ?? 0) - (totalSubscriptionsPersonal ?? 0))} KHO
-                </span>
-              )}
-            </p>
+            {(totalSubscriptions ?? 0) - (totalSubscriptionsPersonal ?? 0) > 0 && (
+              <p className="text-caption text-[var(--color-text-subtle)] mt-0.5">
+                + {formatCurrency((totalSubscriptions ?? 0) - (totalSubscriptionsPersonal ?? 0))} KHO
+              </p>
+            )}
           </Card>
         </Link>
       </div>
@@ -724,6 +753,14 @@ function PlusIcon({ className }: { className?: string }) {
   return (
     <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
       <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
+    </svg>
+  );
+}
+
+function HeartIcon({ className }: { className?: string }) {
+  return (
+    <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+      <path strokeLinecap="round" strokeLinejoin="round" d="M21 8.25c0-2.485-2.099-4.5-4.688-4.5-1.935 0-3.597 1.126-4.312 2.733-.715-1.607-2.377-2.733-4.313-2.733C5.1 3.75 3 5.765 3 8.25c0 7.22 9 12 9 12s9-4.78 9-12z" />
     </svg>
   );
 }
