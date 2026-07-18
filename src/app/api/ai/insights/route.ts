@@ -1,4 +1,4 @@
-import { openai } from '@ai-sdk/openai';
+import { anthropic } from '@ai-sdk/anthropic';
 import { generateObject } from 'ai';
 import { z } from 'zod';
 import { NextRequest, NextResponse } from 'next/server';
@@ -22,7 +22,7 @@ const InsightsResponseSchema = z.object({
 export async function GET(request: NextRequest) {
   try {
     // Check if API key is configured
-    if (!process.env.OPENAI_API_KEY) {
+    if (!process.env.ANTHROPIC_API_KEY) {
       return NextResponse.json(
         { error: 'AI service not configured' },
         { status: 503 }
@@ -203,7 +203,7 @@ export async function GET(request: NextRequest) {
     // Generate insights with AI
     console.log('AI Insights - Calling OpenAI API...');
     const { object } = await generateObject({
-      model: openai('gpt-4o-mini'),
+      model: anthropic('claude-haiku-4-5-20251001'),
       schema: InsightsResponseSchema,
       prompt: `You are a personal finance advisor analyzing a user's budget data. Generate 3-5 actionable, specific insights based on their financial situation.
 

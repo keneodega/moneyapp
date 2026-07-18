@@ -1,4 +1,4 @@
-import { openai } from '@ai-sdk/openai';
+import { anthropic } from '@ai-sdk/anthropic';
 import { generateObject } from 'ai';
 import { z } from 'zod';
 import { NextRequest, NextResponse } from 'next/server';
@@ -150,12 +150,12 @@ export async function GET(request: NextRequest) {
     let recommendations = savedScore.ai_recommendations;
 
     if (
-      process.env.OPENAI_API_KEY &&
+      process.env.ANTHROPIC_API_KEY &&
       FinancialHealthService.shouldRegenerateRecommendations(savedScore)
     ) {
       try {
         const { object } = await generateObject({
-          model: openai('gpt-4o-mini'),
+          model: anthropic('claude-haiku-4-5-20251001'),
           schema: RecommendationsResponseSchema,
           prompt: `You are a personal finance advisor analyzing a user's Financial Health Score.
 
