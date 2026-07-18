@@ -9,6 +9,7 @@ import { BudgetService } from '@/lib/services';
 import { useSelection } from '@/lib/hooks/useSelection';
 
 type SortOption =
+  | 'risk'
   | 'name-asc'
   | 'name-desc'
   | 'budget-desc'
@@ -46,6 +47,7 @@ interface BudgetCategoriesListProps {
 }
 
 const SORT_OPTIONS: { value: SortOption; label: string }[] = [
+  { value: 'risk', label: 'Needs attention' },
   { value: 'name-asc', label: 'Name (A-Z)' },
   { value: 'name-desc', label: 'Name (Z-A)' },
   { value: 'budget-desc', label: 'Budget (High-Low)' },
@@ -69,7 +71,7 @@ export function BudgetCategoriesList({
   monthId,
   previousBudgetsByName,
 }: BudgetCategoriesListProps) {
-  const [sortBy, setSortBy] = useState<SortOption>('name-asc');
+  const [sortBy, setSortBy] = useState<SortOption>('risk');
   const [bulkDeleting, setBulkDeleting] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [typeFilter, setTypeFilter] = useState<TypeFilter>('all');
@@ -136,8 +138,24 @@ export function BudgetCategoriesList({
       });
     }
 
+    // Lower score = more urgent. Ranks by spend against plan (not the
+    // transfer-adjusted amount_left, which budget_summary clamps at 0 and would
+    // flatten a €600 overspend to look merely "maxed"). Over-budget sinks most
+    // negative; on-budget sits at 0; healthy is a positive fraction left;
+    // untouched empty categories go to the bottom.
+    const riskScore = (b: BudgetItem): number => {
+      const budget = effectiveAmount(b);
+      const spent = b.amount_spent || 0;
+      if (budget <= 0) return spent > 0 ? -1e9 - spent : Number.POSITIVE_INFINITY;
+      return (budget - spent) / budget;
+    };
+
     arr.sort((a, b) => {
       switch (sortBy) {
+        case 'risk': {
+          const diff = riskScore(a) - riskScore(b);
+          return diff !== 0 ? diff : a.name.localeCompare(b.name);
+        }
         case 'name-asc':
           return a.name.localeCompare(b.name);
         case 'name-desc':
