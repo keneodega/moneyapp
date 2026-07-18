@@ -26,7 +26,7 @@
  */
 
 // Export services
-export { MonthlyOverviewService, DEFAULT_BUDGET_CATEGORIES } from './monthly-overview.service';
+export { MonthlyOverviewService } from './monthly-overview.service';
 export { ExpenseService } from './expense.service';
 export { BudgetService, type BudgetHistoryEntry, type BudgetTrend } from './budget.service';
 export { MasterBudgetService, type MasterBudget, type MasterBudgetHistoryEntry } from './master-budget.service';

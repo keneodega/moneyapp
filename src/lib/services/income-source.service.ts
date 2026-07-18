@@ -21,6 +21,7 @@ import {
 import { logIncomeCreated, logError } from '@/lib/utils/logger';
 import { MasterBudgetService } from './master-budget.service';
 import { BudgetService } from './budget.service';
+import { MonthlyOverviewService } from './monthly-overview.service';
 
 export class IncomeSourceService {
   constructor(private supabase: SupabaseClient) {}
@@ -104,43 +105,10 @@ export class IncomeSourceService {
       titheDeduction: incomeSource.tithe_deduction || false,
     });
 
-    // Auto-create budgets from master budgets if this is the first income for this month
-    // Check if any budgets exist for this month
-    const { data: existingBudgets, error: budgetCheckError } = await this.supabase
-      .from('budgets')
-      .select('id')
-      .eq('monthly_overview_id', incomeSource.monthly_overview_id)
-      .limit(1);
-
-    // Only create budgets if none exist yet
-    if (!budgetCheckError && (!existingBudgets || existingBudgets.length === 0)) {
-      try {
-        const masterBudgetService = new MasterBudgetService(this.supabase);
-        const budgetService = new BudgetService(this.supabase);
-        
-        // Get all active master budgets for this user
-        const masterBudgets = await masterBudgetService.getAll(true);
-        
-        // Create budgets from master budgets
-        for (const masterBudget of masterBudgets) {
-          try {
-            await budgetService.create({
-              monthly_overview_id: incomeSource.monthly_overview_id,
-              name: masterBudget.name,
-              budget_amount: masterBudget.budget_amount,
-              master_budget_id: masterBudget.id,
-              description: masterBudget.description || null,
-            });
-          } catch (err) {
-            // Skip if budget already exists or other error
-            console.warn(`Failed to create budget from master budget ${masterBudget.name}:`, err);
-          }
-        }
-      } catch (err) {
-        // Don't fail income creation if budget creation fails
-        console.error('Failed to auto-create budgets from master budgets:', err);
-      }
-    }
+    // Budgets are seeded from master budgets when the month is created. As a
+    // safety net (e.g. a month created before that behaviour existed), seed them
+    // here too — this is idempotent and does nothing if budgets already exist.
+    await new MonthlyOverviewService(this.supabase).bootstrapFromMasterBudgets(incomeSource.monthly_overview_id);
 
     // Determine which budgets to create based on options (if provided) or tithe_deduction flag
     const shouldCreateTithe = options?.createTithe ?? incomeSource.tithe_deduction;
