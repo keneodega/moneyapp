@@ -448,6 +448,8 @@ export default async function MonthDetailPage({
   // Use totals from view (more accurate than manual calculation)
   const totalIncome = month.total_income || 0;
   const totalBudgeted = month.total_budgeted || 0;
+  // "Free" = income not yet assigned to budgets, personal bills, or savings.
+  const freeToAssign = totalIncome - totalBudgeted - (totalSubscriptionsPersonal || 0) - (totalGoalContributions || 0);
 
   // Calculate spent from budgets (view provides this per budget)
   const totalSpent = (budgets || []).reduce((sum, b) => sum + Number(b?.amount_spent || 0), 0);
@@ -568,6 +570,7 @@ export default async function MonthDetailPage({
         <span>Income <span className="text-[var(--color-text)] tabular-nums font-medium">{formatCurrency(totalIncome)}</span></span>
         <span>Spent <span className="text-[var(--color-text)] tabular-nums font-medium">{formatCurrency(totalSpent)}</span></span>
         <span>Budgeted <span className="text-[var(--color-text)] tabular-nums font-medium">{formatCurrency(totalBudgeted)}</span></span>
+        <span>Free <span className={`tabular-nums font-medium ${freeToAssign >= 0 ? 'text-[var(--color-success)]' : 'text-[var(--color-danger)]'}`}>{formatCurrency(freeToAssign)}</span></span>
       </div>
 
       {/* Maternity Fund progress */}
