@@ -138,16 +138,20 @@ export function BudgetCategoriesList({
       });
     }
 
-    // Lower score = more urgent. Ranks by spend against plan (not the
-    // transfer-adjusted amount_left, which budget_summary clamps at 0 and would
-    // flatten a €600 overspend to look merely "maxed"). Over-budget sinks most
-    // negative; on-budget sits at 0; healthy is a positive fraction left;
-    // untouched empty categories go to the bottom.
+    // Lower score = more urgent, in bands: over budget, then getting tight, then
+    // maxed-but-on-plan, then healthy, then untouched. "left" is transfer-aware,
+    // so an overspend covered by a drawdown reads as €0 (maxed), not over — it
+    // isn't a problem and shouldn't top the list.
     const riskScore = (b: BudgetItem): number => {
       const budget = effectiveAmount(b);
       const spent = b.amount_spent || 0;
-      if (budget <= 0) return spent > 0 ? -1e9 - spent : Number.POSITIVE_INFINITY;
-      return (budget - spent) / budget;
+      const left = b.amount_left ?? budget - spent;
+      if (spent <= 0) return 4e6;                      // untouched -> bottom
+      if (left < -0.005) return left;                  // over (negative) -> top, most over first
+      const frac = budget > 0 ? left / budget : 0;
+      if (left <= 0.005) return 2e6;                   // maxed / on-plan / covered
+      if (frac < 0.15) return 1e6 + frac;              // getting tight
+      return 3e6 + frac;                               // healthy
     };
 
     arr.sort((a, b) => {
