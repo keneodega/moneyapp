@@ -138,20 +138,13 @@ export function BudgetCategoriesList({
       });
     }
 
-    // Lower score = more urgent, in bands: over budget, then getting tight, then
-    // maxed-but-on-plan, then healthy, then untouched. "left" is transfer-aware,
-    // so an overspend covered by a drawdown reads as €0 (maxed), not over — it
-    // isn't a problem and shouldn't top the list.
+    // Lower score = more attention. Ranks by how far this month's budget is over
+    // the baseline (master) budget — the plan being stretched — matching the
+    // month hero. Most over plan first; on-plan and under-plan follow.
     const riskScore = (b: BudgetItem): number => {
       const budget = effectiveAmount(b);
-      const spent = b.amount_spent || 0;
-      const left = b.amount_left ?? budget - spent;
-      if (spent <= 0) return 4e6;                      // untouched -> bottom
-      if (left < -0.005) return left;                  // over (negative) -> top, most over first
-      const frac = budget > 0 ? left / budget : 0;
-      if (left <= 0.005) return 2e6;                   // maxed / on-plan / covered
-      if (frac < 0.15) return 1e6 + frac;              // getting tight
-      return 3e6 + frac;                               // healthy
+      const master = Number(b.master_budget?.budget_amount ?? 0);
+      return -(budget - master); // largest overage -> most negative -> first
     };
 
     arr.sort((a, b) => {

@@ -469,23 +469,19 @@ export default async function MonthDetailPage({
     danger: { text: 'text-[var(--color-danger)]', bg: 'bg-[var(--color-danger)]/10', bar: 'bg-[var(--color-danger)]', pill: 'text-[var(--color-danger)] bg-[var(--color-danger)]/10' },
   }[heroTone];
 
-  // Categories that actually need watching. "Left" is transfer-aware, so a
-  // category whose overspend was covered by a drawdown reads as €0 left, not
-  // over — correctly not flagged. Pressure = genuinely over (left < 0), or
-  // getting tight (a small slice of budget still left). Maxed-but-on-plan
-  // categories sit at exactly €0 left and are deliberately excluded — a paid
-  // bill or a completed contribution isn't pressure.
-  const pressureCategories = (budgets || [])
-    .map((b) => ({
-      name: b.name,
-      left: Number(b.amount_left ?? 0),
-      spent: Number(b.amount_spent ?? 0),
-      budget: Number(b.override_amount ?? b.budget_amount ?? 0),
-    }))
-    .filter((b) => b.spent > 0 && (b.left < -0.005 || (b.budget > 0 && b.left > 0.005 && b.left < b.budget * 0.15)))
-    .sort((a, b) => a.left - b.left);
-  const pressureNames = pressureCategories.slice(0, 2).map((p) => p.name);
-  const anyOver = pressureCategories.some((p) => p.left < -0.005);
+  // "Pressure" = categories whose budget this month is well over their baseline
+  // (master budget) — where the plan is being stretched. This is the strategic
+  // signal ("Miscellaneous is 9x its usual plan"), not whether a category is
+  // merely near its month limit.
+  const overPlanCategories = (budgets || [])
+    .map((b) => {
+      const budget = Number(b.override_amount ?? b.budget_amount ?? 0);
+      const master = Number(b.master_budget?.budget_amount ?? 0);
+      return { name: b.name, budget, master, over: budget - master };
+    })
+    .filter((b) => b.over > 0.005 && (b.master <= 0 ? b.budget > 0 : b.over / b.master >= 0.15))
+    .sort((a, b) => b.over - a.over);
+  const pressureNames = overPlanCategories.slice(0, 2).map((p) => p.name);
 
   // --- Maternity Fund progress ---
   const fundCurrent = goal ? goal.current_amount : 0;
@@ -563,8 +559,8 @@ export default async function MonthDetailPage({
         </div>
         <p className="text-small text-[var(--color-text)] mt-3">
           {pressureNames.length > 0
-            ? `${pressureNames.join(' and ')} ${pressureNames.length > 1 ? 'are' : 'is'} ${anyOver ? 'over budget' : 'getting tight'}.`
-            : 'Every category is on track.'}
+            ? `${pressureNames.join(' and ')} ${pressureNames.length > 1 ? 'are' : 'is'} well over plan.`
+            : 'Every category is on plan.'}
         </p>
       </Card>
 
