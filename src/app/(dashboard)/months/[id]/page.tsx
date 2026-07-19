@@ -448,6 +448,8 @@ export default async function MonthDetailPage({
   // Use totals from view (more accurate than manual calculation)
   const totalIncome = month.total_income || 0;
   const totalBudgeted = month.total_budgeted || 0;
+  // "Free" = income not yet assigned to budgets, personal bills, or savings.
+  const freeToAssign = totalIncome - totalBudgeted - (totalSubscriptionsPersonal || 0) - (totalGoalContributions || 0);
 
   // Calculate spent from budgets (view provides this per budget)
   const totalSpent = (budgets || []).reduce((sum, b) => sum + Number(b?.amount_spent || 0), 0);
@@ -467,18 +469,19 @@ export default async function MonthDetailPage({
     danger: { text: 'text-[var(--color-danger)]', bg: 'bg-[var(--color-danger)]/10', bar: 'bg-[var(--color-danger)]', pill: 'text-[var(--color-danger)] bg-[var(--color-danger)]/10' },
   }[heroTone];
 
-  // Categories under pressure: over budget, or >=90% used.
-  const pressureCategories = (budgets || [])
-    .map((b) => ({
-      name: b.name,
-      left: Number(b.amount_left ?? 0),
-      spent: Number(b.amount_spent ?? 0),
-      budget: Number(b.override_amount ?? b.budget_amount ?? 0),
-      pct: Number(b.percent_used ?? 0),
-    }))
-    .filter((b) => b.left < -0.005 || (b.budget > 0 && b.pct >= 90))
-    .sort((a, b) => a.left - b.left);
-  const pressureNames = pressureCategories.slice(0, 2).map((p) => p.name);
+  // "Pressure" = categories whose budget this month is well over their baseline
+  // (master budget) — where the plan is being stretched. This is the strategic
+  // signal ("Miscellaneous is 9x its usual plan"), not whether a category is
+  // merely near its month limit.
+  const overPlanCategories = (budgets || [])
+    .map((b) => {
+      const budget = Number(b.override_amount ?? b.budget_amount ?? 0);
+      const master = Number(b.master_budget?.budget_amount ?? 0);
+      return { name: b.name, budget, master, over: budget - master };
+    })
+    .filter((b) => b.over > 0.005 && (b.master <= 0 ? b.budget > 0 : b.over / b.master >= 0.15))
+    .sort((a, b) => b.over - a.over);
+  const pressureNames = overPlanCategories.slice(0, 2).map((p) => p.name);
 
   // --- Maternity Fund progress ---
   const fundCurrent = goal ? goal.current_amount : 0;
@@ -556,10 +559,8 @@ export default async function MonthDetailPage({
         </div>
         <p className="text-small text-[var(--color-text)] mt-3">
           {pressureNames.length > 0
-            ? `${pressureNames.join(' and ')} ${pressureNames.length > 1 ? 'are' : 'is'} the pressure.`
-            : isOver
-              ? 'Over for the month.'
-              : 'On track.'}
+            ? `${pressureNames.join(' and ')} ${pressureNames.length > 1 ? 'are' : 'is'} well over plan.`
+            : 'Every category is on plan.'}
         </p>
       </Card>
 
@@ -568,6 +569,7 @@ export default async function MonthDetailPage({
         <span>Income <span className="text-[var(--color-text)] tabular-nums font-medium">{formatCurrency(totalIncome)}</span></span>
         <span>Spent <span className="text-[var(--color-text)] tabular-nums font-medium">{formatCurrency(totalSpent)}</span></span>
         <span>Budgeted <span className="text-[var(--color-text)] tabular-nums font-medium">{formatCurrency(totalBudgeted)}</span></span>
+        <span>Free <span className={`tabular-nums font-medium ${freeToAssign >= 0 ? 'text-[var(--color-success)]' : 'text-[var(--color-danger)]'}`}>{formatCurrency(freeToAssign)}</span></span>
       </div>
 
       {/* Maternity Fund progress */}
