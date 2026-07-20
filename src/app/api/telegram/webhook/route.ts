@@ -91,13 +91,22 @@ export async function POST(request: NextRequest) {
   const docIsImage = Boolean(doc?.file_id && doc.mime_type?.startsWith('image/'));
   const imageFileId = photos.length > 0 ? photos[photos.length - 1]?.file_id : docIsImage ? doc?.file_id : undefined;
   const hasImage = Boolean(imageFileId);
-  // Ignore anything that is neither text nor an image (stickers, joins, etc).
-  if (!chatId || (!text && !hasImage)) return NextResponse.json({ ok: true });
+  if (!chatId) return NextResponse.json({ ok: true });
 
-  // Layer 2: chat-ID allowlist. Unknown chat -> bare 200, no reply.
+  // Layer 2: chat-ID allowlist, before anything that could reply. Unknown chat
+  // -> bare 200, no reply, so the endpoint never advertises itself.
   const allowed = (process.env.TELEGRAM_ALLOWED_CHAT_IDS ?? '')
     .split(',').map((s) => s.trim()).filter(Boolean);
   if (!allowed.includes(String(chatId))) {
+    return NextResponse.json({ ok: true });
+  }
+
+  // Neither text nor an image. Say so rather than dropping it silently — a
+  // dropped message is indistinguishable from the bot being broken.
+  if (!text && !hasImage) {
+    const fields = Object.keys(update?.message ?? {}).join(', ') || 'none';
+    const mime = update?.message?.document?.mime_type ?? 'n/a';
+    await reply(chatId, `I can't read that one. Send text or a photo of a receipt.\n(fields: ${fields} · mime: ${mime})`);
     return NextResponse.json({ ok: true });
   }
 
