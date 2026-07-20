@@ -53,6 +53,10 @@ async function reply(chatId: number | string, text: string): Promise<void> {
 
 const fmt = (n: number) => `€${n.toFixed(2)}`;
 
+// Reading a receipt (download + vision) takes longer than the default serverless
+// timeout, which killed the function before it could reply — hence silence.
+export const maxDuration = 60;
+
 export async function POST(request: NextRequest) {
   // Layer 1: secret token, before touching the body.
   const secret = process.env.TELEGRAM_WEBHOOK_SECRET;
@@ -110,6 +114,10 @@ export async function POST(request: NextRequest) {
   if (hasPhoto) {
     const token = process.env.TELEGRAM_BOT_TOKEN;
     if (!token) return NextResponse.json({ ok: true }); // can't fetch the file without a token
+
+    // Acknowledge immediately — reading a receipt takes a few seconds, and this
+    // also makes a later failure distinguishable from the message never arriving.
+    await reply(chatId, '📄 Reading your receipt…');
 
     try {
       const largest = photos[photos.length - 1]; // Telegram orders sizes smallest -> largest
