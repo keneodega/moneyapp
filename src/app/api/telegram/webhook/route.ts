@@ -71,6 +71,7 @@ export async function POST(request: NextRequest) {
       text?: string;
       caption?: string;
       photo?: Array<{ file_id?: string; file_size?: number }>;
+      document?: { file_id?: string; mime_type?: string };
     };
   };
   try {
@@ -82,10 +83,16 @@ export async function POST(request: NextRequest) {
   const chatId = update?.message?.chat?.id;
   const text = (update?.message?.text ?? '').trim();
   const caption = (update?.message?.caption ?? '').trim();
+  // Telegram sends a compressed image as `photo` (sizes ascending), but an image
+  // attached as a file — which is what desktop clients usually do — arrives as
+  // `document`. Accept both, otherwise desktop receipts vanish silently.
   const photos = update?.message?.photo ?? [];
-  const hasPhoto = Array.isArray(photos) && photos.length > 0;
-  // Ignore anything that is neither text nor a photo (stickers, joins, etc).
-  if (!chatId || (!text && !hasPhoto)) return NextResponse.json({ ok: true });
+  const doc = update?.message?.document;
+  const docIsImage = Boolean(doc?.file_id && doc.mime_type?.startsWith('image/'));
+  const imageFileId = photos.length > 0 ? photos[photos.length - 1]?.file_id : docIsImage ? doc?.file_id : undefined;
+  const hasImage = Boolean(imageFileId);
+  // Ignore anything that is neither text nor an image (stickers, joins, etc).
+  if (!chatId || (!text && !hasImage)) return NextResponse.json({ ok: true });
 
   // Layer 2: chat-ID allowlist. Unknown chat -> bare 200, no reply.
   const allowed = (process.env.TELEGRAM_ALLOWED_CHAT_IDS ?? '')
@@ -110,8 +117,8 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ ok: true });
   }
 
-  // Receipt photo -> read the total off it and log one expense.
-  if (hasPhoto) {
+  // Receipt image -> read the total off it and log one expense.
+  if (hasImage && imageFileId) {
     const token = process.env.TELEGRAM_BOT_TOKEN;
     if (!token) return NextResponse.json({ ok: true }); // can't fetch the file without a token
 
@@ -120,11 +127,8 @@ export async function POST(request: NextRequest) {
     await reply(chatId, '📄 Reading your receipt…');
 
     try {
-      const largest = photos[photos.length - 1]; // Telegram orders sizes smallest -> largest
-      if (!largest?.file_id) return NextResponse.json({ ok: true });
-
       const meta = await fetch(
-        `https://api.telegram.org/bot${token}/getFile?file_id=${encodeURIComponent(largest.file_id)}`
+        `https://api.telegram.org/bot${token}/getFile?file_id=${encodeURIComponent(imageFileId)}`
       ).then((r) => r.json());
       const filePath = meta?.result?.file_path;
       if (!filePath) {
