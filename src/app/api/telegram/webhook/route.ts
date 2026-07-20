@@ -3,6 +3,7 @@ import { createClient } from '@supabase/supabase-js';
 import { timingSafeEqual } from 'crypto';
 import { buildFinancialContext } from '@/lib/ai/financial-context';
 import { parseCommand } from '@/lib/ai/assistant';
+import { parseReceipt } from '@/lib/ai/receipt';
 import { validateBankType } from '@/lib/utils/payment-methods';
 
 /**
@@ -60,7 +61,14 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
-  let update: { message?: { chat?: { id?: number }; text?: string } };
+  let update: {
+    message?: {
+      chat?: { id?: number };
+      text?: string;
+      caption?: string;
+      photo?: Array<{ file_id?: string; file_size?: number }>;
+    };
+  };
   try {
     update = await request.json();
   } catch {
@@ -69,7 +77,11 @@ export async function POST(request: NextRequest) {
 
   const chatId = update?.message?.chat?.id;
   const text = (update?.message?.text ?? '').trim();
-  if (!chatId || !text) return NextResponse.json({ ok: true }); // non-text update — ignore
+  const caption = (update?.message?.caption ?? '').trim();
+  const photos = update?.message?.photo ?? [];
+  const hasPhoto = Array.isArray(photos) && photos.length > 0;
+  // Ignore anything that is neither text nor a photo (stickers, joins, etc).
+  if (!chatId || (!text && !hasPhoto)) return NextResponse.json({ ok: true });
 
   // Layer 2: chat-ID allowlist. Unknown chat -> bare 200, no reply.
   const allowed = (process.env.TELEGRAM_ALLOWED_CHAT_IDS ?? '')
@@ -90,8 +102,81 @@ export async function POST(request: NextRequest) {
   const sb = createClient(url, serviceRoleKey, { auth: { persistSession: false } });
 
   if (text === '/start' || text === '/help') {
-    await reply(chatId, 'Send me a spend and I\'ll log it. e.g. "€62 groceries at Tesco" or "spent 12.50 on parking". I can record expenses, income, and money you\'re owed.');
+    await reply(chatId, 'Send me a spend and I\'ll log it — type it ("€62 groceries at Tesco", "spent 12.50 on parking") or just photograph the receipt. I can record expenses, income, and money you\'re owed.');
     return NextResponse.json({ ok: true });
+  }
+
+  // Receipt photo -> read the total off it and log one expense.
+  if (hasPhoto) {
+    const token = process.env.TELEGRAM_BOT_TOKEN;
+    if (!token) return NextResponse.json({ ok: true }); // can't fetch the file without a token
+
+    try {
+      const largest = photos[photos.length - 1]; // Telegram orders sizes smallest -> largest
+      if (!largest?.file_id) return NextResponse.json({ ok: true });
+
+      const meta = await fetch(
+        `https://api.telegram.org/bot${token}/getFile?file_id=${encodeURIComponent(largest.file_id)}`
+      ).then((r) => r.json());
+      const filePath = meta?.result?.file_path;
+      if (!filePath) {
+        await reply(chatId, "I couldn't download that image. Send it again?");
+        return NextResponse.json({ ok: true });
+      }
+
+      const imageResponse = await fetch(`https://api.telegram.org/file/bot${token}/${filePath}`);
+      const image = new Uint8Array(await imageResponse.arrayBuffer());
+
+      const context = await buildFinancialContext(sb, userId);
+      const receipt = await parseReceipt(image, context, caption || undefined);
+
+      if (!receipt.isReceipt) {
+        await reply(chatId, 'That doesn\'t look like a receipt. Send a photo of one, or just type it — e.g. "€12 parking".');
+        return NextResponse.json({ ok: true });
+      }
+      if (receipt.amount <= 0) {
+        await reply(chatId, `I couldn't read a total off that${receipt.note ? ` — ${receipt.note}` : ''}. Try a clearer photo, or type it: "€12 Food".`);
+        return NextResponse.json({ ok: true });
+      }
+
+      // Layer 4: the category must exist AND belong to this user.
+      const { data: budget } = await sb
+        .from('budgets')
+        .select('id, name, monthly_overview_id, monthly_overviews!inner(user_id)')
+        .eq('id', receipt.budgetId)
+        .maybeSingle();
+      const budgetUserId = (budget as unknown as { monthly_overviews?: { user_id?: string } })?.monthly_overviews?.user_id;
+      if (!budget || budgetUserId !== userId) {
+        await reply(
+          chatId,
+          `I read ${fmt(receipt.amount)}${receipt.merchant ? ` at ${receipt.merchant}` : ''} but couldn't match a category. Type it instead, e.g. "${receipt.amount} Food".`
+        );
+        return NextResponse.json({ ok: true });
+      }
+
+      const receiptDate = receipt.date || new Date().toISOString().split('T')[0];
+      const { error } = await sb.from('expenses').insert({
+        budget_id: budget.id,
+        user_id: userId,
+        amount: receipt.amount,
+        date: receiptDate,
+        description: receipt.merchant || 'Receipt',
+        bank: DEFAULT_BANK,
+        is_recurring: false,
+      });
+      if (error) throw error;
+
+      const shaky = receipt.confidence < 0.5 ? '\n⚠️ The photo was hard to read — double-check the amount.' : '';
+      await reply(
+        chatId,
+        `✅ Logged ${fmt(receipt.amount)}${receipt.merchant ? ` · ${receipt.merchant}` : ''} · ${budget.name} (${receiptDate}).${shaky}`
+      );
+      return NextResponse.json({ ok: true });
+    } catch (error) {
+      console.error('telegram receipt error:', error);
+      await reply(chatId, 'Something went wrong reading that receipt. Try again, or type the amount.');
+      return NextResponse.json({ ok: true });
+    }
   }
 
   try {
