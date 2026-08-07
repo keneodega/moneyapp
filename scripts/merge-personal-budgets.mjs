@@ -14,8 +14,11 @@
  * Dry-run by default — prints what would change. Pass --apply to execute.
  *
  * Usage:
- *   node scripts/merge-personal-budgets.mjs <email> <password> [--apply]
+ *   node scripts/merge-personal-budgets.mjs <email> <password> --month "August 2026" [--apply]
  *   node scripts/merge-personal-budgets.mjs <email> <password> --sources "Havi Personal,Kene Personal" --target "Personal Care" [--apply]
+ *
+ * --month filters by monthly overview name (case-insensitive substring);
+ * omit it to process every month.
  *
  * Requires env (read from .env.local if present):
  *   - NEXT_PUBLIC_SUPABASE_URL
@@ -58,9 +61,11 @@ function parseArgs() {
     apply: false,
     sources: ['Havi Personal', 'Kene Personal'],
     target: 'Personal Care',
+    month: null,
   };
   for (let i = 0; i < args.length; i++) {
     if (args[i] === '--apply') out.apply = true;
+    else if (args[i] === '--month') out.month = args[++i];
     else if (args[i] === '--sources') out.sources = args[++i].split(',').map(s => s.trim()).filter(Boolean);
     else if (args[i] === '--target') out.target = args[++i];
     else out.positional.push(args[i]);
@@ -84,7 +89,7 @@ async function main() {
     process.exit(1);
   }
 
-  const { positional, apply, sources, target } = parseArgs();
+  const { positional, apply, sources, target, month: monthFilter } = parseArgs();
   const sourceKeys = new Set(sources.map(normalize));
   const targetKey = normalize(target);
 
@@ -103,13 +108,21 @@ async function main() {
   if (authError) await fail('Authentication failed:', authError);
   console.log(`✓ Authenticated as ${authData.user.email}`);
   console.log(`Mode: ${apply ? 'APPLY — changes will be written' : 'DRY RUN — no changes (pass --apply to execute)'}`);
-  console.log(`Merging [${sources.join(', ')}] → "${target}"`);
+  console.log(`Merging [${sources.join(', ')}] → "${target}"${monthFilter ? ` in months matching "${monthFilter}"` : ' in all months'}`);
 
-  const { data: months, error: monthsError } = await supabase
+  const { data: allMonths, error: monthsError } = await supabase
     .from('monthly_overviews')
     .select('id, name, start_date')
     .order('start_date', { ascending: true });
   if (monthsError) await fail('Failed to fetch monthly overviews:', monthsError);
+
+  const months = monthFilter
+    ? allMonths.filter(m => normalize(m.name).includes(normalize(monthFilter)))
+    : allMonths;
+  if (monthFilter && months.length === 0) {
+    console.log(`\nNo monthly overview matches "${monthFilter}". Available months: ${allMonths.map(m => m.name).join(', ')}`);
+    process.exit(1);
+  }
 
   let touchedMonths = 0;
 
