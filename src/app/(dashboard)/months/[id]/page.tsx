@@ -4,6 +4,7 @@ import dynamic from 'next/dynamic';
 import { Card, PageHeader } from '@/components/ui';
 import { createSupabaseServerClient } from '@/lib/supabase/server';
 import { SubscriptionService, MonthSubscriptionService } from '@/lib/services';
+import { computeMonthStatus, monthStatusSentence } from '@/lib/utils/month-status';
 
 // Code splitting: Load these components dynamically
 const IncomeList = dynamic(() => import('./IncomeList').then(mod => ({ default: mod.IncomeList })), {
@@ -451,15 +452,12 @@ export default async function MonthDetailPage({
   // "Free" = income not yet assigned to budgets, personal bills, or savings.
   const freeToAssign = totalIncome - totalBudgeted - (totalSubscriptionsPersonal || 0) - (totalGoalContributions || 0);
 
-  // Calculate spent from budgets (view provides this per budget)
-  const totalSpent = (budgets || []).reduce((sum, b) => sum + Number(b?.amount_spent || 0), 0);
-  const spentPercent = totalBudgeted > 0 ? (totalSpent / totalBudgeted) * 100 : 0;
-  const { daysRemaining, elapsedDays } = getMonthTimeStats(month.start_date, month.end_date);
-
   // --- "This month" status hero ---
-  const overUnder = totalSpent - totalBudgeted; // positive = over budget
-  const isOver = overUnder > 0.005;
-  const overFraction = totalBudgeted > 0 ? overUnder / totalBudgeted : 0;
+  // Transfer-aware: budgets covered by transfers or goal drawdowns aren't "over".
+  const status = computeMonthStatus(budgets || [], totalBudgeted);
+  const { totalSpent, totalFunded, movedIn, spentPercent, overUnder, isOver } = status;
+  const { daysRemaining, elapsedDays } = getMonthTimeStats(month.start_date, month.end_date);
+  const overFraction = totalFunded > 0 ? overUnder / totalFunded : 0;
   // Just over (<10%) reads as amber; further over reads as danger.
   const heroTone: 'success' | 'warning' | 'danger' = !isOver ? 'success' : overFraction < 0.1 ? 'warning' : 'danger';
   // Full literal class strings per tone so Tailwind's scanner keeps them.
@@ -468,20 +466,6 @@ export default async function MonthDetailPage({
     warning: { text: 'text-[var(--color-warning)]', bg: 'bg-[var(--color-warning)]/10', bar: 'bg-[var(--color-warning)]', pill: 'text-[var(--color-warning)] bg-[var(--color-warning)]/10' },
     danger: { text: 'text-[var(--color-danger)]', bg: 'bg-[var(--color-danger)]/10', bar: 'bg-[var(--color-danger)]', pill: 'text-[var(--color-danger)] bg-[var(--color-danger)]/10' },
   }[heroTone];
-
-  // "Pressure" = categories whose budget this month is well over their baseline
-  // (master budget) — where the plan is being stretched. This is the strategic
-  // signal ("Miscellaneous is 9x its usual plan"), not whether a category is
-  // merely near its month limit.
-  const overPlanCategories = (budgets || [])
-    .map((b) => {
-      const budget = Number(b.override_amount ?? b.budget_amount ?? 0);
-      const master = Number(b.master_budget?.budget_amount ?? 0);
-      return { name: b.name, budget, master, over: budget - master };
-    })
-    .filter((b) => b.over > 0.005 && (b.master <= 0 ? b.budget > 0 : b.over / b.master >= 0.15))
-    .sort((a, b) => b.over - a.over);
-  const pressureNames = overPlanCategories.slice(0, 2).map((p) => p.name);
 
   // --- Maternity Fund progress ---
   const fundCurrent = goal ? goal.current_amount : 0;
@@ -555,13 +539,12 @@ export default async function MonthDetailPage({
         </div>
         <div className="mt-1.5 flex justify-between text-caption text-[var(--color-text-muted)] tabular-nums">
           <span>{formatCurrency(totalSpent)} spent</span>
-          <span>{formatCurrency(totalBudgeted)} planned</span>
+          <span>
+            {formatCurrency(totalBudgeted)} planned
+            {movedIn > 0.005 && ` + ${formatCurrency(movedIn)} moved in`}
+          </span>
         </div>
-        <p className="text-small text-[var(--color-text)] mt-3">
-          {pressureNames.length > 0
-            ? `${pressureNames.join(' and ')} ${pressureNames.length > 1 ? 'are' : 'is'} well over plan.`
-            : 'Every category is on plan.'}
-        </p>
+        <p className="text-small text-[var(--color-text)] mt-3">{monthStatusSentence(status)}</p>
       </Card>
 
       {/* Compact totals — income vs spent this month */}
